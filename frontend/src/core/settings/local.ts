@@ -13,7 +13,7 @@ export const DEFAULT_LOCAL_SETTINGS: LocalSettings = {
   },
 };
 
-const LOCAL_SETTINGS_KEY = "deerflow.local-settings";
+const LOCAL_SETTINGS_KEY = "thinktank.local-settings";
 
 export interface LocalSettings {
   notification: {

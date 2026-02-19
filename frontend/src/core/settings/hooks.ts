@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { useEffect } from "react";
 
 import {
   DEFAULT_LOCAL_SETTINGS,
@@ -15,14 +14,7 @@ export function useLocalSettings(): [
     value: Partial<LocalSettings[keyof LocalSettings]>,
   ) => void,
 ] {
-  const [mounted, setMounted] = useState(false);
-  const [state, setState] = useState<LocalSettings>(DEFAULT_LOCAL_SETTINGS);
-  useEffect(() => {
-    if (!mounted) {
-      setState(getLocalSettings());
-    }
-    setMounted(true);
-  }, [mounted]);
+  const [state, setState] = useState<LocalSettings>(() => getLocalSettings());
   const setter = useCallback(
     (
       key: keyof LocalSettings,
