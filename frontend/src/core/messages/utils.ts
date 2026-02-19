@@ -161,12 +161,92 @@ export function extractContentFromMessage(message: Message) {
   return "";
 }
 
-export function extractReasoningContentFromMessage(message: Message) {
-  if (message.type !== "ai" || !message.additional_kwargs) {
+type ReasoningSummaryItem = {
+  text?: string;
+};
+
+function extractReasoningSummaryText(summary: unknown) {
+  if (typeof summary === "string" && summary.trim().length > 0) {
+    return summary.trim();
+  }
+  if (!Array.isArray(summary)) {
     return null;
   }
-  if ("reasoning_content" in message.additional_kwargs) {
-    return message.additional_kwargs.reasoning_content as string | null;
+  const parts = summary
+    .map((item) => {
+      if (typeof item === "string") {
+        return item;
+      }
+      if (item && typeof item === "object") {
+        const text = (item as ReasoningSummaryItem).text;
+        if (typeof text === "string") {
+          return text;
+        }
+      }
+      return "";
+    })
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  return parts.length > 0 ? parts.join("\n") : null;
+}
+
+function extractReasoningFromBlock(block: unknown) {
+  if (!block || typeof block !== "object") {
+    return null;
+  }
+  const maybeBlock = block as {
+    summary?: unknown;
+    reasoning?: unknown;
+    text?: unknown;
+  };
+  const summaryText = extractReasoningSummaryText(maybeBlock.summary);
+  if (summaryText) {
+    return summaryText;
+  }
+  if (typeof maybeBlock.reasoning === "string" && maybeBlock.reasoning.trim()) {
+    return maybeBlock.reasoning.trim();
+  }
+  if (typeof maybeBlock.text === "string" && maybeBlock.text.trim()) {
+    return maybeBlock.text.trim();
+  }
+  return null;
+}
+
+export function extractReasoningContentFromMessage(message: Message) {
+  if (message.type !== "ai") {
+    return null;
+  }
+  const reasoningContent = message.additional_kwargs?.reasoning_content;
+  if (typeof reasoningContent === "string" && reasoningContent.trim()) {
+    return reasoningContent.trim();
+  }
+  const reasoning = message.additional_kwargs?.reasoning;
+  if (reasoning && typeof reasoning === "object") {
+    const extracted = extractReasoningFromBlock(reasoning);
+    if (extracted) {
+      return extracted;
+    }
+  }
+  if (Array.isArray(message.content)) {
+    const parts = message.content
+      .filter(
+        (block) =>
+          block &&
+          typeof block === "object" &&
+          ((block as { type?: string }).type === "reasoning" ||
+            (block as { type?: string }).type === "thinking"),
+      )
+      .map((block) => {
+        const b = block as { type?: string; thinking?: string };
+        if (b.type === "thinking" && typeof b.thinking === "string") {
+          return b.thinking.trim() || null;
+        }
+        return extractReasoningFromBlock(block);
+      })
+      .filter((item): item is string => Boolean(item));
+    if (parts.length > 0) {
+      return parts.join("\n\n");
+    }
   }
   return null;
 }
@@ -176,6 +256,18 @@ export function removeReasoningContentFromMessage(message: Message) {
     return;
   }
   delete message.additional_kwargs.reasoning_content;
+  delete message.additional_kwargs.reasoning;
+  if (Array.isArray(message.content)) {
+    message.content = message.content.filter(
+      (block) =>
+        !(
+          block &&
+          typeof block === "object" &&
+          ((block as { type?: string }).type === "reasoning" ||
+            (block as { type?: string }).type === "thinking")
+        ),
+    );
+  }
 }
 
 export function extractURLFromImageURLContent(
@@ -196,16 +288,19 @@ export function hasContent(message: Message) {
     return message.content.trim().length > 0;
   }
   if (Array.isArray(message.content)) {
-    return message.content.length > 0;
+    return message.content.some(
+      (block) =>
+        block &&
+        typeof block === "object" &&
+        ((block as { type?: string }).type === "text" ||
+          (block as { type?: string }).type === "image_url"),
+    );
   }
   return false;
 }
 
 export function hasReasoning(message: Message) {
-  return (
-    message.type === "ai" &&
-    typeof message.additional_kwargs?.reasoning_content === "string"
-  );
+  return extractReasoningContentFromMessage(message) !== null;
 }
 
 export function hasToolCalls(message: Message) {

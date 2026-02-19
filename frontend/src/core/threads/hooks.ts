@@ -17,6 +17,15 @@ import type {
   AgentThreadState,
 } from "./types";
 
+export interface ThreadResubmitOptions {
+  checkpoint?: {
+    checkpoint_id: string | null;
+    checkpoint_ns: string;
+    checkpoint_map: Record<string, unknown>;
+  } | null;
+  streamResumable?: boolean;
+}
+
 export function useThreadStream({
   threadId,
   isNewThread,
@@ -93,7 +102,7 @@ export function useSubmitThread({
 }) {
   const queryClient = useQueryClient();
   const callback = useCallback(
-    async (message: PromptInputMessage) => {
+    async (message: PromptInputMessage, submitOptions?: ThreadResubmitOptions) => {
       const text = message.text.trim();
 
       // Upload files first if any
@@ -153,7 +162,8 @@ export function useSubmitThread({
         {
           threadId: isNewThread ? threadId! : undefined,
           streamSubgraphs: true,
-          streamResumable: true,
+          streamResumable: submitOptions?.streamResumable ?? true,
+          checkpoint: submitOptions?.checkpoint ?? undefined,
           streamMode: ["values", "messages-tuple", "custom"],
           config: {
             recursion_limit: 1000,
