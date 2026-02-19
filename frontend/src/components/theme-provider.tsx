@@ -1,17 +1,15 @@
-"use client";
-
-import { usePathname } from "next/navigation";
+import { useLocation } from "react-router";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 
 export function ThemeProvider({
   children,
   ...props
 }: React.ComponentProps<typeof NextThemesProvider>) {
-  const pathname = usePathname();
+  const location = useLocation();
   return (
     <NextThemesProvider
       {...props}
-      forcedTheme={pathname === "/" ? "dark" : undefined}
+      forcedTheme={location.pathname === "/" ? "dark" : undefined}
     >
       {children}
     </NextThemesProvider>
