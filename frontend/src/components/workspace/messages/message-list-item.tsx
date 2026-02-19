@@ -1,8 +1,8 @@
 import type { Message } from "@langchain/langgraph-sdk";
-import { FileIcon } from "lucide-react";
-import { useParams } from "next/navigation";
-import { memo, useMemo, type ImgHTMLAttributes } from "react";
-import rehypeKatex from "rehype-katex";
+import { CheckIcon, FileIcon, PencilIcon, RefreshCwIcon, XIcon } from "lucide-react";
+import { memo, useCallback, useMemo, useState, type ImgHTMLAttributes } from "react";
+import { useParams } from "react-router";
+import { math } from "@streamdown/math";
 
 import {
   Message as AIElementMessage,
@@ -30,12 +30,81 @@ export function MessageListItem({
   className,
   message,
   isLoading,
+  isRegenerating,
+  onEdit,
+  onRegenerate,
 }: {
   className?: string;
   message: Message;
   isLoading?: boolean;
+  isRegenerating?: boolean;
+  onEdit?: (messageId: string, newContent: string) => void;
+  onRegenerate?: (messageId: string, content: string) => void;
 }) {
   const isHuman = message.type === "human";
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState("");
+
+  const handleStartEdit = useCallback(() => {
+    const content = extractContentFromMessage(message) ?? "";
+    setEditedContent(content);
+    setIsEditing(true);
+  }, [message]);
+
+  const handleSaveEdit = useCallback(() => {
+    if (onEdit && message.id) {
+      onEdit(message.id, editedContent);
+    }
+    setIsEditing(false);
+  }, [onEdit, message.id, editedContent]);
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditing(false);
+    setEditedContent("");
+  }, []);
+
+  const handleRegenerate = useCallback(() => {
+    if (onRegenerate && message.id) {
+      const content = extractContentFromMessage(message) ?? "";
+      onRegenerate(message.id, content);
+    }
+  }, [onRegenerate, message]);
+
+  if (isEditing && isHuman) {
+    return (
+      <AIElementMessage
+        className={cn("group/conversation-message relative w-full", className)}
+        from="user"
+      >
+        <div className="ml-auto flex w-full flex-col gap-2">
+          <textarea
+            value={editedContent}
+            onChange={(e) => setEditedContent(e.target.value)}
+            className="bg-muted text-foreground w-full rounded-lg border border-border p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            rows={4}
+            autoFocus
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={handleCancelEdit}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all hover:bg-muted"
+            >
+              <XIcon className="size-3.5" />
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveEdit}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90"
+            >
+              <CheckIcon className="size-3.5" />
+              Save & Regenerate
+            </button>
+          </div>
+        </div>
+      </AIElementMessage>
+    );
+  }
+
   return (
     <AIElementMessage
       className={cn("group/conversation-message relative w-full", className)}
@@ -53,6 +122,34 @@ export function MessageListItem({
         )}
       >
         <div className="flex gap-1">
+          {isHuman && onEdit && (
+            <button
+              onClick={handleStartEdit}
+              disabled={isLoading || isRegenerating}
+              className="inline-flex items-center gap-1 rounded-md bg-background px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              title={
+                isLoading || isRegenerating
+                  ? "Cannot edit while generating"
+                  : "Edit message"
+              }
+            >
+              <PencilIcon className="size-3" />
+            </button>
+          )}
+          {isHuman && onRegenerate && (
+            <button
+              onClick={handleRegenerate}
+              disabled={isLoading || isRegenerating}
+              className="inline-flex items-center gap-1 rounded-md bg-background px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              title={
+                isLoading || isRegenerating
+                  ? "Cannot regenerate while generating"
+                  : "Regenerate response"
+              }
+            >
+              <RefreshCwIcon className="size-3" />
+            </button>
+          )}
           <CopyButton
             clipboardData={
               extractContentFromMessage(message) ??
@@ -111,7 +208,7 @@ function MessageContent_({
   const components = useMemo(
     () => ({
       img: (props: ImgHTMLAttributes<HTMLImageElement>) => (
-        <MessageImage {...props} threadId={thread_id} maxWidth="90%" />
+        <MessageImage {...props} threadId={thread_id ?? ""} maxWidth="90%" />
       ),
     }),
     [thread_id],
@@ -170,7 +267,7 @@ function MessageContent_({
       <MarkdownContent
         content={contentToParse}
         isLoading={isLoading}
-        rehypePlugins={[...rehypePlugins, [rehypeKatex, { output: "html" }]]}
+        rehypePlugins={[...rehypePlugins, math.rehypePlugin]}
         className="my-3"
         components={components}
       />

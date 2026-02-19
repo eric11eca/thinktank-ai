@@ -10,6 +10,7 @@ import {
 import { streamdownPlugins } from "@/core/streamdown";
 
 import { CitationLink } from "../citations/citation-link";
+import { CollapsibleCodeBlock } from "./collapsible-code-block";
 
 export type MarkdownContentProps = {
   content: string;
@@ -40,6 +41,9 @@ export function MarkdownContent({
         }
         return <a {...props} />;
       },
+      pre: (props: HTMLAttributes<HTMLPreElement>) => (
+        <CollapsibleCodeBlock {...props} />
+      ),
       ...componentsFromProps,
     };
   }, [componentsFromProps]);

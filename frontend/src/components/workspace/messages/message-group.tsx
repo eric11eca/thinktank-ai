@@ -12,7 +12,7 @@ import {
   SquareTerminalIcon,
   WrenchIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   ChainOfThought,
@@ -50,10 +50,10 @@ export function MessageGroup({
 }) {
   const { t } = useI18n();
   const [showAbove, setShowAbove] = useState(
-    env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true",
+    env.VITE_STATIC_WEBSITE_ONLY === "true",
   );
   const [showLastThinking, setShowLastThinking] = useState(
-    env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true",
+    env.VITE_STATIC_WEBSITE_ONLY === "true",
   );
   const steps = useMemo(() => convertToSteps(messages), [messages]);
   const lastToolCallStep = useMemo(() => {
@@ -76,6 +76,30 @@ export function MessageGroup({
       return filteredSteps[filteredSteps.length - 1];
     }
   }, [lastToolCallStep, steps]);
+  const isThinkingStreaming = isLoading && Boolean(lastReasoningStep);
+  const showThinking = isThinkingStreaming ? true : showLastThinking;
+  const thinkingScrollRef = useRef<HTMLDivElement | null>(null);
+  const toolCallsScrollRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!isThinkingStreaming) {
+      return;
+    }
+    const container = thinkingScrollRef.current;
+    if (!container) {
+      return;
+    }
+    container.scrollTop = container.scrollHeight;
+  }, [isThinkingStreaming, lastReasoningStep?.reasoning]);
+  useEffect(() => {
+    if (!isLoading) {
+      return;
+    }
+    const container = toolCallsScrollRef.current;
+    if (!container) {
+      return;
+    }
+    container.scrollTop = container.scrollHeight;
+  }, [isLoading, aboveLastToolCallSteps.length, lastToolCallStep?.id, showAbove]);
   const rehypePlugins = useRehypeSplitWordsIntoSpans(isLoading);
   return (
     <ChainOfThought
@@ -110,33 +134,38 @@ export function MessageGroup({
       )}
       {lastToolCallStep && (
         <ChainOfThoughtContent className="px-4 pb-2">
-          {showAbove &&
-            aboveLastToolCallSteps.map((step) =>
-              step.type === "reasoning" ? (
-                <ChainOfThoughtStep
-                  key={step.id}
-                  label={
-                    <MarkdownContent
-                      content={step.reasoning ?? ""}
-                      isLoading={isLoading}
-                      rehypePlugins={rehypePlugins}
-                    />
-                  }
-                ></ChainOfThoughtStep>
-              ) : (
-                <ToolCall key={step.id} {...step} isLoading={isLoading} />
-              ),
+          <div
+            ref={toolCallsScrollRef}
+            className="max-h-72 overflow-y-auto pr-2"
+          >
+            {showAbove &&
+              aboveLastToolCallSteps.map((step) =>
+                step.type === "reasoning" ? (
+                  <ChainOfThoughtStep
+                    key={step.id}
+                    label={
+                      <MarkdownContent
+                        content={step.reasoning ?? ""}
+                        isLoading={isLoading}
+                        rehypePlugins={rehypePlugins}
+                      />
+                    }
+                  ></ChainOfThoughtStep>
+                ) : (
+                  <ToolCall key={step.id} {...step} isLoading={isLoading} />
+                ),
+              )}
+            {lastToolCallStep && (
+              <FlipDisplay uniqueKey={lastToolCallStep.id ?? ""}>
+                <ToolCall
+                  key={lastToolCallStep.id}
+                  {...lastToolCallStep}
+                  isLast={true}
+                  isLoading={isLoading}
+                />
+              </FlipDisplay>
             )}
-          {lastToolCallStep && (
-            <FlipDisplay uniqueKey={lastToolCallStep.id ?? ""}>
-              <ToolCall
-                key={lastToolCallStep.id}
-                {...lastToolCallStep}
-                isLast={true}
-                isLoading={isLoading}
-              />
-            </FlipDisplay>
-          )}
+          </div>
         </ChainOfThoughtContent>
       )}
       {lastReasoningStep && (
@@ -145,7 +174,12 @@ export function MessageGroup({
             key={lastReasoningStep.id}
             className="w-full items-start justify-start text-left"
             variant="ghost"
-            onClick={() => setShowLastThinking(!showLastThinking)}
+            onClick={() => {
+              if (isThinkingStreaming) {
+                return;
+              }
+              setShowLastThinking(!showLastThinking);
+            }}
           >
             <div className="flex w-full items-center justify-between">
               <ChainOfThoughtStep
@@ -157,24 +191,29 @@ export function MessageGroup({
                 <ChevronUp
                   className={cn(
                     "text-muted-foreground size-4",
-                    showLastThinking ? "" : "rotate-180",
+                    showThinking ? "" : "rotate-180",
                   )}
                 />
               </div>
             </div>
           </Button>
-          {showLastThinking && (
+          {showThinking && (
             <ChainOfThoughtContent className="px-4 pb-2">
-              <ChainOfThoughtStep
-                key={lastReasoningStep.id}
-                label={
-                  <MarkdownContent
-                    content={lastReasoningStep.reasoning ?? ""}
-                    isLoading={isLoading}
-                    rehypePlugins={rehypePlugins}
-                  />
-                }
-              ></ChainOfThoughtStep>
+              <div
+                ref={thinkingScrollRef}
+                className="max-h-72 overflow-y-auto pr-2"
+              >
+                <ChainOfThoughtStep
+                  key={lastReasoningStep.id}
+                  label={
+                    <MarkdownContent
+                      content={lastReasoningStep.reasoning ?? ""}
+                      isLoading={isLoading}
+                      rehypePlugins={rehypePlugins}
+                    />
+                  }
+                ></ChainOfThoughtStep>
+              </div>
             </ChainOfThoughtContent>
           )}
         </>
