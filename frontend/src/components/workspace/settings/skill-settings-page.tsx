@@ -1,8 +1,6 @@
-"use client";
-
 import { SparklesIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -56,7 +54,7 @@ function SkillSettingsList({
   onClose?: () => void;
 }) {
   const { t } = useI18n();
-  const router = useRouter();
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<string>("public");
   const { mutate: enableSkill } = useEnableSkill();
   const filteredSkills = useMemo(
@@ -65,7 +63,7 @@ function SkillSettingsList({
   );
   const handleCreateSkill = () => {
     onClose?.();
-    router.push("/workspace/chats/new?mode=skill");
+    navigate("/workspace/chats/new?mode=skill");
   };
   return (
     <div className="flex w-full flex-col gap-4">
@@ -102,7 +100,7 @@ function SkillSettingsList({
             <ItemActions>
               <Switch
                 checked={skill.enabled}
-                disabled={env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true"}
+                disabled={env.VITE_STATIC_WEBSITE_ONLY === "true"}
                 onCheckedChange={(checked) =>
                   enableSkill({ skillName: skill.name, enabled: checked })
                 }
