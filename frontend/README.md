@@ -1,6 +1,6 @@
-# DeerFlow Frontend
+# Thinktank.ai Frontend
 
-Like the original DeerFlow 1.0, we would love to give the community a minimalistic and easy-to-use web interface with a more modern and flexible architecture.
+Like the original Thinktank.ai 1.0, we would love to give the community a minimalistic and easy-to-use web interface with a more modern and flexible architecture.
 
 ## Tech Stack
 
@@ -124,6 +124,7 @@ src/
 - Turbopack enabled by default in development for faster builds
 - Environment validation can be skipped with `SKIP_ENV_VALIDATION=1` (useful for Docker)
 - Backend API URLs are optional; nginx proxy is used by default in development
+- Reasoning UI pulls model thoughts from `reasoning_content`, `reasoning` metadata, or `reasoning` content blocks (Responses API)
 
 ## License
 

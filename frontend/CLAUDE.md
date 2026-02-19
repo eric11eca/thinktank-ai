@@ -4,57 +4,78 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-DeerFlow Frontend is a Next.js 16 web interface for an AI agent system. It communicates with a LangGraph-based backend to provide thread-based AI conversations with streaming responses, artifacts, and a skills/tools system.
+Thinktank.ai Frontend is a Vite + React + Electron desktop application for an AI agent system. It communicates with a LangGraph-based backend to provide thread-based AI conversations with streaming responses, artifacts, and a skills/tools system. The app runs on macOS, Windows, and Linux.
 
-**Stack**: Next.js 16, React 19, TypeScript 5.8, Tailwind CSS 4, pnpm 10.26.2
+**Stack**: Vite, React 19, React Router 7, TypeScript 5.8, Tailwind CSS 4, Electron, pnpm 10.26.2
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
-| `pnpm dev` | Dev server with Turbopack (http://localhost:3000) |
-| `pnpm build` | Production build |
+| `pnpm dev` | Dev server (http://localhost:3000) |
+| `pnpm dev:electron` | Dev server with Electron |
+| `pnpm dev:web` | Web-only dev (no Electron) |
+| `pnpm build` | Production build (renderer) |
+| `pnpm build:electron` | Full Electron build |
+| `pnpm build:mac` | Package for macOS |
+| `pnpm build:win` | Package for Windows |
+| `pnpm build:linux` | Package for Linux |
 | `pnpm check` | Lint + type check (run before committing) |
 | `pnpm lint` | ESLint only |
 | `pnpm lint:fix` | ESLint with auto-fix |
 | `pnpm typecheck` | TypeScript type check (`tsc --noEmit`) |
-| `pnpm start` | Start production server |
 
 No test framework is configured.
 
 ## Architecture
 
 ```
-Frontend (Next.js) ──▶ LangGraph SDK ──▶ LangGraph Backend (lead_agent)
-                                              ├── Sub-Agents
-                                              └── Tools & Skills
+Electron App
+  ├── Main Process (electron/main.ts)
+  │     ├── IPC Handlers (config, dialogs, window controls)
+  │     ├── Native Menus
+  │     └── Auto-Updater
+  │
+  └── Renderer Process (Vite + React)
+        ├── React Router (client-side routing)
+        ├── Components (Shadcn UI, workspace, landing)
+        ├── Core Logic (threads, API, i18n, settings)
+        └── LangGraph SDK ──▶ LangGraph Backend
 ```
 
 The frontend is a stateful chat application. Users create **threads** (conversations), send messages, and receive streamed AI responses. The backend orchestrates agents that can produce **artifacts** (files/code) and **todos**.
 
-### Source Layout (`src/`)
+### Source Layout
 
-- **`app/`** — Next.js App Router. Routes: `/` (landing), `/workspace/chats/[thread_id]` (chat).
-- **`components/`** — React components split into:
-  - `ui/` — Shadcn UI primitives (auto-generated, ESLint-ignored)
-  - `ai-elements/` — Vercel AI SDK elements (auto-generated, ESLint-ignored)
-  - `workspace/` — Chat page components (messages, artifacts, settings)
-  - `landing/` — Landing page sections
-- **`core/`** — Business logic, the heart of the app:
-  - `threads/` — Thread creation, streaming, state management (hooks + types)
-  - `api/` — LangGraph client singleton
-  - `artifacts/` — Artifact loading and caching
-  - `i18n/` — Internationalization (en-US, zh-CN)
-  - `settings/` — User preferences in localStorage
-  - `memory/` — Persistent user memory system
-  - `skills/` — Skills installation and management
-  - `messages/` — Message processing and transformation
-  - `mcp/` — Model Context Protocol integration
-  - `models/` — TypeScript types and data models
-- **`hooks/`** — Shared React hooks
-- **`lib/`** — Utilities (`cn()` from clsx + tailwind-merge)
-- **`server/`** — Server-side code (better-auth, not yet active)
-- **`styles/`** — Global CSS with Tailwind v4 `@import` syntax and CSS variables for theming
+- **`electron/`** — Electron main process:
+  - `main.ts` — Main process entry, window creation
+  - `preload.ts` — Secure IPC bridge via contextBridge
+  - `menu.ts` — Native application menus
+  - `updater.ts` — Auto-update logic
+  - `ipc/` — IPC handlers (config, dialogs, window, update)
+- **`src/`** — Renderer process (React app):
+  - `main.tsx` — Vite entry point
+  - `App.tsx` — Root component with providers
+  - `router.tsx` — React Router configuration
+  - `env.ts` — Environment variables
+  - `pages/` — Route components (Landing, Workspace, Chat, ChatList)
+  - `components/` — React components:
+    - `ui/` — Shadcn UI primitives (auto-generated)
+    - `ai-elements/` — Vercel AI SDK elements (auto-generated)
+    - `workspace/` — Chat page components
+    - `landing/` — Landing page sections
+  - `core/` — Business logic:
+    - `threads/` — Thread creation, streaming, state management
+    - `api/` — LangGraph client singleton
+    - `agent/` — Agent context API client (tools/skills panel)
+    - `artifacts/` — Artifact loading and caching
+    - `i18n/` — Internationalization (en-US, zh-CN)
+    - `settings/` — User preferences in localStorage
+    - `memory/` — Persistent user memory system
+    - `skills/` — Skills installation and management
+  - `hooks/` — Shared React hooks
+  - `lib/` — Utilities (`cn()` from clsx + tailwind-merge)
+  - `styles/` — Global CSS with Tailwind v4
 
 ### Data Flow
 
@@ -63,12 +84,17 @@ The frontend is a stateful chat application. Users create **threads** (conversat
 3. TanStack Query manages server state; localStorage stores user settings
 4. Components subscribe to thread state and render updates
 
+Reasoning (model thoughts) rendering reads from `core/messages/utils.ts`, which supports `reasoning_content`, `reasoning` metadata, and Responses API `reasoning` content blocks.
+
 ### Key Patterns
 
-- **Server Components by default**, `"use client"` only for interactive components
+- **Client-side routing** with React Router v7
 - **Thread hooks** (`useThreadStream`, `useSubmitThread`, `useThreads`) are the primary API interface
 - **LangGraph client** is a singleton obtained via `getAPIClient()` in `core/api/`
-- **Environment validation** uses `@t3-oss/env-nextjs` with Zod schemas (`src/env.js`). Skip with `SKIP_ENV_VALIDATION=1`
+- **Electron IPC** for native features (file dialogs, window controls, auto-update)
+- **HashRouter** in Electron (for file:// protocol compatibility), BrowserRouter in web mode
+- **Local settings** are loaded synchronously on mount to avoid transient defaults overriding the user's model selection
+- **Thinking blocks** auto-expand while streaming, auto-scroll to new tokens, and scroll within a capped height
 
 ## Code Style
 
@@ -80,10 +106,11 @@ The frontend is a stateful chat application. Users create **threads** (conversat
 
 ## Environment
 
-Backend API URLs are optional; an nginx proxy is used by default:
+Backend API URLs are optional; the Vite dev server proxies to localhost:
 ```
-NEXT_PUBLIC_BACKEND_BASE_URL=http://localhost:8001
-NEXT_PUBLIC_LANGGRAPH_BASE_URL=http://localhost:2024
+VITE_BACKEND_BASE_URL=http://localhost:8001
+VITE_LANGGRAPH_BASE_URL=http://localhost:2024
+VITE_STATIC_WEBSITE_ONLY=false
 ```
 
 Requires Node.js 22+ and pnpm 10.26.2+.
