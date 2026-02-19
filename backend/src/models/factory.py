@@ -32,6 +32,24 @@ def create_chat_model(name: str | None = None, thinking_enabled: bool = False, *
             "supports_vision",
         },
     )
+    api_key = model_settings_from_config.get("api_key")
+    if isinstance(api_key, str):
+        if api_key.startswith("$"):
+            env_name = api_key[1:]
+            raise ValueError(
+                f"Model {name} requires environment variable {env_name} to be set. Add it to `.env` or export it before starting the server."
+            ) from None
+        if not api_key.strip():
+            raise ValueError(
+                f"Model {name} has an empty api_key. Add it to `.env` or export it before starting the server."
+            ) from None
+    for field in ("base_url", "api_base"):
+        value = model_settings_from_config.get(field)
+        if isinstance(value, str) and value.startswith("$"):
+            env_name = value[1:]
+            raise ValueError(
+                f"Model {name} requires environment variable {env_name} to be set. Add it to `.env` or export it before starting the server."
+            ) from None
     if thinking_enabled and model_config.when_thinking_enabled is not None:
         if not model_config.supports_thinking:
             raise ValueError(f"Model {name} does not support thinking. Set `supports_thinking` to true in the `config.yaml` to enable thinking.") from None

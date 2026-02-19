@@ -12,6 +12,7 @@ from src.agents.middlewares.title_middleware import TitleMiddleware
 from src.agents.middlewares.uploads_middleware import UploadsMiddleware
 from src.agents.middlewares.view_image_middleware import ViewImageMiddleware
 from src.agents.thread_state import ThreadState
+from src.config import get_app_config
 from src.config.summarization_config import get_summarization_config
 from src.models import create_chat_model
 from src.sandbox.middleware import SandboxMiddleware
@@ -213,8 +214,6 @@ def _build_middlewares(config: RunnableConfig):
 
     # Add ViewImageMiddleware only if the current model supports vision
     model_name = config.get("configurable", {}).get("model_name") or config.get("configurable", {}).get("model")
-    from src.config import get_app_config
-
     app_config = get_app_config()
     # If no model_name specified, use the first model (default)
     if model_name is None and app_config.models:
@@ -249,6 +248,10 @@ def make_lead_agent(config: RunnableConfig):
         model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled),
         tools=get_available_tools(model_name=model_name, subagent_enabled=subagent_enabled),
         middleware=_build_middlewares(config),
-        system_prompt=apply_prompt_template(subagent_enabled=subagent_enabled, max_concurrent_subagents=max_concurrent_subagents),
+        system_prompt=apply_prompt_template(
+            subagent_enabled=subagent_enabled,
+            max_concurrent_subagents=max_concurrent_subagents,
+            thinking_enabled=thinking_enabled,
+        ),
         state_schema=ThreadState,
     )
