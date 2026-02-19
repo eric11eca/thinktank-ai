@@ -1,3 +1,4 @@
+import type { Element } from "hast";
 import { ExternalLinkIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 
@@ -9,11 +10,12 @@ import {
 } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 
-export function CitationLink({ 
-  href, 
+export function CitationLink({
+  href,
   children,
-  ...props 
-}: ComponentProps<"a">) {
+  node: _node,
+  ...props
+}: ComponentProps<"a"> & { node?: Element | undefined }) {
   const domain = extractDomain(href ?? "");
   
   // Priority: children > domain
