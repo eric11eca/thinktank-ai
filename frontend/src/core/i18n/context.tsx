@@ -1,5 +1,3 @@
-"use client";
-
 import { createContext, useContext, useState, type ReactNode } from "react";
 
 import type { Locale } from "@/core/i18n";
@@ -22,7 +20,9 @@ export function I18nProvider({
 
   const handleSetLocale = (newLocale: Locale) => {
     setLocale(newLocale);
+    // Save to both cookie (for compatibility) and localStorage
     document.cookie = `locale=${newLocale}; path=/; max-age=31536000`;
+    localStorage.setItem("locale", newLocale);
   };
 
   return (

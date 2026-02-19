@@ -49,11 +49,11 @@ export const zhCN: Translations = {
   welcome: {
     greeting: "你好，欢迎回来！",
     description:
-      "欢迎使用 🦌 DeerFlow，一个完全开源的超级智能体。通过内置和自定义的 Skills，\nDeerFlow 可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n图片、视频、播客及网页等，几乎可以做任何事情。",
+      "欢迎使用 🦌 Thinktank.ai，一个完全开源的超级智能体。通过内置和自定义的 Skills，\nThinktank.ai 可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n图片、视频、播客及网页等，几乎可以做任何事情。",
 
     createYourOwnSkill: "创建你自己的 Agent SKill",
     createYourOwnSkillDescription:
-      "创建你的 Agent Skill 来释放 DeerFlow 的潜力。通过自定义技能，DeerFlow\n可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n网页等作品，几乎可以做任何事情。",
+      "创建你的 Agent Skill 来释放 Thinktank.ai 的潜力。通过自定义技能，Thinktank.ai\n可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n网页等作品，几乎可以做任何事情。",
   },
 
   // Clipboard
@@ -149,13 +149,13 @@ export const zhCN: Translations = {
 
   // Workspace
   workspace: {
-    officialWebsite: "访问 DeerFlow 官方网站",
-    githubTooltip: "访问 DeerFlow 的 Github 仓库",
+    officialWebsite: "访问 Thinktank.ai 官方网站",
+    githubTooltip: "访问 Thinktank.ai 的 Github 仓库",
     settingsAndMore: "设置和更多",
-    visitGithub: "在 Github 上查看 DeerFlow",
+    visitGithub: "在 Github 上查看 Thinktank.ai",
     reportIssue: "报告问题",
     contactUs: "联系我们",
-    about: "关于 DeerFlow",
+    about: "关于 Thinktank.ai",
   },
 
   // Conversation
@@ -171,7 +171,7 @@ export const zhCN: Translations = {
 
   // Page titles (document title)
   pages: {
-    appName: "DeerFlow",
+    appName: "Thinktank.ai",
     chats: "对话",
     newChat: "新对话",
     untitled: "未命名",
@@ -196,7 +196,7 @@ export const zhCN: Translations = {
     writeFile: "写入文件",
     clickToViewContent: "点击查看文件内容",
     writeTodos: "更新 To-do 列表",
-    skillInstallTooltip: "安装技能并使其可在 DeerFlow 中使用",
+    skillInstallTooltip: "安装技能并使其可在 Thinktank.ai 中使用",
   },
 
   subtasks: {
@@ -211,7 +211,7 @@ export const zhCN: Translations = {
   // Settings
   settings: {
     title: "设置",
-    description: "根据你的偏好调整 DeerFlow 的界面和行为。",
+    description: "根据你的偏好调整 Thinktank.ai 的界面和行为。",
     sections: {
       appearance: "外观",
       memory: "记忆",
@@ -223,7 +223,7 @@ export const zhCN: Translations = {
     memory: {
       title: "记忆",
       description:
-        "DeerFlow 会在后台不断从你的对话中自动学习。这些记忆能帮助 DeerFlow 更好地理解你，并提供更个性化的体验。",
+        "Thinktank.ai 会在后台不断从你的对话中自动学习。这些记忆能帮助 Thinktank.ai 更好地理解你，并提供更个性化的体验。",
       empty: "暂无可展示的记忆数据。",
       rawJson: "原始 JSON",
       markdown: {
@@ -277,18 +277,18 @@ export const zhCN: Translations = {
       createSkill: "新建技能",
       emptyTitle: "还没有技能",
       emptyDescription:
-        "将你的 Agent Skill 文件夹放在 DeerFlow 根目录下的 `/skills/custom` 文件夹中。",
+        "将你的 Agent Skill 文件夹放在 Thinktank.ai 根目录下的 `/skills/custom` 文件夹中。",
       emptyButton: "创建你的第一个技能",
     },
     notification: {
       title: "通知",
       description:
-        "DeerFlow 只会在窗口不活跃时发送完成通知，特别适合长时间任务：你可以先去做别的事，完成后会收到提醒。",
+        "Thinktank.ai 只会在窗口不活跃时发送完成通知，特别适合长时间任务：你可以先去做别的事，完成后会收到提醒。",
       requestPermission: "请求通知权限",
       deniedHint:
         "通知权限已被拒绝。可在浏览器的网站设置中重新开启，以接收完成提醒。",
       testButton: "发送测试通知",
-      testTitle: "DeerFlow",
+      testTitle: "Thinktank.ai",
       testBody: "这是一条测试通知。",
       notSupported: "当前浏览器不支持通知功能。",
       disableNotification: "关闭通知",
