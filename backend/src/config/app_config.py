@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, Self
 
 import yaml
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.config.extensions_config import ExtensionsConfig
@@ -15,7 +15,11 @@ from src.config.summarization_config import load_summarization_config_from_dict
 from src.config.title_config import load_title_config_from_dict
 from src.config.tool_config import ToolConfig, ToolGroupConfig
 
-load_dotenv()
+dotenv_path = find_dotenv(usecwd=True)
+if dotenv_path:
+    load_dotenv(dotenv_path=dotenv_path)
+else:
+    load_dotenv()
 
 
 class AppConfig(BaseModel):
