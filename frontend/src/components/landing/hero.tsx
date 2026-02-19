@@ -4,8 +4,6 @@ import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { WordRotate } from "@/components/ui/word-rotate";
 import { cn } from "@/lib/utils";
-import worldMapDotsUrl from "../../../../world_map_blue_dots.svg?url";
-
 export function Hero({ className }: { className?: string }) {
   return (
     <div
@@ -18,7 +16,7 @@ export function Hero({ className }: { className?: string }) {
         <div
           className="absolute inset-0 bg-no-repeat opacity-[0.16]"
           style={{
-            backgroundImage: `url(${worldMapDotsUrl})`,
+            backgroundImage: `url(/images/world-map-dots.svg)`,
             backgroundSize: "105% auto",
             backgroundPosition: "50% 30%",
             filter: "grayscale(0.4) saturate(0.5) brightness(0.55)",
