@@ -2,8 +2,18 @@
 
 Thinktank.ai is an open-source **super agent harness** that orchestrates **sub-agents**, **memory**, and **sandboxes** to do almost anything — powered by **extensible skills**.
 
+https://github.com/user-attachments/assets/a8bcadc4-e040-4cf2-8fda-dd768b999c18
+
 > [!NOTE]
 > **Thinktank.ai 2.0 is a ground-up rewrite.** It shares no code with v1. If you're looking for the original Deep Research framework, it's maintained on the [`1.x` branch](https://github.com/bytedance/thinktank-ai/tree/main-1.x) — contributions there are still welcome. Active development has moved to 2.0.
+
+## Offiical Website
+
+Learn more and see **real demos** on our official website.
+
+**[deerflow.tech](https://deerflow.tech/)**
+
+---
 
 ## Table of Contents
 
@@ -27,13 +37,23 @@ Thinktank.ai is an open-source **super agent harness** that orchestrates **sub-a
 
 ### Configuration
 
-1. **Copy the example config**:
+1. Clone the git repo of DeerFlow:
    ```bash
-   cp config.example.yaml config.yaml
-   cp .env.example .env
+   git clone https://github.com/bytedance/deer-flow.git && cd deer-flow
+   ```
+2. Create local config files by copying the example files:
+   ```bash
+   make config
    ```
 
-2. **Edit `config.yaml`** and set your API keys in `.env` and preferred sandbox mode.
+3. Update the configs:
+
+- **Required**
+   - `config.yaml`: configure your preferred models.
+   - `.env`: configure your API keys.
+- **Optional**
+   - `frontend/.env`: configure backend API URLs.
+   - `extensions_config.json`: configure desired MCP servers and skills.
 
    For OpenAI reasoning-capable models, enable thinking via `when_thinking_enabled.reasoning` (this switches to the Responses API and lets you set `effort`). When thinking is enabled, Thinktank.ai surfaces a short reasoning summary in the chat UI.
 
