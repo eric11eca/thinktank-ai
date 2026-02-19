@@ -12,7 +12,7 @@ export function detectLocaleClient(): Locale {
   }
 
   // Check cookie
-  const cookieMatch = document.cookie.match(/locale=(en-US|zh-CN)/);
+  const cookieMatch = /locale=(en-US|zh-CN)/.exec(document.cookie);
   if (cookieMatch?.[1]) {
     return cookieMatch[1] as Locale;
   }

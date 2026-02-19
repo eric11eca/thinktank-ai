@@ -64,7 +64,7 @@ export function RecentChatList() {
             nextThreadId = threads[threadIndex - 1]!.thread_id;
           }
         }
-        navigate(`/workspace/chats/${nextThreadId}`);
+        void navigate(`/workspace/chats/${nextThreadId}`);
       }
     },
     [deleteThread, navigate, threadIdFromPath, threads],

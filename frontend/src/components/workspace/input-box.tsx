@@ -375,7 +375,7 @@ export function InputBox({
             <ModelSelectorTrigger asChild>
               <PromptInputButton className="gap-2 rounded-lg border border-border bg-muted/50 px-4 py-2 hover:bg-muted">
                 <ModelSelectorName className="text-sm font-medium">
-                  {selectedModel?.display_name || t.inputBox.selectModel || "Select model"}
+                  {selectedModel?.display_name ?? t.inputBox.selectModel ?? "Select model"}
                 </ModelSelectorName>
                 <ChevronDownIcon className="size-4 text-muted-foreground" />
               </PromptInputButton>

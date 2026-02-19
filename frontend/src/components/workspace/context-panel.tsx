@@ -1,10 +1,10 @@
+import { ChevronUpIcon, LayersIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { useAgentContext } from "@/core/agent/hooks";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChevronUpIcon, LayersIcon } from "lucide-react";
+import { useAgentContext } from "@/core/agent/hooks";
+import { cn } from "@/lib/utils";
 
 import {
   QueueItem,

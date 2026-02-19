@@ -185,7 +185,7 @@ export function ArtifactFileDetail({
               </Tooltip>
             )}
             {!isWriteFile && (
-              <a href={urlOfArtifact({ filepath, threadId })} target="_blank">
+              <a href={urlOfArtifact({ filepath, threadId })} target="_blank" rel="noreferrer">
                 <ArtifactAction
                   icon={SquareArrowOutUpRightIcon}
                   label={t.common.openInNewWindow}
@@ -213,7 +213,7 @@ export function ArtifactFileDetail({
             {!isWriteFile && (
               <a
                 href={urlOfArtifact({ filepath, threadId, download: true })}
-                target="_blank"
+                target="_blank" rel="noreferrer"
               >
                 <ArtifactAction
                   icon={DownloadIcon}

@@ -1,5 +1,6 @@
 import type { Message } from "@langchain/langgraph-sdk";
 import type { UseStream } from "@langchain/langgraph-sdk/react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   FilesIcon,
   PanelLeftCloseIcon,
@@ -8,7 +9,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
-import { useQueryClient } from "@tanstack/react-query";
 
 import { ConversationEmptyState } from "@/components/ai-elements/conversation";
 import { usePromptInputController } from "@/components/ai-elements/prompt-input";
@@ -26,10 +26,10 @@ import {
 } from "@/components/workspace/artifacts";
 import { ContextPanel } from "@/components/workspace/context-panel";
 import { InputBox } from "@/components/workspace/input-box";
-import { useRightPanel } from "@/components/workspace/right-panel-context";
 import { MessageList } from "@/components/workspace/messages";
 import { ThreadContext } from "@/components/workspace/messages/context";
 import { QuickActions } from "@/components/workspace/quick-actions";
+import { useRightPanel } from "@/components/workspace/right-panel-context";
 import { ThreadTitle } from "@/components/workspace/thread-title";
 import { TodoList } from "@/components/workspace/todo-list";
 import { Tooltip } from "@/components/workspace/tooltip";
@@ -137,7 +137,7 @@ function ChatInner() {
     threadId,
     onFinish: (state) => {
       if (isNewThread && threadIdFromPath === "new" && threadId) {
-        navigate(pathOfThread(threadId), { replace: true });
+        void navigate(pathOfThread(threadId), { replace: true });
       }
       if (document.hidden || !document.hasFocus()) {
         let body = "Conversation finished";
@@ -250,7 +250,7 @@ function ChatInner() {
     },
     afterSubmit() {
       if (!isNewThread) {
-        navigate(pathOfThread(threadId!));
+        void navigate(pathOfThread(threadId!));
       }
     },
   });
@@ -433,7 +433,7 @@ function ChatInner() {
 
       // Force remount so the stream hook reconnects cleanly to latest state.
       const currentCount = parseInt(
-        sessionStorage.getItem(`remount_${threadId}`) || "0",
+        sessionStorage.getItem(`remount_${threadId}`) ?? "0",
         10,
       );
       sessionStorage.setItem(`remount_${threadId}`, String(currentCount + 1));

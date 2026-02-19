@@ -17,7 +17,7 @@ export function Header() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         style={env.IS_ELECTRON ? ({ WebkitAppRegion: "no-drag" } as any) : undefined}
       >
-        <a href="https://github.com/thinktank-ai/thinktank-ai" target="_blank">
+        <a href="https://github.com/thinktank-ai/thinktank-ai" target="_blank" rel="noreferrer">
           <h1 className="font-serif text-xl">Thinktank.ai</h1>
         </a>
       </div>
@@ -39,7 +39,7 @@ export function Header() {
           asChild
           className="group relative z-10"
         >
-          <a href="https://github.com/thinktank-ai/thinktank-ai" target="_blank">
+          <a href="https://github.com/thinktank-ai/thinktank-ai" target="_blank" rel="noreferrer">
             <GitHubLogoIcon className="size-4" />
             Star on GitHub
             {env.VITE_STATIC_WEBSITE_ONLY === "true" && <StarCounter />}

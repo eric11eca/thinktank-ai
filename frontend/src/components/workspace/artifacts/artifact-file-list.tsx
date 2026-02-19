@@ -111,7 +111,7 @@ export function ArtifactFileList({
                   download: true,
                 })}
                 target="_blank"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()} rel="noreferrer"
               >
                 <Button variant="ghost">
                   <DownloadIcon className="size-4" />

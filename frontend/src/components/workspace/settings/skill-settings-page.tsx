@@ -63,7 +63,7 @@ function SkillSettingsList({
   );
   const handleCreateSkill = () => {
     onClose?.();
-    navigate("/workspace/chats/new?mode=skill");
+    void navigate("/workspace/chats/new?mode=skill");
   };
   return (
     <div className="flex w-full flex-col gap-4">

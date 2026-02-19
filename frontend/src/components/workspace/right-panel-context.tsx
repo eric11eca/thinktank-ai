@@ -23,6 +23,7 @@ export function RightPanelProvider({
 export function useRightPanel(): RightPanelContextType {
   const ctx = useContext(RightPanelContext);
   // Fallback for use outside provider
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   if (!ctx) return { open: true, setOpen: () => {} };
   return ctx;
 }

@@ -1,5 +1,5 @@
-import { useLocation } from "react-router";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
+import { useLocation } from "react-router";
 
 export function ThemeProvider({
   children,

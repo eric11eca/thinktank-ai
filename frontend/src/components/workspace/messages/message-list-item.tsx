@@ -1,8 +1,8 @@
 import type { Message } from "@langchain/langgraph-sdk";
+import { math } from "@streamdown/math";
 import { CheckIcon, FileIcon, PencilIcon, RefreshCwIcon, XIcon } from "lucide-react";
 import { memo, useCallback, useMemo, useState, type ImgHTMLAttributes } from "react";
 import { useParams } from "react-router";
-import { math } from "@streamdown/math";
 
 import {
   Message as AIElementMessage,

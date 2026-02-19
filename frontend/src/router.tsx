@@ -1,11 +1,11 @@
 import { createBrowserRouter, createHashRouter, Navigate, useParams } from "react-router";
 
 import { App } from "./App";
-import { Landing } from "./pages/Landing";
-import { WorkspaceLayout } from "./pages/WorkspaceLayout";
+import { env } from "./env";
 import { Chat } from "./pages/Chat";
 import { ChatList } from "./pages/ChatList";
-import { env } from "./env";
+import { Landing } from "./pages/Landing";
+import { WorkspaceLayout } from "./pages/WorkspaceLayout";
 
 /**
  * Wrapper component that forces Chat to remount when threadId changes.
