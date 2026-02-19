@@ -72,7 +72,8 @@ test-*.md
 
 # Root-level temporary screenshots and images
 /*.png
-/*.svg
+/*.jpeg
+# /*.svg
 
 # Design files (mockups/screenshots)
 designs/
