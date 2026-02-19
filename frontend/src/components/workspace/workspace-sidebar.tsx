@@ -8,6 +8,8 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { env } from "@/env";
+import { cn } from "@/lib/utils";
 
 import { RecentChatList } from "./recent-chat-list";
 import { WorkspaceHeader } from "./workspace-header";
@@ -20,7 +22,15 @@ export function WorkspaceSidebar({
   const { open: isSidebarOpen } = useSidebar();
   return (
     <>
-      <Sidebar variant="sidebar" collapsible="icon" {...props}>
+      <Sidebar
+        variant="sidebar"
+        collapsible="icon"
+        className={cn(env.IS_ELECTRON && "!top-10")}
+        style={
+          env.IS_ELECTRON ? { height: "calc(100vh - 2.5rem)" } : undefined
+        }
+        {...props}
+      >
         <SidebarHeader className="py-0">
           <WorkspaceHeader />
         </SidebarHeader>

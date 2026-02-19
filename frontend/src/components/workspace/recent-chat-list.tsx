@@ -1,9 +1,6 @@
-"use client";
-
 import { MoreHorizontal, Pencil, Share2, Trash2 } from "lucide-react";
-import Link from "next/link";
-import { useParams, usePathname, useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -42,9 +39,9 @@ import { env } from "@/env";
 
 export function RecentChatList() {
   const { t } = useI18n();
-  const router = useRouter();
-  const pathname = usePathname();
-  const { thread_id: threadIdFromPath } = useParams<{ thread_id: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { threadId: threadIdFromPath } = useParams<{ threadId: string }>();
   const { data: threads = [] } = useThreads();
   const { mutate: deleteThread } = useDeleteThread();
   const { mutate: renameThread } = useRenameThread();
@@ -67,10 +64,10 @@ export function RecentChatList() {
             nextThreadId = threads[threadIndex - 1]!.thread_id;
           }
         }
-        void router.push(`/workspace/chats/${nextThreadId}`);
+        navigate(`/workspace/chats/${nextThreadId}`);
       }
     },
-    [deleteThread, router, threadIdFromPath, threads],
+    [deleteThread, navigate, threadIdFromPath, threads],
   );
 
   const handleRenameClick = useCallback(
@@ -94,7 +91,7 @@ export function RecentChatList() {
   const handleShare = useCallback(
     async (threadId: string) => {
       // Always use Vercel URL for sharing so others can access
-      const VERCEL_URL = "https://deer-flow-v2.vercel.app";
+      const VERCEL_URL = "https://thinktank-ai.vercel.app";
       const isLocalhost =
         window.location.hostname === "localhost" ||
         window.location.hostname === "127.0.0.1";
@@ -117,7 +114,7 @@ export function RecentChatList() {
     <>
       <SidebarGroup>
         <SidebarGroupLabel>
-          {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY !== "true"
+          {env.VITE_STATIC_WEBSITE_ONLY !== "true"
             ? t.sidebar.recentChats
             : t.sidebar.demoChats}
         </SidebarGroupLabel>
@@ -125,7 +122,7 @@ export function RecentChatList() {
           <SidebarMenu>
             <div className="flex w-full flex-col gap-1">
               {threads.map((thread) => {
-                const isActive = pathOfThread(thread.thread_id) === pathname;
+                const isActive = pathOfThread(thread.thread_id) === location.pathname;
                 return (
                   <SidebarMenuItem
                     key={thread.thread_id}
@@ -135,11 +132,11 @@ export function RecentChatList() {
                       <div>
                         <Link
                           className="text-muted-foreground block w-full whitespace-nowrap group-hover/side-menu-item:overflow-hidden"
-                          href={pathOfThread(thread.thread_id)}
+                          to={pathOfThread(thread.thread_id)}
                         >
                           {titleOfThread(thread)}
                         </Link>
-                        {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY !== "true" && (
+                        {env.VITE_STATIC_WEBSITE_ONLY !== "true" && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <SidebarMenuAction

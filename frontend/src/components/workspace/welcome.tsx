@@ -1,14 +1,11 @@
-"use client";
-
-import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { AsteriskIcon, TriangleAlertIcon } from "lucide-react";
+import { useMemo } from "react";
+import { useSearchParams } from "react-router";
 
 import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
 
 import { AuroraText } from "../ui/aurora-text";
-
-let waved = false;
 
 export function Welcome({
   className,
@@ -18,7 +15,7 @@ export function Welcome({
   mode?: "ultra" | "pro" | "thinking" | "flash";
 }) {
   const { t } = useI18n();
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
   const isUltra = useMemo(() => mode === "ultra", [mode]);
   const colors = useMemo(() => {
     if (isUltra) {
@@ -26,47 +23,62 @@ export function Welcome({
     }
     return ["var(--color-foreground)"];
   }, [isUltra]);
-  useEffect(() => {
-    waved = true;
-  }, []);
+
   return (
     <div
       className={cn(
-        "mx-auto flex w-full flex-col items-center justify-center gap-2 px-8 py-4 text-center",
+        "mx-auto flex w-full flex-col items-start gap-4 px-1 py-4",
         className,
       )}
     >
-      <div className="text-2xl font-bold">
-        {searchParams.get("mode") === "skill" ? (
-          `✨ ${t.welcome.createYourOwnSkill} ✨`
-        ) : (
-          <div className="flex items-center gap-2">
-            <div className={cn("inline-block", !waved ? "animate-wave" : "")}>
-              {isUltra ? "🚀" : "👋"}
-            </div>
-            <AuroraText colors={colors}>{t.welcome.greeting}</AuroraText>
-          </div>
-        )}
+      {/* Logo */}
+      <div className="mb-1">
+        <AsteriskIcon className="size-8 text-primary" strokeWidth={2.5} />
       </div>
-      {searchParams.get("mode") === "skill" ? (
-        <div className="text-muted-foreground text-sm">
-          {t.welcome.createYourOwnSkillDescription.includes("\n") ? (
-            <pre className="font-sans whitespace-pre">
-              {t.welcome.createYourOwnSkillDescription}
-            </pre>
+
+      {/* Main headline - italic serif style, left-aligned */}
+      <h1 className="font-serif text-2xl italic tracking-tight text-foreground/90 md:text-3xl">
+        {searchParams.get("mode") === "skill" ? (
+          t.welcome.createYourOwnSkill
+        ) : (
+          <>
+            {isUltra ? (
+              <AuroraText colors={colors}>{t.welcome.greeting}</AuroraText>
+            ) : (
+              <span>{t.welcome.greeting}</span>
+            )}
+          </>
+        )}
+      </h1>
+
+      {/* Notice banner - dark card style */}
+      <div className="flex w-full items-start gap-3 rounded-xl border border-border bg-card/80 px-5 py-4 text-left text-sm text-muted-foreground">
+        <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
+        <p className="leading-relaxed">
+          {searchParams.get("mode") === "skill" ? (
+            t.welcome.createYourOwnSkillDescription.includes("\n") ? (
+              <span className="whitespace-pre-wrap">
+                {t.welcome.createYourOwnSkillDescription}
+              </span>
+            ) : (
+              t.welcome.createYourOwnSkillDescription
+            )
           ) : (
-            <p>{t.welcome.createYourOwnSkillDescription}</p>
+            <>
+              {t.welcome.description}
+              {" "}
+              <a href="#" className="font-medium underline underline-offset-2 hover:text-foreground">
+                Learn more
+              </a>
+              {" or "}
+              <a href="#" className="font-medium underline underline-offset-2 hover:text-foreground">
+                give us feedback
+              </a>
+              .
+            </>
           )}
-        </div>
-      ) : (
-        <div className="text-muted-foreground text-sm">
-          {t.welcome.description.includes("\n") ? (
-            <pre className="whitespace-pre">{t.welcome.description}</pre>
-          ) : (
-            <p>{t.welcome.description}</p>
-          )}
-        </div>
-      )}
+        </p>
+      </div>
     </div>
   );
 }

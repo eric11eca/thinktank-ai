@@ -1,8 +1,10 @@
-"use client";
-
 import type { ChatStatus } from "ai";
 import {
+  ArrowRightIcon,
+  ArrowUpIcon,
   CheckIcon,
+  ChevronDownIcon,
+  FolderIcon,
   GraduationCapIcon,
   LightbulbIcon,
   PaperclipIcon,
@@ -11,8 +13,8 @@ import {
   RocketIcon,
   ZapIcon,
 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState, type ComponentProps } from "react";
+import { useSearchParams } from "react-router";
 
 import {
   PromptInput,
@@ -101,7 +103,7 @@ export function InputBox({
   onStop?: () => void;
 }) {
   const { t } = useI18n();
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const { models } = useModels();
   const selectedModel = useMemo(() => {
@@ -157,7 +159,8 @@ export function InputBox({
   return (
     <PromptInput
       className={cn(
-        "bg-background/85 rounded-2xl backdrop-blur-sm transition-all duration-300 ease-out *:data-[slot='input-group']:rounded-2xl",
+        "rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 ease-out",
+        "*:data-[slot='input-group']:rounded-2xl *:data-[slot='input-group']:border-0 *:data-[slot='input-group']:bg-transparent",
         className,
       )}
       disabled={disabled}
@@ -178,7 +181,7 @@ export function InputBox({
       </PromptInputAttachments>
       <PromptInputBody className="absolute top-0 right-0 left-0 z-3">
         <PromptInputTextarea
-          className={cn("size-full")}
+          className={cn("size-full text-lg")}
           disabled={disabled}
           placeholder={t.inputBox.placeholder}
           autoFocus={autoFocus}
@@ -187,16 +190,13 @@ export function InputBox({
       </PromptInputBody>
       <PromptInputFooter className="flex">
         <PromptInputTools>
-          {/* TODO: Add more connectors here
-          <PromptInputActionMenu>
-            <PromptInputActionMenuTrigger className="px-2!" />
-            <PromptInputActionMenuContent>
-              <PromptInputActionAddAttachments
-                label={t.inputBox.addAttachments}
-              />
-            </PromptInputActionMenuContent>
-          </PromptInputActionMenu> */}
-          <AddAttachmentsButton className="px-2!" />
+          {/* Folder selector */}
+          <PromptInputButton className="gap-2 px-3 text-foreground/70 hover:text-foreground">
+            <FolderIcon className="size-4" />
+            <span className="text-sm font-medium">Work in a folder</span>
+            <ChevronDownIcon className="size-3.5" />
+          </PromptInputButton>
+          <AddAttachmentsButton className="px-1!" />
           <PromptInputActionMenu>
             <ModeHoverGuide
               mode={
@@ -367,19 +367,20 @@ export function InputBox({
             </PromptInputActionMenuContent>
           </PromptInputActionMenu>
         </PromptInputTools>
-        <PromptInputTools>
+        <PromptInputTools className="gap-2">
           <ModelSelector
             open={modelDialogOpen}
             onOpenChange={setModelDialogOpen}
           >
             <ModelSelectorTrigger asChild>
-              <PromptInputButton>
-                <ModelSelectorName className="text-xs font-normal">
-                  {selectedModel?.display_name}
+              <PromptInputButton className="gap-2 rounded-lg border border-border bg-muted/50 px-4 py-2 hover:bg-muted">
+                <ModelSelectorName className="text-sm font-medium">
+                  {selectedModel?.display_name || t.inputBox.selectModel || "Select model"}
                 </ModelSelectorName>
+                <ChevronDownIcon className="size-4 text-muted-foreground" />
               </PromptInputButton>
             </ModelSelectorTrigger>
-            <ModelSelectorContent>
+            <ModelSelectorContent className="w-80">
               <ModelSelectorInput placeholder={t.inputBox.searchModels} />
               <ModelSelectorList>
                 {models.map((m) => (
@@ -387,22 +388,24 @@ export function InputBox({
                     key={m.name}
                     value={m.name}
                     onSelect={() => handleModelSelect(m.name)}
+                    className="flex-col items-start gap-1 py-3"
                   >
-                    <ModelSelectorName>{m.display_name}</ModelSelectorName>
-                    {m.name === context.model_name ? (
-                      <CheckIcon className="ml-auto size-4" />
-                    ) : (
-                      <div className="ml-auto size-4" />
-                    )}
+                    <div className="flex w-full items-center justify-between">
+                      <ModelSelectorName className="text-base font-medium">{m.display_name}</ModelSelectorName>
+                      {m.name === context.model_name && (
+                        <CheckIcon className="size-4 text-primary" />
+                      )}
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {m.supports_thinking ? "Best for everyday tasks" : "Fastest for quick answers"}
+                    </span>
                   </ModelSelectorItem>
                 ))}
               </ModelSelectorList>
             </ModelSelectorContent>
           </ModelSelector>
-          <PromptInputSubmit
-            className="rounded-full"
+          <SubmitButton
             disabled={disabled}
-            variant="outline"
             status={status}
           />
         </PromptInputTools>
@@ -500,5 +503,39 @@ function AddAttachmentsButton({ className }: { className?: string }) {
         <PaperclipIcon className="size-3" />
       </PromptInputButton>
     </Tooltip>
+  );
+}
+
+function SubmitButton({
+  disabled,
+  status,
+}: {
+  disabled?: boolean;
+  status?: ChatStatus;
+}) {
+  const { t } = useI18n();
+  const isStreaming = status === "streaming";
+  const isSubmitted = status === "submitted";
+
+  return (
+    <button
+      type="submit"
+      disabled={disabled}
+      className={cn(
+        "inline-flex items-center justify-center rounded-lg p-2 text-sm font-medium transition-all",
+        "bg-primary text-primary-foreground",
+        "hover:bg-primary/90 active:scale-[0.98]",
+        "disabled:pointer-events-none disabled:opacity-50",
+        "focus:outline-none focus:ring-2 focus:ring-primary/20",
+      )}
+    >
+      {isStreaming ? (
+        <>Stop</>
+      ) : isSubmitted ? (
+        <>Sending...</>
+      ) : (
+        <ArrowUpIcon className="size-4" />
+      )}
+    </button>
   );
 }
