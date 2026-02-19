@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from src.gateway.config import get_gateway_config
-from src.gateway.routers import artifacts, mcp, memory, models, skills, uploads
+from src.gateway.routers import agent, artifacts, mcp, memory, models, skills, threads, uploads
 
 # Configure logging
 logging.basicConfig(
@@ -71,6 +71,10 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
                 "description": "Operations for querying available AI models and their configurations",
             },
             {
+                "name": "agent",
+                "description": "Inspect the resolved agent context (tools and skills)",
+            },
+            {
                 "name": "mcp",
                 "description": "Manage Model Context Protocol (MCP) server configurations",
             },
@@ -91,6 +95,10 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
                 "description": "Upload and manage user files for threads",
             },
             {
+                "name": "threads",
+                "description": "Thread-level operations including message truncation",
+            },
+            {
                 "name": "health",
                 "description": "Health check and system status endpoints",
             },
@@ -102,6 +110,9 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
     # Include routers
     # Models API is mounted at /api/models
     app.include_router(models.router)
+
+    # Agent context API is mounted at /api/agent
+    app.include_router(agent.router)
 
     # MCP API is mounted at /api/mcp
     app.include_router(mcp.router)
@@ -117,6 +128,9 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
 
     # Uploads API is mounted at /api/threads/{thread_id}/uploads
     app.include_router(uploads.router)
+
+    # Threads API is mounted at /api/threads/{thread_id}
+    app.include_router(threads.router)
 
     @app.get("/health", tags=["health"])
     async def health_check() -> dict:
