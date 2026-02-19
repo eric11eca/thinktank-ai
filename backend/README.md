@@ -62,12 +62,14 @@ Middlewares execute in strict order, each handling a specific concern:
 | 1 | **ThreadDataMiddleware** | Creates per-thread isolated directories (workspace, uploads, outputs) |
 | 2 | **UploadsMiddleware** | Injects newly uploaded files into conversation context |
 | 3 | **SandboxMiddleware** | Acquires sandbox environment for code execution |
-| 4 | **SummarizationMiddleware** | Reduces context when approaching token limits (optional) |
-| 5 | **TodoListMiddleware** | Tracks multi-step tasks in plan mode (optional) |
-| 6 | **TitleMiddleware** | Auto-generates conversation titles after first exchange |
-| 7 | **MemoryMiddleware** | Queues conversations for async memory extraction |
-| 8 | **ViewImageMiddleware** | Injects image data for vision-capable models (conditional) |
-| 9 | **ClarificationMiddleware** | Intercepts clarification requests and interrupts execution (must be last) |
+| 4 | **DanglingToolCallMiddleware** | Injects placeholder tool messages for interrupted tool calls |
+| 5 | **SummarizationMiddleware** | Reduces context when approaching token limits (optional) |
+| 6 | **TodoListMiddleware** | Tracks multi-step tasks in plan mode (optional) |
+| 7 | **TitleMiddleware** | Auto-generates conversation titles after first exchange |
+| 8 | **MemoryMiddleware** | Queues conversations for async memory extraction |
+| 9 | **ViewImageMiddleware** | Injects image data for vision-capable models (conditional) |
+| 10 | **SubagentLimitMiddleware** | Truncates excess parallel subagent tool calls (optional) |
+| 11 | **ClarificationMiddleware** | Intercepts clarification requests and interrupts execution (must be last) |
 
 ### Sandbox System
 
@@ -164,6 +166,8 @@ models:
     supports_thinking: false
     supports_vision: true
 ```
+
+Note: OpenAI models enable thinking via the Responses API. Use `when_thinking_enabled.reasoning` (for example `effort: high`) to switch to the Responses API and control reasoning effort; do not send a `thinking` payload to Chat Completions.
 
 Set your API keys:
 

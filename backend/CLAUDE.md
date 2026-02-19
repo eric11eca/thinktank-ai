@@ -135,6 +135,10 @@ Configuration priority:
 
 Config values starting with `$` are resolved as environment variables (e.g., `$OPENAI_API_KEY`).
 
+`.env` is loaded via dotenv using a cwd-based search (parents included). Model creation fails fast when an `api_key` is still an unresolved `$ENV_VAR` or empty, to avoid opaque provider auth errors.
+
+Note: OpenAI models enable thinking via the Responses API. Use `when_thinking_enabled.reasoning` (for example `effort: high`) to switch to the Responses API and control reasoning effort; do not send a `thinking` payload to Chat Completions.
+
 **Extensions Configuration** (`extensions_config.json`):
 
 MCP servers and skills are configured together in `extensions_config.json` in project root:
@@ -154,6 +158,7 @@ FastAPI application on port 8001 with health check at `GET /health`.
 | Router | Endpoints |
 |--------|-----------|
 | **Models** (`/api/models`) | `GET /` - list models; `GET /{name}` - model details |
+| **Agent** (`/api/agent`) | `GET /context` - resolved tools and enabled skills |
 | **MCP** (`/api/mcp`) | `GET /config` - get config; `PUT /config` - update config (saves to extensions_config.json) |
 | **Skills** (`/api/skills`) | `GET /` - list skills; `GET /{name}` - details; `PUT /{name}` - update enabled; `POST /install` - install from .skill archive |
 | **Memory** (`/api/memory`) | `GET /` - memory data; `POST /reload` - force reload; `GET /config` - config; `GET /status` - config + data |
