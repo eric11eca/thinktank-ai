@@ -1,8 +1,13 @@
 import re
+from pathlib import Path
 from urllib.parse import urljoin
 
 from markdownify import markdownify as md
+import readabilipy
 from readabilipy import simple_json_from_html_string
+from readabilipy.utils import run_npm_install
+
+_READABILITY_DEPS_READY: bool | None = None
 
 
 class Article:
@@ -52,7 +57,47 @@ class Article:
 
 
 class ReadabilityExtractor:
+    @staticmethod
+    def _ensure_readability_js_dependencies() -> None:
+        global _READABILITY_DEPS_READY
+        if _READABILITY_DEPS_READY is True:
+            return
+
+        pkg_path = Path(readabilipy.__file__).resolve().parent
+        js_dir = pkg_path / "javascript"
+        package_json = js_dir / "package.json"
+        lru_cache_file = js_dir / "node_modules" / "lru-cache" / "dist" / "commonjs" / "index.min.js"
+
+        if lru_cache_file.exists():
+            _READABILITY_DEPS_READY = True
+            return
+
+        if not package_json.exists():
+            raise RuntimeError(
+                "ReadabiliPy JS assets are missing. Install Node.js 14+ and reinstall readabilipy so the JavaScript dependencies are bundled."
+            ) from None
+
+        run_npm_install()
+
+        if not lru_cache_file.exists():
+            raise RuntimeError(
+                "ReadabiliPy JS dependencies are incomplete. Run `npm install` in the readabilipy javascript directory or reinstall readabilipy with Node.js available."
+            ) from None
+
+        _READABILITY_DEPS_READY = True
+
+    @staticmethod
+    def _extract_title(html: str) -> str | None:
+        if not html:
+            return None
+        match = re.search(r"<title[^>]*>(.*?)</title>", html, flags=re.IGNORECASE | re.DOTALL)
+        if not match:
+            return None
+        title = re.sub(r"\s+", " ", match.group(1)).strip()
+        return title or None
+
     def extract_article(self, html: str) -> Article:
+        self._ensure_readability_js_dependencies()
         article = simple_json_from_html_string(html, use_readability=True)
 
         html_content = article.get("content")
