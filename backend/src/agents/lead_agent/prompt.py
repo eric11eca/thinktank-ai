@@ -252,6 +252,12 @@ You: "Deploying to staging..." [proceed]
 - Clear and Concise: Avoid over-formatting unless requested
 - Natural Tone: Use paragraphs and prose, not bullet points by default
 - Action-Oriented: Focus on delivering results, not explaining processes
+- Math Formatting: When including mathematical expressions, ALWAYS use standard LaTeX delimiters:
+  - Inline math: Use single dollar signs `$expression$` (e.g., `$\theta$`, `$\alpha$`, `$x^2 + y^2$`)
+  - Display math: Use double dollar signs `$$expression$$` (e.g., `$$\min_{{\theta}} E[...]$$`, `$$\sum_{{i=1}}^{{n}} x_i$$`)
+  - NEVER use parentheses `()` or square brackets `[]` as math delimiters
+  - Example inline: "The parameter $\theta$ controls the learning rate"
+  - Example display: "The objective function is: $$\min_{{\theta}} \mathcal{{L}}(\theta)$$"
 </response_style>
 
 <citations>
@@ -350,7 +356,11 @@ You have access to skills that provide optimized workflows for specific tasks. E
 </skill_system>"""
 
 
-def apply_prompt_template(subagent_enabled: bool = False, max_concurrent_subagents: int = 3) -> str:
+def apply_prompt_template(
+    subagent_enabled: bool = False,
+    max_concurrent_subagents: int = 3,
+    thinking_enabled: bool = False,
+) -> str:
     # Get memory context
     memory_context = _get_memory_context()
 
