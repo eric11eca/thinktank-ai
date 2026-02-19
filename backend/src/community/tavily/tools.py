@@ -6,11 +6,30 @@ from tavily import TavilyClient
 from src.config import get_app_config
 
 
+def _normalize_api_key(api_key: str | None) -> str | None:
+    if not isinstance(api_key, str):
+        return None
+    normalized = api_key.strip()
+    if not normalized:
+        return None
+    if normalized.startswith(("\"", "'", "“", "‘")) and normalized.endswith(("\"", "'", "”", "’")):
+        normalized = normalized[1:-1].strip()
+    if not normalized:
+        return None
+    normalized = (
+        normalized.replace("“", "")
+        .replace("”", "")
+        .replace("‘", "")
+        .replace("’", "")
+    )
+    return normalized or None
+
+
 def _get_tavily_client() -> TavilyClient:
     config = get_app_config().get_tool_config("web_search")
     api_key = None
     if config is not None and "api_key" in config.model_extra:
-        api_key = config.model_extra.get("api_key")
+        api_key = _normalize_api_key(config.model_extra.get("api_key"))
     return TavilyClient(api_key=api_key)
 
 
