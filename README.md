@@ -1,9 +1,9 @@
-# 🦌 DeerFlow - 2.0
+# Thinktank.ai - 2.0
 
-DeerFlow (**D**eep **E**xploration and **E**fficient **R**esearch **Flow**) is an open-source **super agent harness** that orchestrates **sub-agents**, **memory**, and **sandboxes** to do almost anything — powered by **extensible skills**.
+Thinktank.ai is an open-source **super agent harness** that orchestrates **sub-agents**, **memory**, and **sandboxes** to do almost anything — powered by **extensible skills**.
 
 > [!NOTE]
-> **DeerFlow 2.0 is a ground-up rewrite.** It shares no code with v1. If you're looking for the original Deep Research framework, it's maintained on the [`1.x` branch](https://github.com/bytedance/deer-flow/tree/main-1.x) — contributions there are still welcome. Active development has moved to 2.0.
+> **Thinktank.ai 2.0 is a ground-up rewrite.** It shares no code with v1. If you're looking for the original Deep Research framework, it's maintained on the [`1.x` branch](https://github.com/bytedance/thinktank-ai/tree/main-1.x) — contributions there are still welcome. Active development has moved to 2.0.
 
 ## Table of Contents
 
@@ -35,9 +35,17 @@ DeerFlow (**D**eep **E**xploration and **E**fficient **R**esearch **Flow**) is a
 
 2. **Edit `config.yaml`** and set your API keys in `.env` and preferred sandbox mode.
 
+   For OpenAI reasoning-capable models, enable thinking via `when_thinking_enabled.reasoning` (this switches to the Responses API and lets you set `effort`). When thinking is enabled, Thinktank.ai surfaces a short reasoning summary in the chat UI.
+
+   Note: `.env` is loaded from the current working directory or its parents. If a model `api_key` resolves to an unset `$ENV_VAR`, Thinktank.ai fails fast with a message pointing at the missing variable.
+
+   Model selection persists per device; regenerate/edit actions reuse the current model unless you change it via the selector.
+
+   Thinking blocks auto-expand while tokens are streaming so users can observe the reasoning as it is generated, auto-scroll to new tokens, and scroll within a capped height.
+
 #### Sandbox Configuration
 
-DeerFlow supports multiple sandbox execution modes. Configure your preferred mode in `config.yaml`:
+Thinktank.ai supports multiple sandbox execution modes. Configure your preferred mode in `config.yaml`:
 
 **Local Execution** (runs sandbox code directly on the host machine):
 ```yaml
@@ -103,13 +111,13 @@ If you prefer running services locally:
 
 ## From Deep Research to Super Agent Harness
 
-DeerFlow started as a Deep Research framework — and the community ran with it. Since launch, developers have pushed it far beyond research: building data pipelines, generating slide decks, spinning up dashboards, automating content workflows. Things we never anticipated.
+Thinktank.ai started as a Deep Research framework — and the community ran with it. Since launch, developers have pushed it far beyond research: building data pipelines, generating slide decks, spinning up dashboards, automating content workflows. Things we never anticipated.
 
-That told us something important: DeerFlow wasn't just a research tool. It was a **harness** — a runtime that gives agents the infrastructure to actually get work done.
+That told us something important: Thinktank.ai wasn't just a research tool. It was a **harness** — a runtime that gives agents the infrastructure to actually get work done.
 
 So we rebuilt it from scratch.
 
-DeerFlow 2.0 is no longer a framework you wire together. It's a super agent harness — batteries included, fully extensible. Built on LangGraph and LangChain, it ships with everything an agent needs out of the box: a filesystem, memory, skills, sandboxed execution, and the ability to plan and spawn sub-agents for complex, multi-step tasks.
+Thinktank.ai 2.0 is no longer a framework you wire together. It's a super agent harness — batteries included, fully extensible. Built on LangGraph and LangChain, it ships with everything an agent needs out of the box: a filesystem, memory, skills, sandboxed execution, and the ability to plan and spawn sub-agents for complex, multi-step tasks.
 
 Use it as-is. Or tear it apart and make it yours.
 
@@ -117,13 +125,15 @@ Use it as-is. Or tear it apart and make it yours.
 
 ### Skills & Tools
 
-Skills are what make DeerFlow do *almost anything*.
+Skills are what make Thinktank.ai do *almost anything*.
 
-A standard Agent Skill is a structured capability module — a Markdown file that defines a workflow, best practices, and references to supporting resources. DeerFlow ships with built-in skills for research, report generation, slide creation, web pages, image and video generation, and more. But the real power is extensibility: add your own skills, replace the built-in ones, or combine them into compound workflows.
+A standard Agent Skill is a structured capability module — a Markdown file that defines a workflow, best practices, and references to supporting resources. Thinktank.ai ships with built-in skills for research, report generation, slide creation, web pages, image and video generation, and more. But the real power is extensibility: add your own skills, replace the built-in ones, or combine them into compound workflows.
 
-Skills are loaded progressively — only when the task needs them, not all at once. This keeps the context window lean and makes DeerFlow work well even with token-sensitive models.
+Skills are loaded progressively — only when the task needs them, not all at once. This keeps the context window lean and makes Thinktank.ai work well even with token-sensitive models.
 
-Tools follow the same philosophy. DeerFlow comes with a core toolset — web search, web fetch, file operations, bash execution — and supports custom tools via MCP servers and Python functions. Swap anything. Add anything.
+Tools follow the same philosophy. Thinktank.ai comes with a core toolset — web search, web fetch, file operations, bash execution — and supports custom tools via MCP servers and Python functions. Swap anything. Add anything.
+
+In the chat UI, the Context panel surfaces the resolved tool list and enabled skills for the current session, backed by the gateway endpoint `GET /api/agent/context`.
 
 ```
 # Paths inside the sandbox container
@@ -140,15 +150,15 @@ Tools follow the same philosophy. DeerFlow comes with a core toolset — web sea
 
 ### Sub-Agents
 
-Complex tasks rarely fit in a single pass. DeerFlow decomposes them.
+Complex tasks rarely fit in a single pass. Thinktank.ai decomposes them.
 
 The lead agent can spawn sub-agents on the fly — each with its own scoped context, tools, and termination conditions. Sub-agents run in parallel when possible, report back structured results, and the lead agent synthesizes everything into a coherent output.
 
-This is how DeerFlow handles tasks that take minutes to hours: a research task might fan out into a dozen sub-agents, each exploring a different angle, then converge into a single report — or a website — or a slide deck with generated visuals. One harness, many hands.
+This is how Thinktank.ai handles tasks that take minutes to hours: a research task might fan out into a dozen sub-agents, each exploring a different angle, then converge into a single report — or a website — or a slide deck with generated visuals. One harness, many hands.
 
 ### Sandbox & File System
 
-DeerFlow doesn't just *talk* about doing things. It has its own computer.
+Thinktank.ai doesn't just *talk* about doing things. It has its own computer.
 
 Each task runs inside an isolated Docker container with a full filesystem — skills, workspace, uploads, outputs. The agent reads, writes, and edits files. It executes bash commands and codes. It views images. All sandboxed, all auditable, zero contamination between sessions.
 
@@ -166,17 +176,17 @@ This is the difference between a chatbot with tool access and an agent with an a
 
 **Isolated Sub-Agent Context**: Each sub-agent runs in its own isolated context. This means that the sub-agent will not be able to see the context of the main agent or other sub-agents. This is important to ensure that the sub-agent is able to focus on the task at hand and not be distracted by the context of the main agent or other sub-agents.
 
-**Summarization**: Within a session, DeerFlow manages context aggressively — summarizing completed sub-tasks, offloading intermediate results to the filesystem, compressing what's no longer immediately relevant. This lets it stay sharp across long, multi-step tasks without blowing the context window.
+**Summarization**: Within a session, Thinktank.ai manages context aggressively — summarizing completed sub-tasks, offloading intermediate results to the filesystem, compressing what's no longer immediately relevant. This lets it stay sharp across long, multi-step tasks without blowing the context window.
 
 ### Long-Term Memory
 
-Most agents forget everything the moment a conversation ends. DeerFlow remembers.
+Most agents forget everything the moment a conversation ends. Thinktank.ai remembers.
 
-Across sessions, DeerFlow builds a persistent memory of your profile, preferences, and accumulated knowledge. The more you use it, the better it knows you — your writing style, your technical stack, your recurring workflows. Memory is stored locally and stays under your control.
+Across sessions, Thinktank.ai builds a persistent memory of your profile, preferences, and accumulated knowledge. The more you use it, the better it knows you — your writing style, your technical stack, your recurring workflows. Memory is stored locally and stays under your control.
 
 ## Recommended Models
 
-DeerFlow is model-agnostic — it works with any LLM that implements the OpenAI-compatible API. That said, it performs best with models that support:
+Thinktank.ai is model-agnostic — it works with any LLM that implements the OpenAI-compatible API. That said, it performs best with models that support:
 
 - **Long context windows** (100k+ tokens) for deep research and multi-step tasks
 - **Reasoning capabilities** for adaptive planning and complex decomposition
@@ -200,24 +210,24 @@ This project is open source and available under the [MIT License](./LICENSE).
 
 ## Acknowledgments
 
-DeerFlow is built upon the incredible work of the open-source community. We are deeply grateful to all the projects and contributors whose efforts have made DeerFlow possible. Truly, we stand on the shoulders of giants.
+Thinktank.ai is built upon the incredible work of the open-source community. We are deeply grateful to all the projects and contributors whose efforts have made Thinktank.ai possible. Truly, we stand on the shoulders of giants.
 
 We would like to extend our sincere appreciation to the following projects for their invaluable contributions:
 
 - **[LangChain](https://github.com/langchain-ai/langchain)**: Their exceptional framework powers our LLM interactions and chains, enabling seamless integration and functionality.
-- **[LangGraph](https://github.com/langchain-ai/langgraph)**: Their innovative approach to multi-agent orchestration has been instrumental in enabling DeerFlow's sophisticated workflows.
+- **[LangGraph](https://github.com/langchain-ai/langgraph)**: Their innovative approach to multi-agent orchestration has been instrumental in enabling Thinktank.ai's sophisticated workflows.
 
 These projects exemplify the transformative power of open-source collaboration, and we are proud to build upon their foundations.
 
 ### Key Contributors
 
-A heartfelt thank you goes out to the core authors of `DeerFlow`, whose vision, passion, and dedication have brought this project to life:
+A heartfelt thank you goes out to the core authors of `Thinktank.ai`, whose vision, passion, and dedication have brought this project to life:
 
 - **[Daniel Walnut](https://github.com/hetaoBackend/)**
 - **[Henry Li](https://github.com/magiccube/)**
 
-Your unwavering commitment and expertise have been the driving force behind DeerFlow's success. We are honored to have you at the helm of this journey.
+Your unwavering commitment and expertise have been the driving force behind Thinktank.ai's success. We are honored to have you at the helm of this journey.
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=bytedance/deer-flow&type=Date)](https://star-history.com/#bytedance/deer-flow&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=bytedance/thinktank-ai&type=Date)](https://star-history.com/#bytedance/thinktank-ai&Date)
