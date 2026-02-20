@@ -1,6 +1,6 @@
-# DeerFlow Backend
+# Thinktank.ai Backend
 
-DeerFlow is a LangGraph-based AI super agent with sandbox execution, persistent memory, and extensible tool integration. The backend enables AI agents to execute code, browse the web, manage files, delegate tasks to subagents, and retain context across conversations - all in isolated, per-thread environments.
+Thinktank.ai is a LangGraph-based AI super agent with sandbox execution, persistent memory, and extensible tool integration. The backend enables AI agents to execute code, browse the web, manage files, delegate tasks to subagents, and retain context across conversations - all in isolated, per-thread environments.
 
 ---
 
@@ -73,7 +73,7 @@ Middlewares execute in strict order, each handling a specific concern:
 | 12 | **ClarificationMiddleware** | Intercepts clarification requests and interrupts execution (must be last) |
 
 Timeline logs are written per thread to:
-`backend/.deer-flow/threads/{thread_id}/user-data/outputs/agent_timeline.json`
+`backend/.think-tank/threads/{thread_id}/user-data/outputs/agent_timeline.json`
 
 ### Sandbox System
 
@@ -82,7 +82,7 @@ Per-thread isolated execution with virtual path translation:
 - **Abstract interface**: `execute_command`, `read_file`, `write_file`, `list_dir`
 - **Providers**: `LocalSandboxProvider` (filesystem) and `AioSandboxProvider` (Docker, in community/)
 - **Virtual paths**: `/mnt/user-data/{workspace,uploads,outputs}` → thread-specific physical directories
-- **Skills path**: `/mnt/skills` → `deer-flow/skills/` directory
+- **Skills path**: `/mnt/skills` → `thinktank-ai/skills/` directory
 - **Tools**: `bash`, `ls`, `read_file`, `write_file`, `str_replace`
 
 ### Subagent System
@@ -145,7 +145,7 @@ FastAPI application providing REST endpoints for frontend integration:
 ### Installation
 
 ```bash
-cd deer-flow
+cd thinktank-ai
 
 # Copy configuration files
 cp config.example.yaml config.yaml

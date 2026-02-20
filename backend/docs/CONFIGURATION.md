@@ -6,7 +6,7 @@ This guide explains how to configure DeerFlow for your environment.
 
 1. **Copy the example configuration** (from project root):
    ```bash
-   # From project root directory (deer-flow/)
+  # From project root directory (thinktank-ai/)
    cp config.example.yaml config.yaml
    ```
 
@@ -140,7 +140,7 @@ skills:
 ```
 
 **How Skills Work**:
-- Skills are stored in `deer-flow/skills/{public,custom}/`
+- Skills are stored in `thinktank-ai/skills/{public,custom}/`
 - Each skill has a `SKILL.md` file with metadata
 - Skills are automatically discovered and loaded
 - Available in both local and Docker sandbox via path mapping
@@ -175,7 +175,7 @@ models:
 
 ## Configuration Location
 
-The configuration file should be placed in the **project root directory** (`deer-flow/config.yaml`), not in the backend directory.
+The configuration file should be placed in the **project root directory** (`thinktank-ai/config.yaml`), not in the backend directory.
 
 ## Configuration Priority
 
@@ -184,7 +184,7 @@ DeerFlow searches for configuration in this order:
 1. Path specified in code via `config_path` argument
 2. Path from `DEER_FLOW_CONFIG_PATH` environment variable
 3. `config.yaml` in current working directory (typically `backend/` when running)
-4. `config.yaml` in parent directory (project root: `deer-flow/`)
+4. `config.yaml` in parent directory (project root: `thinktank-ai/`)
 
 ## Best Practices
 
@@ -198,7 +198,7 @@ DeerFlow searches for configuration in this order:
 ## Troubleshooting
 
 ### "Config file not found"
-- Ensure `config.yaml` exists in the **project root** directory (`deer-flow/config.yaml`)
+- Ensure `config.yaml` exists in the **project root** directory (`thinktank-ai/config.yaml`)
 - The backend searches parent directory by default, so root location is preferred
 - Alternatively, set `DEER_FLOW_CONFIG_PATH` environment variable to custom location
 
@@ -207,7 +207,7 @@ DeerFlow searches for configuration in this order:
 - Check that `$` prefix is used for env var references
 
 ### "Skills not loading"
-- Check that `deer-flow/skills/` directory exists
+- Check that `thinktank-ai/skills/` directory exists
 - Verify skills have valid `SKILL.md` files
 - Check `skills.path` configuration if using custom path
 

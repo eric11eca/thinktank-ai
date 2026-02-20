@@ -20,9 +20,9 @@ class ThreadDataMiddleware(AgentMiddleware[ThreadDataMiddlewareState]):
     """Create thread data directories for each thread execution.
 
     Creates the following directory structure:
-    - backend/.deer-flow/threads/{thread_id}/user-data/workspace
-    - backend/.deer-flow/threads/{thread_id}/user-data/uploads
-    - backend/.deer-flow/threads/{thread_id}/user-data/outputs
+    - backend/.think-tank/threads/{thread_id}/user-data/workspace
+    - backend/.think-tank/threads/{thread_id}/user-data/uploads
+    - backend/.think-tank/threads/{thread_id}/user-data/outputs
 
     Lifecycle Management:
     - With lazy_init=True (default): Only compute paths, directories created on-demand

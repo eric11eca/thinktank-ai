@@ -34,12 +34,12 @@ class FileSandboxStateStore(SandboxStateStore):
     For K8s multi-pod scenarios, requires a shared PVC mount at base_dir.
     """
 
-    def __init__(self, base_dir: str, threads_subdir: str = ".deer-flow/threads"):
+    def __init__(self, base_dir: str, threads_subdir: str = ".think-tank/threads"):
         """Initialize the file-based state store.
 
         Args:
             base_dir: Root directory for state files (typically the project root / cwd).
-            threads_subdir: Subdirectory path for thread state (default: ".deer-flow/threads").
+            threads_subdir: Subdirectory path for thread state (default: ".think-tank/threads").
         """
         self._base_dir = Path(base_dir)
         self._threads_subdir = threads_subdir

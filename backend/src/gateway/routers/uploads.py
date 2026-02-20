@@ -111,7 +111,7 @@ async def upload_files(
             content = await file.read()
 
             # Build relative path from backend root
-            relative_path = f".deer-flow/threads/{thread_id}/user-data/uploads/{file.filename}"
+            relative_path = f".think-tank/threads/{thread_id}/user-data/uploads/{file.filename}"
             virtual_path = f"/mnt/user-data/uploads/{file.filename}"
             sandbox.update_file(virtual_path, content)
 
@@ -130,7 +130,7 @@ async def upload_files(
             if file_ext in CONVERTIBLE_EXTENSIONS:
                 md_path = await convert_file_to_markdown(file_path)
                 if md_path:
-                    md_relative_path = f".deer-flow/threads/{thread_id}/user-data/uploads/{md_path.name}"
+                    md_relative_path = f".think-tank/threads/{thread_id}/user-data/uploads/{md_path.name}"
                     file_info["markdown_file"] = md_path.name
                     file_info["markdown_path"] = md_relative_path
                     file_info["markdown_virtual_path"] = f"/mnt/user-data/uploads/{md_path.name}"
@@ -168,7 +168,7 @@ async def list_uploaded_files(thread_id: str) -> dict:
     for file_path in sorted(uploads_dir.iterdir()):
         if file_path.is_file():
             stat = file_path.stat()
-            relative_path = f".deer-flow/threads/{thread_id}/user-data/uploads/{file_path.name}"
+            relative_path = f".think-tank/threads/{thread_id}/user-data/uploads/{file_path.name}"
             files.append(
                 {
                     "filename": file_path.name,

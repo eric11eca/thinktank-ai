@@ -1,24 +1,24 @@
 # Architecture Overview
 
-This document provides a comprehensive overview of the DeerFlow backend architecture.
+This document provides a comprehensive overview of the thinktank backend architecture.
 
 ## System Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                              Client (Browser)                             │
-└─────────────────────────────────┬────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                          Client (Browser)                            │
+└─────────────────────────────────┬────────────────────────────────────┘
                                   │
                                   ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│                          Nginx (Port 2026)                               │
-│                    Unified Reverse Proxy Entry Point                      │
-│  ┌────────────────────────────────────────────────────────────────────┐  │
-│  │  /api/langgraph/*  →  LangGraph Server (2024)                      │  │
-│  │  /api/*            →  Gateway API (8001)                           │  │
-│  │  /*                →  Frontend (3000)                               │  │
-│  └────────────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────┬────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                          Nginx (Port 2026)                           │
+│                    Unified Reverse Proxy Entry Point                 │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │  /api/langgraph/*  →  LangGraph Server (2024)                  │  │
+│  │  /api/*            →  Gateway API (8001)                       │  │
+│  │  /*                →  Frontend (3000)                          │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────┬────────────────────────────────────┘
                                   │
           ┌───────────────────────┼───────────────────────┐
           │                       │                       │
@@ -38,7 +38,7 @@ This document provides a comprehensive overview of the DeerFlow backend architec
           │     │
           ▼     ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│                         Shared Configuration                              │
+│                         Shared Configuration                             │
 │  ┌─────────────────────────┐  ┌────────────────────────────────────────┐ │
 │  │      config.yaml        │  │      extensions_config.json            │ │
 │  │  - Models               │  │  - MCP Servers                         │ │
@@ -92,27 +92,27 @@ FastAPI application providing REST endpoints for non-agent operations.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                           make_lead_agent(config)                        │
+│                           make_lead_agent(config)                       │
 └────────────────────────────────────┬────────────────────────────────────┘
                                      │
                                      ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                            Middleware Chain                              │
+│                            Middleware Chain                             │
 │  ┌──────────────────────────────────────────────────────────────────┐   │
 │  │ 1. ThreadDataMiddleware  - Initialize workspace/uploads/outputs  │   │
-│  │ 2. UploadsMiddleware     - Process uploaded files               │   │
-│  │ 3. SandboxMiddleware     - Acquire sandbox environment          │   │
-│  │ 4. SummarizationMiddleware - Context reduction (if enabled)     │   │
-│  │ 5. TitleMiddleware       - Auto-generate titles                 │   │
-│  │ 6. TodoListMiddleware    - Task tracking (if plan_mode)         │   │
-│  │ 7. ViewImageMiddleware   - Vision model support                 │   │
-│  │ 8. ClarificationMiddleware - Handle clarifications              │   │
+│  │ 2. UploadsMiddleware     - Process uploaded files                │   │
+│  │ 3. SandboxMiddleware     - Acquire sandbox environment           │   │
+│  │ 4. SummarizationMiddleware - Context reduction (if enabled)      │   │
+│  │ 5. TitleMiddleware       - Auto-generate titles                  │   │
+│  │ 6. TodoListMiddleware    - Task tracking (if plan_mode)          │   │
+│  │ 7. ViewImageMiddleware   - Vision model support                  │   │
+│  │ 8. ClarificationMiddleware - Handle clarifications               │   │
 │  └──────────────────────────────────────────────────────────────────┘   │
 └────────────────────────────────────┬────────────────────────────────────┘
                                      │
                                      ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                              Agent Core                                  │
+│                              Agent Core                                 │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────┐   │
 │  │      Model       │  │      Tools       │  │    System Prompt     │   │
 │  │  (from factory)  │  │  (configured +   │  │  (with skills)       │   │
@@ -130,7 +130,7 @@ class ThreadState(AgentState):
     # Core state from AgentState
     messages: list[BaseMessage]
 
-    # DeerFlow extensions
+    # thinktank extensions
     sandbox: dict             # Sandbox environment info
     artifacts: list[str]      # Generated file paths
     thread_data: dict         # {workspace, uploads, outputs} paths
@@ -143,7 +143,7 @@ class ThreadState(AgentState):
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                           Sandbox Architecture                           │
+│                           Sandbox Architecture                          │
 └─────────────────────────────────────────────────────────────────────────┘
 
                       ┌─────────────────────────┐
@@ -178,16 +178,16 @@ class ThreadState(AgentState):
 
 | Virtual Path | Physical Path |
 |-------------|---------------|
-| `/mnt/user-data/workspace` | `backend/.deer-flow/threads/{thread_id}/user-data/workspace` |
-| `/mnt/user-data/uploads` | `backend/.deer-flow/threads/{thread_id}/user-data/uploads` |
-| `/mnt/user-data/outputs` | `backend/.deer-flow/threads/{thread_id}/user-data/outputs` |
-| `/mnt/skills` | `deer-flow/skills/` |
+| `/mnt/user-data/workspace` | `backend/.think-tank/threads/{thread_id}/user-data/workspace` |
+| `/mnt/user-data/uploads` | `backend/.think-tank/threads/{thread_id}/user-data/uploads` |
+| `/mnt/user-data/outputs` | `backend/.think-tank/threads/{thread_id}/user-data/outputs` |
+| `/mnt/skills` | `thinktank-ai/skills/` |
 
 ### Tool System
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                            Tool Sources                                  │
+│                            Tool Sources                                 │
 └─────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐
@@ -216,13 +216,13 @@ class ThreadState(AgentState):
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                          Model Factory                                   │
-│                     (src/models/factory.py)                              │
+│                          Model Factory                                  │
+│                     (src/models/factory.py)                             │
 └─────────────────────────────────────────────────────────────────────────┘
 
 config.yaml:
 ┌─────────────────────────────────────────────────────────────────────────┐
-│ models:                                                                  │
+│ models:                                                                 │
 │   - name: gpt-4                                                         │
 │     display_name: GPT-4                                                 │
 │     use: langchain_openai:ChatOpenAI                                    │
@@ -263,19 +263,19 @@ config.yaml:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                          MCP Integration                                 │
-│                        (src/mcp/manager.py)                              │
+│                          MCP Integration                                │
+│                        (src/mcp/manager.py)                             │
 └─────────────────────────────────────────────────────────────────────────┘
 
 extensions_config.json:
 ┌─────────────────────────────────────────────────────────────────────────┐
-│ {                                                                        │
+│ {                                                                       │
 │   "mcpServers": {                                                       │
 │     "github": {                                                         │
 │       "enabled": true,                                                  │
 │       "type": "stdio",                                                  │
 │       "command": "npx",                                                 │
-│       "args": ["-y", "@modelcontextprotocol/server-github"],           │
+│       "args": ["-y", "@modelcontextprotocol/server-github"],            │
 │       "env": {"GITHUB_TOKEN": "$GITHUB_TOKEN"}                          │
 │     }                                                                   │
 │   }                                                                     │
@@ -283,10 +283,10 @@ extensions_config.json:
 └─────────────────────────────────────────────────────────────────────────┘
                                    │
                                    ▼
-                      ┌─────────────────────────┐
-                      │  MultiServerMCPClient   │
-                      │  (langchain-mcp-adapters)│
-                      └────────────┬────────────┘
+                      ┌──────────────────────────┐
+                      │  MultiServerMCPClient    │
+                      │ (langchain-mcp-adapters) │
+                      └────────────┬─────────────┘
                                    │
               ┌────────────────────┼────────────────────┐
               │                    │                    │
@@ -301,38 +301,38 @@ extensions_config.json:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                          Skills System                                   │
-│                       (src/skills/loader.py)                             │
+│                          Skills System                                  │
+│                       (src/skills/loader.py)                            │
 └─────────────────────────────────────────────────────────────────────────┘
 
 Directory Structure:
 ┌─────────────────────────────────────────────────────────────────────────┐
-│ skills/                                                                  │
-│ ├── public/                        # Public skills (committed)           │
+│ skills/                                                                 │
+│ ├── public/                        # Public skills (committed)          │
 │ │   ├── pdf-processing/                                                 │
 │ │   │   └── SKILL.md                                                    │
 │ │   ├── frontend-design/                                                │
 │ │   │   └── SKILL.md                                                    │
 │ │   └── ...                                                             │
-│ └── custom/                        # Custom skills (gitignored)          │
+│ └── custom/                        # Custom skills (gitignored)         │
 │     └── user-installed/                                                 │
 │         └── SKILL.md                                                    │
 └─────────────────────────────────────────────────────────────────────────┘
 
 SKILL.md Format:
 ┌─────────────────────────────────────────────────────────────────────────┐
-│ ---                                                                      │
-│ name: PDF Processing                                                     │
-│ description: Handle PDF documents efficiently                            │
+│ ---                                                                     │
+│ name: PDF Processing                                                    │
+│ description: Handle PDF documents efficiently                           │
 │ license: MIT                                                            │
 │ allowed-tools:                                                          │
 │   - read_file                                                           │
 │   - write_file                                                          │
 │   - bash                                                                │
-│ ---                                                                      │
-│                                                                          │
-│ # Skill Instructions                                                     │
-│ Content injected into system prompt...                                   │
+│ ---                                                                     │
+│                                                                         │
+│ # Skill Instructions                                                    │
+│ Content injected into system prompt...                                  │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -340,8 +340,8 @@ SKILL.md Format:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                         Request Flow Example                             │
-│                    User sends message to agent                           │
+│                         Request Flow Example                            │
+│                    User sends message to agent                          │
 └─────────────────────────────────────────────────────────────────────────┘
 
 1. Client → Nginx
@@ -385,14 +385,14 @@ SKILL.md Format:
 
 2. Gateway receives file
    - Validates file
-   - Stores in .deer-flow/threads/{thread_id}/user-data/uploads/
+   - Stores in .think-tank/threads/{thread_id}/user-data/uploads/
    - If document: converts to Markdown via markitdown
 
 3. Returns response
    {
      "files": [{
        "filename": "doc.pdf",
-       "path": ".deer-flow/.../uploads/doc.pdf",
+       "path": ".think-tank/.../uploads/doc.pdf",
        "virtual_path": "/mnt/user-data/uploads/doc.pdf",
        "artifact_url": "/api/threads/.../artifacts/mnt/.../doc.pdf"
      }]

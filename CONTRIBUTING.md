@@ -169,7 +169,7 @@ The nginx configuration provides:
 ## Project Structure
 
 ```
-deer-flow/
+thinktank-ai/
 ├── config.example.yaml      # Configuration template
 ├── extensions_config.example.json  # MCP and Skills configuration template
 ├── Makefile                 # Build and development commands
@@ -254,10 +254,10 @@ pnpm test
 
 ## Need Help?
 
-- Check existing [Issues](https://github.com/bytedance/deer-flow/issues)
+- Check existing [Issues](https://github.com/thinktank-ai/thinktank-ai/issues)
 - Read the [Documentation](backend/docs/)
-- Ask questions in [Discussions](https://github.com/bytedance/deer-flow/discussions)
+- Ask questions in [Discussions](https://github.com/thinktank-ai/thinktank-ai/discussions)
 
 ## License
 
-By contributing to DeerFlow, you agree that your contributions will be licensed under the [MIT License](./LICENSE).
+By contributing to Thinktank.ai, you agree that your contributions will be licensed under the [MIT License](./LICENSE).

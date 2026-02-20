@@ -29,9 +29,9 @@ Thinktank.ai is an open-source **super agent harness** that orchestrates **sub-a
 
 ### Configuration
 
-1. Clone the git repo of DeerFlow:
+1. Clone the Thinktank.ai repo:
    ```bash
-   git clone https://github.com/eric11eca/studious-ai.git && cd studious-ai
+   git clone https://github.com/thinktank-ai/thinktank-ai.git && cd thinktank-ai
    ```
 2. Create local config files by copying the example files:
    ```bash
