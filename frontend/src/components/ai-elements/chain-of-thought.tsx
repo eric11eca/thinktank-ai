@@ -181,7 +181,10 @@ export type ChainOfThoughtSearchResultProps = ComponentProps<typeof Badge>;
 export const ChainOfThoughtSearchResult = memo(
   ({ className, children, ...props }: ChainOfThoughtSearchResultProps) => (
     <Badge
-      className={cn("gap-1 px-2 py-0.5 text-xs font-normal", className)}
+      className={cn(
+        "bg-[rgb(16_16_15)] text-muted-foreground border-transparent gap-1 px-2 py-0.5 text-xs font-normal",
+        className,
+      )}
       variant="secondary"
       {...props}
     >
