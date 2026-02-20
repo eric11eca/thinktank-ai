@@ -139,7 +139,7 @@ export const ChainOfThoughtStep = memo(
     return (
       <div
         className={cn(
-          "flex gap-2 text-sm",
+          "my-4 flex gap-2 text-sm",
           statusStyles[status],
           "fade-in-0 slide-in-from-top-2 animate-in",
           className,
