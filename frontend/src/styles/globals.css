@@ -2,11 +2,36 @@
 @import "tw-animate-css";
 
 @font-face {
-  font-family: "SwissSerif";
+  font-family: "SwissSerif-AI";
   src: url("/fonts/SwissSerif_Roman_AI.woff2") format("woff2");
-  font-weight: 530;
-  font-style: normal;
-  font-display: swap;
+}
+
+@font-face {
+  font-family: "SwissSans-UI";
+  src: url("/fonts/SwissSans_Roman_UI.woff2") format("woff2");
+}
+
+:root {
+  --font-claude-response: "SwissSerif-AI", ui-serif, Georgia, serif;
+  --font-claude-user: "SwissSans-UI", ui-serif, Georgia, sans-serif;
+}
+
+.font-claude-response-body {
+  font-family: var(--font-claude-response);
+  font-size: 1rem;
+  font-weight: 360;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-claude-user-body {
+  font-family: var(--font-claude-user);
+  font-size: 1rem;
+  font-weight: 360;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 @source "../node_modules/streamdown/dist/*.js";
