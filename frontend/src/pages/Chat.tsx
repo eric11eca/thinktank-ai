@@ -30,6 +30,7 @@ import { MessageList } from "@/components/workspace/messages";
 import { ThreadContext } from "@/components/workspace/messages/context";
 import { QuickActions } from "@/components/workspace/quick-actions";
 import { useRightPanel } from "@/components/workspace/right-panel-context";
+import { SessionUsageDisplay } from "@/components/workspace/session-usage-display";
 import { ThreadTitle } from "@/components/workspace/thread-title";
 import { TodoList } from "@/components/workspace/todo-list";
 import { Tooltip } from "@/components/workspace/tooltip";
@@ -44,6 +45,7 @@ import {
   useSubmitThread,
   useThreadStream,
 } from "@/core/threads/hooks";
+import { resetTurnUsage } from "@/core/threads/usage-context";
 import {
   pathOfThread,
   textOfMessage,
@@ -499,6 +501,7 @@ function ChatInner() {
                   {title !== "Untitled" && (
                     <ThreadTitle threadId={threadId} threadTitle={title} />
                   )}
+                  <SessionUsageDisplay usage={thread.values?.token_usage} />
                 </div>
                 <div className="flex items-center gap-2">
                   {artifacts?.length > 0 && !artifactsOpen && (
@@ -691,6 +694,25 @@ function ChatInner() {
   );
 }
 
+/**
+ * Resets per-turn usage when the user navigates to a genuinely different thread.
+ * Skips the `new` → `{id}` transition so the first turn's usage is preserved.
+ */
+function UsageResetOnThreadChange({ threadId }: { threadId: string | undefined }) {
+  const prevThreadIdRef = useRef(threadId);
+
+  useEffect(() => {
+    const prev = prevThreadIdRef.current;
+    prevThreadIdRef.current = threadId;
+    // Reset only when switching between two real thread IDs (not from "new").
+    if (prev && prev !== "new" && threadId && threadId !== "new" && prev !== threadId) {
+      resetTurnUsage();
+    }
+  }, [threadId]);
+
+  return null;
+}
+
 export function Chat() {
   const { threadId } = useParams<{ threadId: string }>();
   const [remountCounter, setRemountCounter] = useState(() => {
@@ -715,5 +737,10 @@ export function Chat() {
     return () => clearInterval(interval);
   }, [threadId, remountCounter]);
 
-  return <ChatInner key={`${threadId}-${remountCounter}`} />;
+  return (
+    <>
+      <UsageResetOnThreadChange threadId={threadId} />
+      <ChatInner key={`${threadId}-${remountCounter}`} />
+    </>
+  );
 }

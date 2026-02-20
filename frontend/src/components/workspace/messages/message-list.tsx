@@ -31,6 +31,10 @@ import { MessageGroup } from "./message-group";
 import { MessageListItem } from "./message-list-item";
 import { MessageListSkeleton } from "./skeleton";
 import { SubtaskCard } from "./subtask-card";
+import {
+  TurnUsageDisplay,
+  estimateTokensFromText,
+} from "./turn-usage-display";
 
 export function MessageList({
   className,
@@ -87,6 +91,37 @@ export function MessageList({
         : historyMessages.length > 0
           ? historyMessages
           : streamMessages);
+  const streamingUsageEstimate = useMemo(() => {
+    if (!thread.isLoading || messages.length === 0) {
+      return undefined;
+    }
+
+    const findLastMessage = (type: Message["type"]) => {
+      for (let index = messages.length - 1; index >= 0; index -= 1) {
+        const message = messages[index];
+        if (message?.type === type) {
+          return message;
+        }
+      }
+      return undefined;
+    };
+
+    const lastHuman = findLastMessage("human");
+    const lastAi = findLastMessage("ai");
+
+    if (!lastHuman && !lastAi) {
+      return undefined;
+    }
+
+    return {
+      inputTokens: lastHuman
+        ? estimateTokensFromText(extractTextFromMessage(lastHuman))
+        : 0,
+      outputTokens: lastAi
+        ? estimateTokensFromText(extractTextFromMessage(lastAi))
+        : 0,
+    };
+  }, [messages, thread.isLoading]);
   const lastVisibleMessagesRef = useRef<Message[]>([]);
   const stableMessages = useMemo(() => {
     if (messages.length > 0) {
@@ -305,7 +340,16 @@ export function MessageList({
           <ConversationEmptyState />
         )}
         {(thread.isLoading || isTransitioning) && (
-          <StreamingIndicator className="my-4 transition-opacity duration-200" />
+          <div className="my-4 flex items-center gap-3 transition-opacity duration-200">
+            <StreamingIndicator
+              showUsage
+              isLoading={thread.isLoading}
+              usageEstimate={streamingUsageEstimate}
+            />
+          </div>
+        )}
+        {!thread.isLoading && !isTransitioning && (
+          <TurnUsageDisplay isLoading={false} />
         )}
         <div style={{ height: `${paddingBottom}px` }} />
       </ConversationContent>

@@ -3,7 +3,7 @@ import type { AIMessage } from "@langchain/langgraph-sdk";
 import type { ThreadsClient } from "@langchain/langgraph-sdk/client";
 import { useStream, type UseStream } from "@langchain/langgraph-sdk/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 
@@ -16,6 +16,12 @@ import type {
   AgentThreadContext,
   AgentThreadState,
 } from "./types";
+import {
+  resetTurnUsage,
+  setTurnUsageThread,
+  startTurnUsage,
+  updateTurnUsage,
+} from "./usage-context";
 
 export interface ThreadResubmitOptions {
   checkpoint?: {
@@ -37,6 +43,11 @@ export function useThreadStream({
 }) {
   const queryClient = useQueryClient();
   const updateSubtask = useUpdateSubtask();
+  useEffect(() => {
+    if (threadId) {
+      setTurnUsageThread(threadId, { restore: !isNewThread });
+    }
+  }, [threadId, isNewThread]);
   const thread = useStream<AgentThreadState>({
     client: getAPIClient(),
     assistantId: "lead_agent",
@@ -48,15 +59,26 @@ export function useThreadStream({
       if (
         typeof event === "object" &&
         event !== null &&
-        "type" in event &&
-        event.type === "task_running"
+        "type" in event
       ) {
-        const e = event as {
-          type: "task_running";
-          task_id: string;
-          message: AIMessage;
-        };
-        updateSubtask({ id: e.task_id, latestMessage: e.message });
+        if (event.type === "task_running") {
+          const e = event as {
+            type: "task_running";
+            task_id: string;
+            message: AIMessage;
+          };
+          updateSubtask({ id: e.task_id, latestMessage: e.message });
+        } else if (event.type === "usage_update") {
+          const e = event as {
+            type: "usage_update";
+            input_tokens: number;
+            output_tokens: number;
+          };
+          updateTurnUsage({
+            input_tokens: e.input_tokens,
+            output_tokens: e.output_tokens,
+          });
+        }
       }
     },
     onFinish(state) {
@@ -84,6 +106,7 @@ export function useThreadStream({
       );
     },
   });
+
   return thread;
 }
 
@@ -103,6 +126,8 @@ export function useSubmitThread({
   const queryClient = useQueryClient();
   const callback = useCallback(
     async (message: PromptInputMessage, submitOptions?: ThreadResubmitOptions) => {
+      resetTurnUsage();
+      startTurnUsage();
       const text = message.text.trim();
 
       // Upload files first if any

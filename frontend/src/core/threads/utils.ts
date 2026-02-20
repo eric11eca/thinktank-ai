@@ -10,8 +10,11 @@ export function textOfMessage(message: BaseMessage) {
   if (typeof message.content === "string") {
     return message.content;
   } else if (Array.isArray(message.content)) {
-    return message.content.find((part) => part.type === "text" && part.text)
-      ?.text as string;
+    const textPart = message.content.find(
+      (part): part is { type: "text"; text: string } =>
+        part.type === "text" && part.text.length > 0,
+    );
+    return textPart?.text ?? null;
   }
   return null;
 }

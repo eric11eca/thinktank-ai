@@ -3,11 +3,17 @@ import type { Thread } from "@langchain/langgraph-sdk";
 
 import type { Todo } from "../todos";
 
+export interface TokenUsage {
+  input_tokens: number;
+  output_tokens: number;
+}
+
 export interface AgentThreadState extends Record<string, unknown> {
   title: string;
   messages: BaseMessage[];
   artifacts: string[];
   todos?: Todo[];
+  token_usage?: TokenUsage;
 }
 
 export interface AgentThread extends Thread<AgentThreadState> {}
