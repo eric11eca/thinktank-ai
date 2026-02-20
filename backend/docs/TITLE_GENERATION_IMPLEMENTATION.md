@@ -1,37 +1,37 @@
-# 自动 Title 生成功能实现总结
+# Auto Title Generation Implementation Summary
 
-## ✅ 已完成的工作
+## Completed Work
 
-### 1. 核心实现文件
+### 1. Core implementation files
 
 #### [`src/agents/thread_state.py`](../src/agents/thread_state.py)
-- ✅ 添加 `title: str | None = None` 字段到 `ThreadState`
+- Added `title: str | None = None` to `ThreadState`
 
-#### [`src/config/title_config.py`](../src/config/title_config.py) (新建)
-- ✅ 创建 `TitleConfig` 配置类
-- ✅ 支持配置：enabled, max_words, max_chars, model_name, prompt_template
-- ✅ 提供 `get_title_config()` 和 `set_title_config()` 函数
-- ✅ 提供 `load_title_config_from_dict()` 从配置文件加载
+#### [`src/config/title_config.py`](../src/config/title_config.py) (new)
+- Created `TitleConfig` config class
+- Added config fields: enabled, max_words, max_chars, model_name, prompt_template
+- Added `get_title_config()` and `set_title_config()` helpers
+- Added `load_title_config_from_dict()` to load from config
 
-#### [`src/agents/title_middleware.py`](../src/agents/title_middleware.py) (新建)
-- ✅ 创建 `TitleMiddleware` 类
-- ✅ 实现 `_should_generate_title()` 检查是否需要生成
-- ✅ 实现 `_generate_title()` 调用 LLM 生成标题
-- ✅ 实现 `after_agent()` 钩子，在首次对话后自动触发
-- ✅ 包含 fallback 策略（LLM 失败时使用用户消息前几个词）
+#### [`src/agents/title_middleware.py`](../src/agents/title_middleware.py) (new)
+- Created `TitleMiddleware`
+- Implemented `_should_generate_title()` to check if a title should be generated
+- Implemented `_generate_title()` to call the LLM
+- Implemented `after_agent()` hook to trigger after the first exchange
+- Added a fallback strategy (use first few words from user message if LLM fails)
 
 #### [`src/config/app_config.py`](../src/config/app_config.py)
-- ✅ 导入 `load_title_config_from_dict`
-- ✅ 在 `from_file()` 中加载 title 配置
+- Imported `load_title_config_from_dict`
+- Loaded title config inside `from_file()`
 
 #### [`src/agents/lead_agent/agent.py`](../src/agents/lead_agent/agent.py)
-- ✅ 导入 `TitleMiddleware`
-- ✅ 注册到 `middleware` 列表：`[SandboxMiddleware(), TitleMiddleware()]`
+- Imported `TitleMiddleware`
+- Registered it in the middleware list: `[SandboxMiddleware(), TitleMiddleware()]`
 
-### 2. 配置文件
+### 2. Config file
 
 #### [`config.yaml`](../config.yaml)
-- ✅ 添加 title 配置段：
+- Added title config section:
 ```yaml
 title:
   enabled: true
@@ -40,85 +40,85 @@ title:
   model_name: null
 ```
 
-### 3. 文档
+### 3. Documentation
 
-#### [`docs/AUTO_TITLE_GENERATION.md`](../docs/AUTO_TITLE_GENERATION.md) (新建)
-- ✅ 完整的功能说明文档
-- ✅ 实现方式和架构设计
-- ✅ 配置说明
-- ✅ 客户端使用示例（TypeScript）
-- ✅ 工作流程图（Mermaid）
-- ✅ 故障排查指南
-- ✅ State vs Metadata 对比
+#### [`docs/AUTO_TITLE_GENERATION.md`](../docs/AUTO_TITLE_GENERATION.md) (new)
+- Full feature documentation
+- Implementation details and architecture
+- Configuration guide
+- Client usage examples (TypeScript)
+- Workflow diagram (Mermaid)
+- Troubleshooting guide
+- State vs Metadata comparison
 
 #### [`BACKEND_TODO.md`](../BACKEND_TODO.md)
-- ✅ 添加功能完成记录
+- Added feature completion record
 
-### 4. 测试
+### 4. Tests
 
-#### [`tests/test_title_generation.py`](../tests/test_title_generation.py) (新建)
-- ✅ 配置类测试
-- ✅ Middleware 初始化测试
-- ✅ TODO: 集成测试（需要 mock Runtime）
-
----
-
-## 🎯 核心设计决策
-
-### 为什么使用 State 而非 Metadata？
-
-| 方面 | State (✅ 采用) | Metadata (❌ 未采用) |
-|------|----------------|---------------------|
-| **持久化** | 自动（通过 checkpointer） | 取决于实现，不可靠 |
-| **版本控制** | 支持时间旅行 | 不支持 |
-| **类型安全** | TypedDict 定义 | 任意字典 |
-| **标准化** | LangGraph 核心机制 | 扩展功能 |
-
-### 工作流程
-
-```
-用户发送首条消息
-  ↓
-Agent 处理并返回回复
-  ↓
-TitleMiddleware.after_agent() 触发
-  ↓
-检查：是否首次对话？是否已有 title？
-  ↓
-调用 LLM 生成 title
-  ↓
-返回 {"title": "..."} 更新 state
-  ↓
-Checkpointer 自动持久化（如果配置了）
-  ↓
-客户端从 state.values.title 读取
-```
+#### [`tests/test_title_generation.py`](../tests/test_title_generation.py) (new)
+- Config class tests
+- Middleware initialization tests
+- TODO: integration tests (needs mock Runtime)
 
 ---
 
-## 📋 使用指南
+## Core Design Decisions
 
-### 后端配置
+### Why use State instead of Metadata?
 
-1. **启用/禁用功能**
+| Aspect | State (chosen) | Metadata (not chosen) |
+|--------|----------------|-----------------------|
+| Persistence | Automatic (via checkpointer) | Implementation-dependent |
+| Versioning | Supports time travel | Not supported |
+| Type safety | TypedDict | Arbitrary dict |
+| Standardization | LangGraph core mechanism | Extension feature |
+
+### Workflow
+
+```
+User sends the first message
+  ↓
+Agent processes and returns a reply
+  ↓
+TitleMiddleware.after_agent() triggers
+  ↓
+Check: first exchange? title already set?
+  ↓
+Call LLM to generate title
+  ↓
+Return {"title": "..."} and update state
+  ↓
+Checkpointer persists automatically (if configured)
+  ↓
+Client reads from state.values.title
+```
+
+---
+
+## Usage Guide
+
+### Backend configuration
+
+1. **Enable/disable the feature**
 ```yaml
 # config.yaml
 title:
-  enabled: true  # 设为 false 禁用
+  enabled: true  # set false to disable
 ```
 
-2. **自定义配置**
+2. **Custom configuration**
 ```yaml
 title:
   enabled: true
-  max_words: 8      # 标题最多 8 个词
-  max_chars: 80     # 标题最多 80 个字符
-  model_name: null  # 使用默认模型
+  max_words: 8      # max words in title
+  max_chars: 80     # max characters in title
+  model_name: null  # use default model
 ```
 
-3. **配置持久化（可选）**
+3. **Persistence (optional)**
 
-如果需要在本地开发时持久化 title：
+If you need title persistence in local development:
 
 ```python
 # checkpointer.py
@@ -137,86 +137,86 @@ checkpointer = SqliteSaver.from_conn_string("checkpoints.db")
 }
 ```
 
-### 客户端使用
+### Client usage
 
 ```typescript
-// 获取 thread title
+// Get thread title
 const state = await client.threads.getState(threadId);
 const title = state.values.title || "New Conversation";
 
-// 显示在对话列表
+// Render in the conversation list
 <li>{title}</li>
 ```
 
-**⚠️ 注意**：Title 在 `state.values.title`，而非 `thread.metadata.title`
+**Note**: The title is stored at `state.values.title`, not `thread.metadata.title`.
 
 ---
 
-## 🧪 测试
+## Tests
 
 ```bash
-# 运行测试
+# Run a single test file
 pytest tests/test_title_generation.py -v
 
-# 运行所有测试
+# Run all tests
 pytest
 ```
 
 ---
 
-## 🔍 故障排查
+## Troubleshooting
 
-### Title 没有生成？
+### Title is not generated
 
-1. 检查配置：`title.enabled = true`
-2. 查看日志：搜索 "Generated thread title"
-3. 确认是首次对话（1 个用户消息 + 1 个助手回复）
+1. Check config: `title.enabled = true`
+2. Check logs: search for "Generated thread title"
+3. Confirm first exchange only (1 user message + 1 assistant reply)
 
-### Title 生成但看不到？
+### Title generated but not visible
 
-1. 确认读取位置：`state.values.title`（不是 `thread.metadata.title`）
-2. 检查 API 响应是否包含 title
-3. 重新获取 state
+1. Verify read location: `state.values.title` (not `thread.metadata.title`)
+2. Ensure API response includes title
+3. Re-fetch state
 
-### Title 重启后丢失？
+### Title missing after restart
 
-1. 本地开发需要配置 checkpointer
-2. LangGraph Platform 会自动持久化
-3. 检查数据库确认 checkpointer 工作正常
-
----
-
-## 📊 性能影响
-
-- **延迟增加**：约 0.5-1 秒（LLM 调用）
-- **并发安全**：在 `after_agent` 中运行，不阻塞主流程
-- **资源消耗**：每个 thread 只生成一次
-
-### 优化建议
-
-1. 使用更快的模型（如 `gpt-3.5-turbo`）
-2. 减少 `max_words` 和 `max_chars`
-3. 调整 prompt 使其更简洁
+1. Local development requires a checkpointer
+2. LangGraph Platform persists automatically
+3. Check database to confirm checkpointer is working
 
 ---
 
-## 🚀 下一步
+## Performance Impact
 
-- [ ] 添加集成测试（需要 mock LangGraph Runtime）
-- [ ] 支持自定义 prompt template
-- [ ] 支持多语言 title 生成
-- [ ] 添加 title 重新生成功能
-- [ ] 监控 title 生成成功率和延迟
+- **Added latency**: ~0.5-1 seconds (LLM call)
+- **Concurrency safety**: runs in `after_agent`, does not block the main flow
+- **Resource usage**: each thread generates only once
+
+### Optimization suggestions
+
+1. Use a faster model (e.g. `gpt-3.5-turbo`)
+2. Reduce `max_words` and `max_chars`
+3. Simplify the prompt
 
 ---
 
-## 📚 相关资源
+## Next Steps
 
-- [完整文档](../docs/AUTO_TITLE_GENERATION.md)
+- [ ] Add integration tests (requires mock LangGraph Runtime)
+- [ ] Support custom prompt templates
+- [ ] Support multi-language title generation
+- [ ] Add title regeneration
+- [ ] Monitor title success rate and latency
+
+---
+
+## Resources
+
+- [Full documentation](../docs/AUTO_TITLE_GENERATION.md)
 - [LangGraph Middleware](https://langchain-ai.github.io/langgraph/concepts/middleware/)
-- [LangGraph State 管理](https://langchain-ai.github.io/langgraph/concepts/low_level/#state)
+- [LangGraph State Management](https://langchain-ai.github.io/langgraph/concepts/low_level/#state)
 - [LangGraph Checkpointer](https://langchain-ai.github.io/langgraph/concepts/persistence/)
 
 ---
 
-*实现完成时间: 2026-01-14*
+*Implementation completed: 2026-01-14*

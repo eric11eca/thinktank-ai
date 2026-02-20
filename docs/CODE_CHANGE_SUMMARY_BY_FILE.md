@@ -1,10 +1,10 @@
-# 代码更改总结（按文件 diff，细到每一行）
+# Code Change Summary (file diff, line-by-line)
 
-基于 `git diff HEAD` 的完整 diff，按文件列出所有变更。删除/新增文件单独说明。
+Based on the complete `git diff HEAD`, list all changes by file. Deleted/added files are described separately.
 
 ---
 
-## 一、后端
+## I. Backend
 
 ### 1. `backend/CLAUDE.md`
 
@@ -16,10 +16,10 @@
 -| **Artifacts** (`/api/threads/{id}/artifacts`) | `GET /{path}` - serve artifacts; `?download=true` for download with citation removal |
 +| **Artifacts** (`/api/threads/{id}/artifacts`) | `GET /{path}` - serve artifacts; `?download=true` for file download |
 
- Proxied through nginx: `/api/langgraph/*` → LangGraph, all other `/api/*` → Gateway.
+ Proxied through nginx: `/api/langgraph/*` -> LangGraph, all other `/api/*` -> Gateway.
 ```
 
-- **第 159 行**：表格中 Artifacts 描述由「download with citation removal」改为「file download」。
+- **Line 159**: In the table, the Artifacts description changed from "download with citation removal" to "file download".
 
 ---
 
@@ -29,7 +29,7 @@
 @@ -240,34 +240,8 @@ You have access to skills that provide optimized workflows for specific tasks. E
  - Action-Oriented: Focus on delivering results, not explaining processes
  </response_style>
- 
+
 -<citations_format>
 -After web_search, ALWAYS include citations in your output:
 -
@@ -72,7 +72,7 @@
      )
 ```
 
-- **删除**：`<citations_format>...</citations_format>` 整段（原约 243–266 行）、critical_reminders 中「Web search citations」一条、`apply_prompt_template` 中「Citations when synthesizing」一行。
+- **Deleted**: Entire `<citations_format>...</citations_format>` block (approx lines 243-266), the "Web search citations" item in `critical_reminders`, and the "Citations when synthesizing" line in `apply_prompt_template`.
 
 ---
 
@@ -86,24 +86,24 @@
  import zipfile
  from pathlib import Path
  from urllib.parse import quote
- 
+
 -from fastapi import APIRouter, HTTPException, Request, Response
 -from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 +from fastapi import APIRouter, HTTPException, Request
 +from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
- 
+
  from src.gateway.path_utils import resolve_thread_virtual_path
 ```
 
-- **第 1 行**：删除 `import json`。
-- **第 3 行**：删除 `import re`。
-- **第 6–7 行**：`fastapi` 中去掉 `Response`；`fastapi.responses` 中增加 `Response`（保留二进制 inline 返回用）。
+- **Line 1**: removed `import json`.
+- **Line 3**: removed `import re`.
+- **Lines 6-7**: removed `Response` from `fastapi`; added `Response` to `fastapi.responses` (kept for binary inline responses).
 
 ```diff
 @@ -24,40 +22,6 @@ def is_text_file_by_content(path: Path, sample_size: int = 8192) -> bool:
          return False
- 
- 
+
+
 -def _extract_citation_urls(content: str) -> set[str]:
 -    """Extract URLs from <citations> JSONL blocks. Format must match frontend core/citations/utils.ts."""
 -    urls: set[str] = set()
@@ -141,17 +141,17 @@
  def _extract_file_from_skill_archive(zip_path: Path, internal_path: str) -> bytes | None:
 ```
 
-- **删除**：`_extract_citation_urls`、`remove_citations_block` 两个函数（约 25–62 行）。
+- **Deleted**: `_extract_citation_urls` and `remove_citations_block` (approx lines 25-62).
 
 ```diff
 @@ -172,24 +136,9 @@ async def get_artifact(thread_id: str, path: str, request: Request) -> FileRespo
- 
+
      # Encode filename for Content-Disposition header (RFC 5987)
      encoded_filename = quote(actual_path.name)
--    
+-
 -    # Check if this is a markdown file that might contain citations
 -    is_markdown = mime_type == "text/markdown" or actual_path.suffix.lower() in [".md", ".markdown"]
--    
+-
 +
      # if `download` query parameter is true, return the file as a download
      if request.query_params.get("download"):
@@ -168,11 +168,11 @@
 -                }
 -            )
          return FileResponse(path=actual_path, filename=actual_path.name, media_type=mime_type, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"})
- 
+
      if mime_type and mime_type == "text/html":
 ```
 
-- **删除**：`is_markdown` 判断及「markdown 时读文件 + remove_citations_block + Response」分支；download 时统一走 `FileResponse`。
+- **Deleted**: `is_markdown` check and the "for markdown, read file + remove_citations_block + Response" branch; downloads now always use `FileResponse`.
 
 ---
 
@@ -182,7 +182,7 @@
 @@ -24,21 +24,10 @@ Do NOT use for simple, single-step operations.""",
  - Do NOT ask for clarification - work with the information provided
  </guidelines>
- 
+
 -<citations_format>
 -If you used web_search (or similar) and cite sources, ALWAYS include citations in your output:
 -1. Start with a `<citations>` block in JSONL format listing all sources (one JSON object per line)
@@ -204,12 +204,12 @@
  </output_format>
 ```
 
-- **删除**：`<citations_format>...</citations_format>` 整段。
-- **第 40 行**：第 2 条由「Key findings or results (with citation links when from web search)」改为「Key findings or results」。
+- **Deleted**: Entire `<citations_format>...</citations_format>` block.
+- **Line 40**: item 2 changed from "Key findings or results (with citation links when from web search)" to "Key findings or results".
 
 ---
 
-## 二、前端文档与工具
+## II. Frontend Docs and Tools
 
 ### 5. `frontend/AGENTS.md`
 
@@ -223,24 +223,24 @@
  │   ├── i18n/               # Internationalization
 ```
 
-- **第 52 行**：删除目录树中的 `citations/` 一行。
+- **Line 52**: removed the `citations/` line from the directory tree.
 
 ---
 
 ### 6. `frontend/CLAUDE.md`
 
 ```diff
-@@ -30,7 +30,7 @@ Frontend (Next.js) ──▶ LangGraph SDK ──▶ LangGraph Backend (lead_age
+@@ -30,7 +30,7 @@ Frontend (Next.js) --> LangGraph SDK --> LangGraph Backend (lead_age
                                                └── Tools & Skills
  ```
- 
+
 -The frontend is a stateful chat application. Users create **threads** (conversations), send messages, and receive streamed AI responses. The backend orchestrates agents that can produce **artifacts** (files/code), **todos**, and **citations**.
 +The frontend is a stateful chat application. Users create **threads** (conversations), send messages, and receive streamed AI responses. The backend orchestrates agents that can produce **artifacts** (files/code) and **todos**.
- 
+
  ### Source Layout (`src/`)
 ```
 
-- **第 33 行**：「and **citations**」删除。
+- **Line 33**: removed "and **citations**".
 
 ---
 
@@ -256,7 +256,7 @@
  │   ├── i18n/               # Internationalization
 ```
 
-- **第 92 行**：删除目录树中的 `citations/` 一行。
+- **Line 92**: removed the `citations/` line from the directory tree.
 
 ---
 
@@ -272,11 +272,11 @@
  export const externalLinkClassNoUnderline = "text-primary hover:underline";
 ```
 
-- **第 11 行**：仅注释修改，导出值未变。
+- **Line 11**: comment-only update; exported value unchanged.
 
 ---
 
-## 三、前端组件
+## III. Frontend Components
 
 ### 9. `frontend/src/components/workspace/artifacts/artifact-file-detail.tsx`
 
@@ -308,9 +308,9 @@
  import { useI18n } from "@/core/i18n/hooks";
  ...
 @@ -48,9 +40,6 @@ import { cn } from "@/lib/utils";
- 
+
  import { Tooltip } from "../tooltip";
- 
+
 -import { SafeCitationContent } from "../messages/safe-citation-content";
 -import { useThread } from "../messages/context";
 -
@@ -328,7 +328,7 @@
      filepath: filepathFromProps,
      enabled: isCodeFile && !isWriteFile,
    });
- 
+
 -  const parsed = useParsedCitations(
 -    language === "markdown" ? (content ?? "") : "",
 -  );
@@ -339,7 +339,7 @@
 -      ? contentWithoutCitationsFromParsed(parsed)
 -      : (content ?? "");
 +  const displayContent = content ?? "";
- 
+
    const [viewMode, setViewMode] = useState<"code" | "preview">("code");
 ```
 
@@ -371,12 +371,13 @@
 -                  citationMap={p.citationMap}
 -                />
 -              )}
+-            />
 +            <ArtifactFilePreview
 +              filepath={filepath}
 +              threadId={threadId}
 +              content={displayContent}
 +              language={language ?? "text"}
-             />
++            />
            )}
          {isCodeFile && viewMode === "code" && (
            <CodeEditor
@@ -423,8 +424,8 @@
      );
 ```
 
-- 删除：React 命名空间、inline-citation、core/citations、SafeCitationContent、useThread；parsed/cleanContent/contentWithoutCitations 及引用解析逻辑。
-- 新增：`displayContent = content ?? ""`；预览与复制、CodeEditor 均使用 `displayContent`；`ArtifactFilePreview` 仅保留 `content`/`language` 等，去掉 `cleanContent`/`citationMap` 与 `createCitationMarkdownComponents`。
+- Removed React namespace, inline-citation, core/citations, SafeCitationContent, useThread; removed parsed/cleanContent/contentWithoutCitations and citation parsing logic.
+- Added `displayContent = content ?? ""`; preview, copy, and CodeEditor now use `displayContent`; `ArtifactFilePreview` keeps only `content`/`language`, removing `cleanContent`/`citationMap` and `createCitationMarkdownComponents`.
 
 ---
 
@@ -434,12 +435,12 @@
 @@ -39,9 +39,7 @@ import { useArtifacts } from "../artifacts";
  import { FlipDisplay } from "../flip-display";
  import { Tooltip } from "../tooltip";
- 
+
 -import { useThread } from "./context";
 -
 -import { SafeCitationContent } from "./safe-citation-content";
 +import { MarkdownContent } from "./markdown-content";
- 
+
  export function MessageGroup({
 ```
 
@@ -505,7 +506,7 @@
 -  const threadIsLoading = thread.isLoading;
 -
 -  const fileContent = typeof args.content === "string" ? args.content : "";
- 
+
    if (name === "web_search") {
 ```
 
@@ -513,7 +514,7 @@
 @@ -364,42 +350,27 @@ function ToolCall({
        }, 100);
      }
- 
+
 -    const isMarkdown =
 -      path?.toLowerCase().endsWith(".md") ||
 -      path?.toLowerCase().endsWith(".markdown");
@@ -548,6 +549,8 @@
 -            loadingOnly
 -            className="mt-2 ml-8"
 -          />
+-        )}
+-      </>
 +      <ChainOfThoughtStep
 +        key={id}
 +        className="cursor-pointer"
@@ -566,14 +569,13 @@
 +          <ChainOfThoughtSearchResult className="cursor-pointer">
 +            {path}
 +          </ChainOfThoughtSearchResult>
-         )}
--      </>
++        )}
 +      </ChainOfThoughtStep>
      );
    } else if (name === "bash") {
 ```
 
-- 两处 `SafeCitationContent` → `MarkdownContent`；ToolCall 去掉 `rehypePlugins` 及内部 `useThread`/`fileContent`；write_file 分支去掉 markdown 预览块（`isMarkdown` + `SafeCitationContent`），仅保留 `ChainOfThoughtStep` + path。
+- Two occurrences of `SafeCitationContent` -> `MarkdownContent`; ToolCall drops `rehypePlugins` and internal `useThread`/`fileContent`; `write_file` branch removes markdown preview block (`isMarkdown` + `SafeCitationContent`) and keeps only `ChainOfThoughtStep` + path.
 
 ---
 
@@ -590,7 +592,7 @@
    extractReasoningContentFromMessage,
 @@ -24,7 +23,7 @@ import { humanMessagePlugins } from "@/core/streamdown";
  import { cn } from "@/lib/utils";
- 
+
  import { CopyButton } from "../copy-button";
 -import { SafeCitationContent } from "./safe-citation-content";
 +import { MarkdownContent } from "./markdown-content";
@@ -620,7 +622,7 @@
          rehypePlugins={[...rehypePlugins, [rehypeKatex, { output: "html" }]]}
 ```
 
-- 删除 `removeAllCitations` 与 `SafeCitationContent` 引用；复制改为原始内容；渲染改为 `MarkdownContent`。
+- Removed `removeAllCitations` and `SafeCitationContent` imports; copy now uses raw content; rendering now uses `MarkdownContent`.
 
 ---
 
@@ -628,7 +630,7 @@
 
 ```diff
 @@ -26,7 +26,7 @@ import { StreamingIndicator } from "../streaming-indicator";
- 
+
  import { MessageGroup } from "./message-group";
  import { MessageListItem } from "./message-list-item";
 -import { SafeCitationContent } from "./safe-citation-content";
@@ -655,7 +657,7 @@
                      rehypePlugins={rehypePlugins}
 ```
 
-- 三处：import 与两处渲染均由 `SafeCitationContent` 改为 `MarkdownContent`，props 不变。
+- Three places: import and two renders changed from `SafeCitationContent` to `MarkdownContent`, props unchanged.
 
 ---
 
@@ -663,9 +665,9 @@
 
 ```diff
 @@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
- 
+
  import { FlipDisplay } from "../flip-display";
- 
+
 -import { SafeCitationContent } from "./safe-citation-content";
 +import { MarkdownContent } from "./markdown-content";
  ...
@@ -680,13 +682,13 @@
                        rehypePlugins={rehypePlugins}
 ```
 
-- import 与一处渲染：`SafeCitationContent` → `MarkdownContent`。
+- Import and one render: `SafeCitationContent` -> `MarkdownContent`.
 
 ---
 
-### 14. 新增 `frontend/src/components/workspace/messages/markdown-content.tsx`
+### 14. Added `frontend/src/components/workspace/messages/markdown-content.tsx`
 
-（当前工作区新增，未在 git 中）
+(current workspace addition, not in git)
 
 ```ts
 "use client";
@@ -733,39 +735,39 @@ export function MarkdownContent({
 }
 ```
 
-- 纯 Markdown 渲染组件，无引用解析或 loading 占位逻辑。
+- Pure Markdown rendering component, no citation parsing or loading placeholder logic.
 
 ---
 
-### 15. 删除 `frontend/src/components/workspace/messages/safe-citation-content.tsx`
+### 15. Removed `frontend/src/components/workspace/messages/safe-citation-content.tsx`
 
-- 原约 85 行；提供引用解析、loading、renderBody/loadingOnly、cleanContent/citationMap。已由 `MarkdownContent` 替代，整文件删除。
-
----
-
-### 16. 删除 `frontend/src/components/ai-elements/inline-citation.tsx`
-
-- 原约 289 行；提供 `createCitationMarkdownComponents` 等，用于将 `[cite-N]`/URL 渲染为可点击引用。仅被 artifact 预览使用，已移除后整文件删除。
+- Previously about 85 lines; handled citation parsing, loading, renderBody/loadingOnly, cleanContent/citationMap. Replaced by `MarkdownContent`, file deleted.
 
 ---
 
-## 四、前端 core
+### 16. Removed `frontend/src/components/ai-elements/inline-citation.tsx`
 
-### 17. 删除 `frontend/src/core/citations/index.ts`
-
-- 原 13 行，导出：`contentWithoutCitationsFromParsed`、`extractDomainFromUrl`、`isExternalUrl`、`parseCitations`、`removeAllCitations`、`shouldShowCitationLoading`、`syntheticCitationFromLink`、`useParsedCitations`、类型 `Citation`/`ParseCitationsResult`/`UseParsedCitationsResult`。整文件删除。
+- Previously about 289 lines; provided `createCitationMarkdownComponents`, used to render `[cite-N]`/URL as clickable citations. Used only by artifact preview and removed, file deleted.
 
 ---
 
-### 18. 删除 `frontend/src/core/citations/use-parsed-citations.ts`
+## IV. Frontend Core
 
-- 原 28 行，`useParsedCitations(content)` 与 `UseParsedCitationsResult`。整文件删除。
+### 17. Removed `frontend/src/core/citations/index.ts`
+
+- Previously 13 lines exporting `contentWithoutCitationsFromParsed`, `extractDomainFromUrl`, `isExternalUrl`, `parseCitations`, `removeAllCitations`, `shouldShowCitationLoading`, `syntheticCitationFromLink`, `useParsedCitations`, and types `Citation`/`ParseCitationsResult`/`UseParsedCitationsResult`. File deleted.
 
 ---
 
-### 19. 删除 `frontend/src/core/citations/utils.ts`
+### 18. Removed `frontend/src/core/citations/use-parsed-citations.ts`
 
-- 原 226 行，解析 `<citations>`/`[cite-N]`、buildCitationMap、removeAllCitations、contentWithoutCitationsFromParsed 等。整文件删除。
+- Previously 28 lines; `useParsedCitations(content)` and `UseParsedCitationsResult`. File deleted.
+
+---
+
+### 19. Removed `frontend/src/core/citations/utils.ts`
+
+- Previously 226 lines; parsed `<citations>`/`[cite-N]`, buildCitationMap, removeAllCitations, contentWithoutCitationsFromParsed, etc. File deleted.
 
 ---
 
@@ -775,7 +777,7 @@ export function MarkdownContent({
 @@ -115,12 +115,6 @@ export interface Translations {
      startConversation: string;
    };
- 
+
 -  // Citations
 -  citations: {
 -    loadingCitations: string;
@@ -786,7 +788,7 @@ export function MarkdownContent({
    chats: {
 ```
 
-- 删除 `Translations.citations` 及其两个字段。
+- Removed `Translations.citations` and its two fields.
 
 ---
 
@@ -794,20 +796,20 @@ export function MarkdownContent({
 
 ```diff
 @@ -164,12 +164,6 @@ export const zhCN: Translations = {
-     startConversation: "开始新的对话以查看消息",
+     startConversation: "Start a new conversation to see messages here",
    },
- 
+
 -  // Citations
 -  citations: {
--    loadingCitations: "正在整理引用...",
--    loadingCitationsWithCount: (count: number) => `正在整理 ${count} 个引用...`,
+-    loadingCitations: "Organizing citations...",
+-    loadingCitationsWithCount: (count: number) => `Organizing ${count} citations...`,
 -  },
 -
    // Chats
    chats: {
 ```
 
-- 删除 `citations` 命名空间。
+- Removed the `citations` namespace.
 
 ---
 
@@ -817,7 +819,7 @@ export function MarkdownContent({
 @@ -167,13 +167,6 @@ export const enUS: Translations = {
      startConversation: "Start a conversation to see messages here",
    },
- 
+
 -  // Citations
 -  citations: {
 -    loadingCitations: "Organizing citations...",
@@ -829,11 +831,11 @@ export function MarkdownContent({
    chats: {
 ```
 
-- 删除 `citations` 命名空间。
+- Removed the `citations` namespace.
 
 ---
 
-## 五、技能与 Demo
+## V. Skills and Demo
 
 ### 23. `skills/public/github-deep-research/SKILL.md`
 
@@ -847,7 +849,7 @@ export function MarkdownContent({
  7. **Update as you go** - Don't wait until end to synthesize
 ```
 
-- 第 150 行：一条措辞修改。
+- Line 150: wording change.
 
 ---
 
@@ -855,8 +857,8 @@ export function MarkdownContent({
 
 ```diff
 @@ -15,7 +15,7 @@ This skill generates professional, consulting-grade market analysis reports in M
- - Follow the **"Visual Anchor → Data Contrast → Integrated Analysis"** flow per sub-chapter
- - Produce insights following the **"Data → User Psychology → Strategy Implication"** chain
+ - Follow the **"Visual Anchor -> Data Contrast -> Integrated Analysis"** flow per sub-chapter
+ - Produce insights following the **"Data -> User Psychology -> Strategy Implication"** chain
  - Embed pre-generated charts and construct comparison tables
 -- Generate inline citations formatted per **GB/T 7714-2015** standards
 +- Include references formatted per **GB/T 7714-2015** where applicable
@@ -869,17 +871,17 @@ export function MarkdownContent({
 -| **External Search Findings** | URLs and summaries for inline citations | Optional |
 +| **External Search Findings** | URLs and summaries for inline references | Optional |
  ...
-@@ -87,7 +87,7 @@ The report **MUST NOT** stop after the Conclusion — it **MUST** include Refere
- - **Tone**: McKinsey/BCG — Authoritative, Objective, Professional
+@@ -87,7 +87,7 @@ The report **MUST NOT** stop after the Conclusion - it **MUST** include Refere
+ - **Tone**: McKinsey/BCG - Authoritative, Objective, Professional
  - **Language**: All headings and content strictly in **Chinese**
- - **Number Formatting**: Use English commas for thousands separators (`1,000` not `1，000`)
+ - **Number Formatting**: Use English commas for thousands separators (`1,000` not `1.000`)
 -- **Data Citation**: **Bold** important viewpoints and key numbers
 +- **Data emphasis**: **Bold** important viewpoints and key numbers
  ...
-@@ -109,11 +109,9 @@ Every insight must connect **Data → User Psychology → Strategy Implication**
+@@ -109,11 +109,9 @@ Every insight must connect **Data -> User Psychology -> Strategy Implication**
     treating male audiences only as a secondary gift-giving segment."
  ```
- 
+
 -### Citations & References
 -- **Inline**: Use `[\[Index\]](URL)` format (e.g., `[\[1\]](https://example.com)`)
 -- **Placement**: Append citations at the end of sentences using information from External Search Findings
@@ -898,7 +900,7 @@ export function MarkdownContent({
  - [ ] References section follows GB/T 7714-2015
 ```
 
-- 多处：核心能力、输入表、Data Citation、Citations & References 小节与检查项，改为「references / 引用」表述并去掉 `[\[N\]](URL)` 格式要求。
+- Multiple places: core capabilities, input table, Data Citation, Citations & References section, and checklist updated to "references" wording and removed the `[\[N\]](URL)` format requirement.
 
 ---
 
@@ -908,32 +910,32 @@ export function MarkdownContent({
 @@ -1,12 +1,3 @@
 -<citations>
 -{"id": "cite-1", "title": "DeerFlow GitHub Repository", "url": "https://github.com/bytedance/deer-flow", "snippet": "..."}
--...（共 7 条 JSONL）
+-...(7 JSONL entries total)
 -</citations>
  # DeerFlow Deep Research Report
- 
+
  - **Research Date:** 2026-02-01
 ```
 
-- 删除文件开头的 `<citations>...</citations>` 整块（9 行），正文从 `# DeerFlow Deep Research Report` 开始。
+- Deleted the `<citations>...</citations>` block at the start (9 lines), content now starts at `# DeerFlow Deep Research Report`.
 
 ---
 
 ### 26. `frontend/public/demo/threads/.../thread.json`
 
-- **主要变更**：某条 `write_file` 的 `args.content` 中，将原来的「`<citations>...\n</citations>\n# DeerFlow Deep Research Report\n\n...`」改为「`# DeerFlow Deep Research Report\n\n...`」，即去掉 `<citations>...</citations>` 块，保留其后全文。
-- **其他**：一处 `present_files` 的 `filepaths` 由单行数组改为多行格式；文件末尾增加/统一换行。
-- 消息顺序、结构及其他字段未改。
+- **Main change**: In a `write_file`'s `args.content`, the original `"<citations>...\n</citations>\n# DeerFlow Deep Research Report\n\n..."` became `"# DeerFlow Deep Research Report\n\n..."`, i.e. remove the `<citations>...</citations>` block while keeping the rest.
+- **Other**: One `present_files` `filepaths` changed from a single-line array to multiline format; file ending added/normalized newline.
+- Message order, structure, and other fields unchanged.
 
 ---
 
-## 六、统计
+## VI. Statistics
 
-| 项目 | 数量 |
+| Item | Count |
 |------|------|
-| 修改文件 | 18 |
-| 新增文件 | 1（markdown-content.tsx） |
-| 删除文件 | 5（safe-citation-content.tsx, inline-citation.tsx, core/citations/* 共 3 个） |
-| 总行数变化 | +62 / -894（diff stat） |
+| Modified files | 18 |
+| Added files | 1 (`markdown-content.tsx`) |
+| Deleted files | 5 (`safe-citation-content.tsx`, `inline-citation.tsx`, `core/citations/*` total 3) |
+| Total line changes | +62 / -894 (diff stat) |
 
-以上为按文件、细到每一行 diff 的代码更改总结。
+That is the file-by-file, line-level code change summary.

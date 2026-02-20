@@ -1,102 +1,99 @@
-# 文件路径使用示例
+# File Path Usage Examples
 
-## 三种路径类型
+## Three Path Types
 
-Thinktank.ai 的文件上传系统返回三种不同的路径，每种路径用于不同的场景：
+Thinktank.ai's file upload system returns three different paths. Each path is used for a different scenario.
 
-### 1. 实际文件系统路径 (path)
+### 1. Physical filesystem path (`path`)
 
 ```
 .think-tank/threads/{thread_id}/user-data/uploads/document.pdf
 ```
 
-**用途：**
-- 文件在服务器文件系统中的实际位置
-- 相对于 `backend/` 目录
-- 用于直接文件系统访问、备份、调试等
+**Purpose:**
+- Actual file location on the server filesystem
+- Relative to the `backend/` directory
+- Used for direct filesystem access, backups, debugging, etc.
 
-**示例：**
+**Example:**
 ```python
-# Python 代码中直接访问
+# Direct access in Python code
 from pathlib import Path
 file_path = Path("backend/.think-tank/threads/abc123/user-data/uploads/document.pdf")
 content = file_path.read_bytes()
 ```
 
-### 2. 虚拟路径 (virtual_path)
+### 2. Virtual path (`virtual_path`)
 
 ```
 /mnt/user-data/uploads/document.pdf
 ```
 
-**用途：**
-- Agent 在沙箱环境中使用的路径
-- 沙箱系统会自动映射到实际路径
-- Agent 的所有文件操作工具都使用这个路径
+**Purpose:**
+- Path used by the Agent inside the sandbox environment
+- Sandbox automatically maps to the physical path
+- All Agent file operation tools use this path
 
-**示例：**
-Agent 在对话中使用：
+**Example:**
+Agent usage in conversation:
 ```python
-# Agent 使用 read_file 工具
+# Agent uses read_file tool
 read_file(path="/mnt/user-data/uploads/document.pdf")
 
-# Agent 使用 bash 工具
+# Agent uses bash tool
 bash(command="cat /mnt/user-data/uploads/document.pdf")
 ```
 
-### 3. HTTP 访问 URL (artifact_url)
+### 3. HTTP access URL (`artifact_url`)
 
 ```
 /api/threads/{thread_id}/artifacts/mnt/user-data/uploads/document.pdf
 ```
 
-**用途：**
-- 前端通过 HTTP 访问文件
-- 用于下载、预览文件
-- 可以直接在浏览器中打开
+**Purpose:**
+- Frontend accesses files over HTTP
+- Used for downloading and previewing files
+- Can be opened directly in a browser
 
-**示例：**
+**Example:**
 ```typescript
-// 前端 TypeScript/JavaScript 代码
-const threadId = 'abc123';
-const filename = 'document.pdf';
+// Frontend TypeScript/JavaScript code
+const threadId = "abc123";
+const filename = "document.pdf";
 
-// 下载文件
+// Download file
 const downloadUrl = `/api/threads/${threadId}/artifacts/mnt/user-data/uploads/${filename}?download=true`;
 window.open(downloadUrl);
 
-// 在新窗口预览
+// Preview in a new window
 const viewUrl = `/api/threads/${threadId}/artifacts/mnt/user-data/uploads/${filename}`;
-window.open(viewUrl, '_blank');
+window.open(viewUrl, "_blank");
 
-// 使用 fetch API 获取
+// Fetch via API
 const response = await fetch(viewUrl);
 const blob = await response.blob();
 ```
 
-## 完整使用流程示例
+## End-to-End Flow Example
 
-### 场景：前端上传文件并让 Agent 处理
+### Scenario: Frontend uploads a file and asks the Agent to process it
 
 ```typescript
-// 1. 前端上传文件
+// 1. Frontend uploads a file
 async function uploadAndProcess(threadId: string, file: File) {
-  // 上传文件
+  // Upload file
   const formData = new FormData();
-  formData.append('files', file);
+  formData.append("files", file);
 
-  const uploadResponse = await fetch(
-    `/api/threads/${threadId}/uploads`,
-    {
-      method: 'POST',
-      body: formData
-    }
-  );
+  const uploadResponse = await fetch(`/api/threads/${threadId}/uploads`, {
+    method: "POST",
+    body: formData,
+  });
 
   const uploadData = await uploadResponse.json();
   const fileInfo = uploadData.files[0];
 
-  console.log('文件信息：', fileInfo);
+  console.log("File info:", fileInfo);
   // {
   //   filename: "report.pdf",
   //   path: ".think-tank/threads/abc123/user-data/uploads/report.pdf",
@@ -108,71 +105,71 @@ async function uploadAndProcess(threadId: string, file: File) {
   //   markdown_artifact_url: "/api/threads/abc123/artifacts/mnt/user-data/uploads/report.md"
   // }
 
-  // 2. 发送消息给 Agent
-  await sendMessage(threadId, "请分析刚上传的 PDF 文件");
+  // 2. Send a message to the Agent
+  await sendMessage(threadId, "Please analyze the PDF I just uploaded.");
 
-  // Agent 会自动看到文件列表，包含：
-  // - report.pdf (虚拟路径: /mnt/user-data/uploads/report.pdf)
-  // - report.md (虚拟路径: /mnt/user-data/uploads/report.md)
+  // The Agent will automatically see the file list, including:
+  // - report.pdf (virtual path: /mnt/user-data/uploads/report.pdf)
+  // - report.md (virtual path: /mnt/user-data/uploads/report.md)
 
-  // 3. 前端可以直接访问转换后的 Markdown
+  // 3. Frontend can directly access the converted Markdown
   const mdResponse = await fetch(fileInfo.markdown_artifact_url);
   const markdownContent = await mdResponse.text();
-  console.log('Markdown 内容：', markdownContent);
+  console.log("Markdown content:", markdownContent);
 
-  // 4. 或者下载原始 PDF
-  const downloadLink = document.createElement('a');
-  downloadLink.href = fileInfo.artifact_url + '?download=true';
+  // 4. Or download the original PDF
+  const downloadLink = document.createElement("a");
+  downloadLink.href = fileInfo.artifact_url + "?download=true";
   downloadLink.download = fileInfo.filename;
   downloadLink.click();
 }
 ```
 
-## 路径转换表
+## Path Mapping Table
 
-| 场景 | 使用的路径类型 | 示例 |
-|------|---------------|------|
-| 服务器后端代码直接访问 | `path` | `.think-tank/threads/abc123/user-data/uploads/file.pdf` |
-| Agent 工具调用 | `virtual_path` | `/mnt/user-data/uploads/file.pdf` |
-| 前端下载/预览 | `artifact_url` | `/api/threads/abc123/artifacts/mnt/user-data/uploads/file.pdf` |
-| 备份脚本 | `path` | `.think-tank/threads/abc123/user-data/uploads/file.pdf` |
-| 日志记录 | `path` | `.think-tank/threads/abc123/user-data/uploads/file.pdf` |
+| Scenario | Path type | Example |
+|----------|-----------|---------|
+| Backend server code access | `path` | `.think-tank/threads/abc123/user-data/uploads/file.pdf` |
+| Agent tool call | `virtual_path` | `/mnt/user-data/uploads/file.pdf` |
+| Frontend download/preview | `artifact_url` | `/api/threads/abc123/artifacts/mnt/user-data/uploads/file.pdf` |
+| Backup script | `path` | `.think-tank/threads/abc123/user-data/uploads/file.pdf` |
+| Logging | `path` | `.think-tank/threads/abc123/user-data/uploads/file.pdf` |
 
-## 代码示例集合
+## Code Examples
 
-### Python - 后端处理
+### Python - backend processing
 
 ```python
 from pathlib import Path
 from src.agents.middlewares.thread_data_middleware import THREAD_DATA_BASE_DIR
 
 def process_uploaded_file(thread_id: str, filename: str):
-    # 使用实际路径
+    # Use the physical path
     base_dir = Path.cwd() / THREAD_DATA_BASE_DIR / thread_id / "user-data" / "uploads"
     file_path = base_dir / filename
 
-    # 直接读取
-    with open(file_path, 'rb') as f:
+    # Read directly
+    with open(file_path, "rb") as f:
         content = f.read()
 
     return content
 ```
 
-### JavaScript - 前端访问
+### JavaScript - frontend access
 
 ```javascript
-// 列出已上传的文件
+// List uploaded files
 async function listUploadedFiles(threadId) {
   const response = await fetch(`/api/threads/${threadId}/uploads/list`);
   const data = await response.json();
 
-  // 为每个文件创建下载链接
-  data.files.forEach(file => {
-    console.log(`文件: ${file.filename}`);
-    console.log(`下载: ${file.artifact_url}?download=true`);
-    console.log(`预览: ${file.artifact_url}`);
+  // Create download links for each file
+  data.files.forEach((file) => {
+    console.log(`File: ${file.filename}`);
+    console.log(`Download: ${file.artifact_url}?download=true`);
+    console.log(`Preview: ${file.artifact_url}`);
 
-    // 如果是文档，还有 Markdown 版本
+    // If it's a document, there is also a Markdown version
     if (file.markdown_artifact_url) {
       console.log(`Markdown: ${file.markdown_artifact_url}`);
     }
@@ -181,20 +178,19 @@ async function listUploadedFiles(threadId) {
   return data.files;
 }
 
-// 删除文件
+// Delete file
 async function deleteFile(threadId, filename) {
-  const response = await fetch(
-    `/api/threads/${threadId}/uploads/${filename}`,
-    { method: 'DELETE' }
-  );
+  const response = await fetch(`/api/threads/${threadId}/uploads/${filename}`, {
+    method: "DELETE",
+  });
   return response.json();
 }
 ```
 
-### React 组件示例
+### React component example
 
 ```tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 interface UploadedFile {
   filename: string;
@@ -225,23 +221,23 @@ function FileUploadList({ threadId }: { threadId: string }) {
     if (!fileList) return;
 
     const formData = new FormData();
-    Array.from(fileList).forEach(file => {
-      formData.append('files', file);
+    Array.from(fileList).forEach((file) => {
+      formData.append("files", file);
     });
 
     await fetch(`/api/threads/${threadId}/uploads`, {
-      method: 'POST',
-      body: formData
+      method: "POST",
+      body: formData,
     });
 
-    fetchFiles(); // 刷新列表
+    fetchFiles(); // Refresh list
   }
 
   async function handleDelete(filename: string) {
     await fetch(`/api/threads/${threadId}/uploads/${filename}`, {
-      method: 'DELETE'
+      method: "DELETE",
     });
-    fetchFiles(); // 刷新列表
+    fetchFiles(); // Refresh list
   }
 
   return (
@@ -249,15 +245,15 @@ function FileUploadList({ threadId }: { threadId: string }) {
       <input type="file" multiple onChange={handleUpload} />
 
       <ul>
-        {files.map(file => (
+        {files.map((file) => (
           <li key={file.filename}>
             <span>{file.filename}</span>
-            <a href={file.artifact_url} target="_blank">预览</a>
-            <a href={`${file.artifact_url}?download=true`}>下载</a>
+            <a href={file.artifact_url} target="_blank">Preview</a>
+            <a href={`${file.artifact_url}?download=true`}>Download</a>
             {file.markdown_artifact_url && (
               <a href={file.markdown_artifact_url} target="_blank">Markdown</a>
             )}
-            <button onClick={() => handleDelete(file.filename)}>删除</button>
+            <button onClick={() => handleDelete(file.filename)}>Delete</button>
           </li>
         ))}
       </ul>
@@ -266,24 +262,24 @@ function FileUploadList({ threadId }: { threadId: string }) {
 }
 ```
 
-## 注意事项
+## Notes
 
-1. **路径安全性**
-   - 实际路径（`path`）包含线程 ID，确保隔离
-   - API 会验证路径，防止目录遍历攻击
-   - 前端不应直接使用 `path`，而应使用 `artifact_url`
+1. **Path safety**
+   - Physical paths (`path`) include the thread ID to ensure isolation
+   - API validates paths to prevent directory traversal attacks
+   - Frontend should not use `path` directly; use `artifact_url`
 
-2. **Agent 使用**
-   - Agent 只能看到和使用 `virtual_path`
-   - 沙箱系统自动映射到实际路径
-   - Agent 不需要知道实际的文件系统结构
+2. **Agent usage**
+   - The Agent only sees and uses `virtual_path`
+   - Sandbox maps virtual paths to physical paths automatically
+   - The Agent does not need to know the actual filesystem layout
 
-3. **前端集成**
-   - 始终使用 `artifact_url` 访问文件
-   - 不要尝试直接访问文件系统路径
-   - 使用 `?download=true` 参数强制下载
+3. **Frontend integration**
+   - Always use `artifact_url` to access files
+   - Do not attempt direct filesystem access
+   - Use `?download=true` to force download
 
-4. **Markdown 转换**
-   - 转换成功时，会返回额外的 `markdown_*` 字段
-   - 建议优先使用 Markdown 版本（更易处理）
-   - 原始文件始终保留
+4. **Markdown conversion**
+   - On successful conversion, extra `markdown_*` fields are returned
+   - Prefer the Markdown version when possible (easier to process)
+   - Original files are always preserved

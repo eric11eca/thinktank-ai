@@ -1,60 +1,60 @@
-# 技能名称冲突修复 - 代码改动文档
+# Skill Name Conflict Fix - Code Change Document
 
-## 概述
+## Overview
 
-本文档详细记录了修复 public skill 和 custom skill 同名冲突问题的所有代码改动。
+This document records all code changes to fix conflicts when public skills and custom skills share the same name.
 
-**状态**: ⚠️ **已知问题保留** - 同名技能冲突问题已识别但暂时保留，后续版本修复
+**Status**: Warning - known issue remains; the same-name skill conflict is identified but temporarily left for a later release
 
-**日期**: 2026-02-10
-
----
-
-## 问题描述
-
-### 原始问题
-
-当 public skill 和 custom skill 有相同名称（但技能文件内容不同）时，会出现以下问题：
-
-1. **打开冲突**: 打开 public skill 时，同名的 custom skill 也会被打开
-2. **关闭冲突**: 关闭 public skill 时，同名的 custom skill 也会被关闭
-3. **配置冲突**: 两个技能共享同一个配置键，导致状态互相影响
-
-### 根本原因
-
-- 配置文件中技能状态仅使用 `skill_name` 作为键
-- 同名但不同类别的技能无法区分
-- 缺少类别级别的重复检查
+**Date**: 2026-02-10
 
 ---
 
-## 解决方案
+## Problem Description
 
-### 核心思路
+### Original Issue
 
-1. **组合键存储**: 使用 `{category}:{name}` 格式作为配置键，确保唯一性
-2. **向后兼容**: 保持对旧格式（仅 `name`）的支持
-3. **重复检查**: 在加载时检查每个类别内是否有重复的技能名称
-4. **API 增强**: API 支持可选的 `category` 查询参数来区分同名技能
+When a public skill and a custom skill have the same name (but different skill file contents), the following issues occur:
 
-### 设计原则
+1. **Open conflict**: Opening a public skill also opens the custom skill with the same name
+2. **Close conflict**: Closing a public skill also closes the custom skill with the same name
+3. **Config conflict**: Both skills share the same config key, causing their states to affect each other
 
-- ✅ 最小改动原则
-- ✅ 向后兼容
-- ✅ 清晰的错误提示
-- ✅ 代码复用（提取公共函数）
+### Root Cause
+
+- Skill state in config uses only `skill_name` as the key
+- Skills with the same name but different categories cannot be distinguished
+- No per-category duplicate check
 
 ---
 
-## 详细代码改动
+## Solution
 
-### 一、后端配置层 (`backend/src/config/extensions_config.py`)
+### Core Approach
 
-#### 1.1 新增方法: `get_skill_key()`
+1. **Composite key storage**: Use `{category}:{name}` as the config key to ensure uniqueness
+2. **Backward compatibility**: Keep support for the old format (name only)
+3. **Duplicate checks**: Check each category for duplicate skill names during load
+4. **API enhancement**: API supports an optional `category` query parameter to disambiguate same-name skills
 
-**位置**: 第 152-166 行
+### Design Principles
 
-**代码**:
+- Minimal changes
+- Backward compatibility
+- Clear error messages
+- Code reuse (extract shared functions)
+
+---
+
+## Detailed Code Changes
+
+### I. Backend config layer (`backend/src/config/extensions_config.py`)
+
+#### 1.1 New method: `get_skill_key()`
+
+**Location**: Lines 152-166
+
+**Code**:
 ```python
 @staticmethod
 def get_skill_key(skill_name: str, skill_category: str) -> str:
@@ -73,19 +73,19 @@ def get_skill_key(skill_name: str, skill_category: str) -> str:
     return f"{skill_category}:{skill_name}"
 ```
 
-**作用**: 生成组合键，格式为 `{category}:{name}`
+**Purpose**: Generate a composite key in `{category}:{name}` format.
 
-**影响**: 
-- 新增方法，不影响现有代码
-- 被 `is_skill_enabled()` 和 API 路由使用
+**Impact**:
+- New method; does not affect existing code
+- Used by `is_skill_enabled()` and API routes
 
 ---
 
-#### 1.2 修改方法: `is_skill_enabled()`
+#### 1.2 Updated method: `is_skill_enabled()`
 
-**位置**: 第 168-195 行
+**Location**: Lines 168-195
 
-**修改前**:
+**Before**:
 ```python
 def is_skill_enabled(self, skill_name: str, skill_category: str) -> bool:
     skill_config = self.skills.get(skill_name)
@@ -94,7 +94,7 @@ def is_skill_enabled(self, skill_name: str, skill_category: str) -> bool:
     return skill_config.enabled
 ```
 
-**修改后**:
+**After**:
 ```python
 def is_skill_enabled(self, skill_name: str, skill_category: str) -> bool:
     """Check if a skill is enabled.
@@ -126,38 +126,38 @@ def is_skill_enabled(self, skill_name: str, skill_category: str) -> bool:
     return skill_category in ("public", "custom")
 ```
 
-**改动说明**:
-- 优先检查新格式键 `{category}:{name}`
-- 向后兼容：如果新格式不存在，检查旧格式（仅 public 类别）
-- 保持默认行为：未配置时默认启用
+**Change notes**:
+- Prefer the new `{category}:{name}` key
+- Backward compatibility: if new format is missing, check old format (public only)
+- Preserve default behavior: enabled by default when not configured
 
-**影响**:
-- ✅ 向后兼容：旧配置仍可正常工作
-- ✅ 新配置使用组合键，避免冲突
-- ✅ 不影响现有调用方
+**Impact**:
+- Backward compatible: old config still works
+- New config uses composite keys to avoid conflicts
+- Existing callers unaffected
 
 ---
 
-### 二、后端技能加载器 (`backend/src/skills/loader.py`)
+### II. Backend skill loader (`backend/src/skills/loader.py`)
 
-#### 2.1 添加重复检查逻辑
+#### 2.1 Add duplicate check logic
 
-**位置**: 第 54-86 行
+**Location**: Lines 54-86
 
-**修改前**:
+**Before**:
 ```python
 skills = []
 
 # Scan public and custom directories
 for category in ["public", "custom"]:
     category_path = skills_path / category
-    # ... 扫描技能目录 ...
+    # ... scan skills directory ...
     skill = parse_skill_file(skill_file, category=category)
     if skill:
         skills.append(skill)
 ```
 
-**修改后**:
+**After**:
 ```python
 skills = []
 category_skill_names = {}  # Track skill names per category to detect duplicates
@@ -174,7 +174,7 @@ for category in ["public", "custom"]:
 
     # Each subdirectory is a potential skill
     for skill_dir in category_path.iterdir():
-        # ... 扫描逻辑 ...
+        # ... scan logic ...
         skill = parse_skill_file(skill_file, category=category)
         if skill:
             # Validate: each category cannot have duplicate skill names
@@ -188,25 +188,25 @@ for category in ["public", "custom"]:
             skills.append(skill)
 ```
 
-**改动说明**:
-- 为每个类别维护技能名称字典
-- 检测到重复时抛出 `ValueError`，包含详细路径信息
-- 确保每个类别内技能名称唯一
+**Change notes**:
+- Maintain a per-category dictionary of skill names
+- Raise `ValueError` on duplicates with detailed path info
+- Ensure unique skill names within each category
 
-**影响**:
-- ✅ 防止配置冲突
-- ✅ 清晰的错误提示
-- ⚠️ 如果存在重复，加载会失败（这是预期行为）
+**Impact**:
+- Prevents config conflicts
+- Clear error messages
+- Loading fails if duplicates exist (expected behavior)
 
 ---
 
-### 三、后端 API 路由 (`backend/src/gateway/routers/skills.py`)
+### III. Backend API routes (`backend/src/gateway/routers/skills.py`)
 
-#### 3.1 新增辅助函数: `_find_skill_by_name()`
+#### 3.1 New helper function: `_find_skill_by_name()`
 
-**位置**: 第 136-173 行
+**Location**: Lines 136-173
 
-**代码**:
+**Code**:
 ```python
 def _find_skill_by_name(
     skills: list[Skill], skill_name: str, category: str | None = None
@@ -248,22 +248,22 @@ def _find_skill_by_name(
     return matching_skills[0]
 ```
 
-**作用**: 
-- 统一技能查找逻辑
-- 支持可选的 category 过滤
-- 自动检测同名冲突并提示
+**Purpose**:
+- Unify skill lookup logic
+- Support optional category filtering
+- Auto-detect same-name conflicts and guide users
 
-**影响**:
-- ✅ 减少代码重复（约 30 行）
-- ✅ 统一错误处理逻辑
+**Impact**:
+- Reduces code duplication (about 30 lines)
+- Unified error handling
 
 ---
 
-#### 3.2 修改端点: `GET /api/skills/{skill_name}`
+#### 3.2 Updated endpoint: `GET /api/skills/{skill_name}`
 
-**位置**: 第 196-260 行
+**Location**: Lines 196-260
 
-**修改前**:
+**Before**:
 ```python
 @router.get("/skills/{skill_name}", ...)
 async def get_skill(skill_name: str) -> SkillResponse:
@@ -274,7 +274,7 @@ async def get_skill(skill_name: str) -> SkillResponse:
     return _skill_to_response(skill)
 ```
 
-**修改后**:
+**After**:
 ```python
 @router.get(
     "/skills/{skill_name}",
@@ -299,23 +299,23 @@ async def get_skill(skill_name: str, category: str | None = None) -> SkillRespon
         raise HTTPException(status_code=500, detail=f"Failed to get skill: {str(e)}")
 ```
 
-**改动说明**:
-- 添加可选的 `category` 查询参数
-- 使用 `_find_skill_by_name()` 统一查找逻辑
-- 添加 `ValueError` 处理（重复检查错误）
+**Change notes**:
+- Add optional `category` query parameter
+- Use `_find_skill_by_name()` for unified lookup
+- Add `ValueError` handling (duplicate check errors)
 
-**API 变更**:
-- ✅ 向后兼容：`category` 参数可选
-- ✅ 如果只有一个同名技能，自动匹配
-- ✅ 如果有多个同名技能，要求提供 `category`
+**API changes**:
+- Backward compatible: `category` is optional
+- If only one same-name skill exists, it auto-matches
+- If multiple same-name skills exist, `category` is required
 
 ---
 
-#### 3.3 修改端点: `PUT /api/skills/{skill_name}`
+#### 3.3 Updated endpoint: `PUT /api/skills/{skill_name}`
 
-**位置**: 第 267-388 行
+**Location**: Lines 267-388
 
-**修改前**:
+**Before**:
 ```python
 @router.put("/skills/{skill_name}", ...)
 async def update_skill(skill_name: str, request: SkillUpdateRequest) -> SkillResponse:
@@ -325,10 +325,10 @@ async def update_skill(skill_name: str, request: SkillUpdateRequest) -> SkillRes
         raise HTTPException(status_code=404, detail=f"Skill '{skill_name}' not found")
     
     extensions_config.skills[skill_name] = SkillStateConfig(enabled=request.enabled)
-    # ... 保存配置 ...
+    # ... save config ...
 ```
 
-**修改后**:
+**After**:
 ```python
 @router.put(
     "/skills/{skill_name}",
@@ -345,7 +345,7 @@ async def update_skill(skill_name: str, request: SkillUpdateRequest, category: s
 
         # Get or create config path
         config_path = ExtensionsConfig.resolve_config_path()
-        # ... 配置路径处理 ...
+        # ... config path handling ...
 
         # Load current configuration
         extensions_config = get_extensions_config()
@@ -391,23 +391,23 @@ async def update_skill(skill_name: str, request: SkillUpdateRequest, category: s
         raise HTTPException(status_code=500, detail=f"Failed to update skill: {str(e)}")
 ```
 
-**改动说明**:
-- 添加可选的 `category` 查询参数
-- 使用 `_find_skill_by_name()` 查找技能
-- **关键改动**: 使用组合键 `ExtensionsConfig.get_skill_key()` 存储配置
-- 添加 `ValueError` 处理
+**Change notes**:
+- Add optional `category` query parameter
+- Use `_find_skill_by_name()` for skill lookup
+- **Key change**: store config using composite key `ExtensionsConfig.get_skill_key()`
+- Add `ValueError` handling
 
-**API 变更**:
-- ✅ 向后兼容：`category` 参数可选
-- ✅ 配置存储使用新格式键
+**API changes**:
+- Backward compatible: `category` is optional
+- Config storage uses the new composite key format
 
 ---
 
-#### 3.4 修改端点: `POST /api/skills/install`
+#### 3.4 Updated endpoint: `POST /api/skills/install`
 
-**位置**: 第 392-529 行
+**Location**: Lines 392-529
 
-**修改前**:
+**Before**:
 ```python
 # Check if skill already exists
 target_dir = custom_skills_dir / skill_name
@@ -415,7 +415,7 @@ if target_dir.exists():
     raise HTTPException(status_code=409, detail=f"Skill '{skill_name}' already exists. Please remove it first or use a different name.")
 ```
 
-**修改后**:
+**After**:
 ```python
 # Check if skill directory already exists
 target_dir = custom_skills_dir / skill_name
@@ -446,24 +446,24 @@ except ValueError as e:
     )
 ```
 
-**改动说明**:
-- 检查目录是否存在（原有逻辑）
-- **新增**: 检查 custom 类别中是否已有同名技能（即使目录名不同）
-- 添加 `ValueError` 处理
+**Change notes**:
+- Check if directory exists (original behavior)
+- **New**: check whether a same-name skill already exists in the custom category (even if directory name differs)
+- Add `ValueError` handling
 
-**影响**:
-- ✅ 防止安装同名技能
-- ✅ 清晰的错误提示
+**Impact**:
+- Prevents installation of same-name skills
+- Clear error messages
 
 ---
 
-### 四、前端 API 层 (`frontend/src/core/skills/api.ts`)
+### IV. Frontend API layer (`frontend/src/core/skills/api.ts`)
 
-#### 4.1 修改函数: `enableSkill()`
+#### 4.1 Updated function: `enableSkill()`
 
-**位置**: 第 11-30 行
+**Location**: Lines 11-30
 
-**修改前**:
+**Before**:
 ```typescript
 export async function enableSkill(skillName: string, enabled: boolean) {
   const response = await fetch(
@@ -482,7 +482,7 @@ export async function enableSkill(skillName: string, enabled: boolean) {
 }
 ```
 
-**修改后**:
+**After**:
 ```typescript
 export async function enableSkill(
   skillName: string,
@@ -506,24 +506,24 @@ export async function enableSkill(
 }
 ```
 
-**改动说明**:
-- 添加 `category` 参数
-- URL 编码 skillName 和 category
-- 将 category 作为查询参数传递
+**Change notes**:
+- Add `category` parameter
+- URL-encode skillName and category
+- Pass category as a query parameter
 
-**影响**:
-- ✅ 必须传递 category（前端已有该信息）
-- ✅ URL 编码确保特殊字符正确处理
+**Impact**:
+- Must pass category (frontend already has it)
+- URL encoding ensures special characters are handled correctly
 
 ---
 
-### 五、前端 Hooks 层 (`frontend/src/core/skills/hooks.ts`)
+### V. Frontend Hooks layer (`frontend/src/core/skills/hooks.ts`)
 
-#### 5.1 修改 Hook: `useEnableSkill()`
+#### 5.1 Updated hook: `useEnableSkill()`
 
-**位置**: 第 15-33 行
+**Location**: Lines 15-33
 
-**修改前**:
+**Before**:
 ```typescript
 export function useEnableSkill() {
   const queryClient = useQueryClient();
@@ -544,7 +544,7 @@ export function useEnableSkill() {
 }
 ```
 
-**修改后**:
+**After**:
 ```typescript
 export function useEnableSkill() {
   const queryClient = useQueryClient();
@@ -567,23 +567,23 @@ export function useEnableSkill() {
 }
 ```
 
-**改动说明**:
-- 添加 `category` 参数到类型定义
-- 传递 `category` 给 `enableSkill()` API 调用
+**Change notes**:
+- Add `category` to the type definition
+- Pass `category` to `enableSkill()` API call
 
-**影响**:
-- ✅ 类型安全
-- ✅ 必须传递 category
+**Impact**:
+- Type-safe
+- Must pass category
 
 ---
 
-### 六、前端组件层 (`frontend/src/components/workspace/settings/skill-settings-page.tsx`)
+### VI. Frontend component layer (`frontend/src/components/workspace/settings/skill-settings-page.tsx`)
 
-#### 6.1 修改组件: `SkillSettingsList`
+#### 6.1 Updated component: `SkillSettingsList`
 
-**位置**: 第 92-119 行
+**Location**: Lines 92-119
 
-**修改前**:
+**Before**:
 ```typescript
 {filteredSkills.length > 0 &&
   filteredSkills.map((skill) => (
@@ -599,7 +599,7 @@ export function useEnableSkill() {
   ))}
 ```
 
-**修改后**:
+**After**:
 ```typescript
 {filteredSkills.length > 0 &&
   filteredSkills.map((skill) => (
@@ -623,19 +623,19 @@ export function useEnableSkill() {
   ))}
 ```
 
-**改动说明**:
-- **关键改动**: React key 从 `skill.name` 改为 `${skill.category}:${skill.name}`
-- 传递 `category` 给 `enableSkill()`
+**Change notes**:
+- **Key change**: React key changed from `skill.name` to `${skill.category}:${skill.name}`
+- Pass `category` to `enableSkill()`
 
-**影响**:
-- ✅ 确保 React key 唯一性（避免同名技能冲突）
-- ✅ 正确传递 category 信息
+**Impact**:
+- Ensures React key uniqueness (avoids same-name conflicts)
+- Correctly passes category info
 
 ---
 
-## 配置格式变更
+## Config Format Changes
 
-### 旧格式（向后兼容）
+### Old format (backward compatible)
 
 ```json
 {
@@ -647,7 +647,7 @@ export function useEnableSkill() {
 }
 ```
 
-### 新格式（推荐）
+### New format (recommended)
 
 ```json
 {
@@ -662,204 +662,204 @@ export function useEnableSkill() {
 }
 ```
 
-### 迁移说明
+### Migration Notes
 
-- ✅ **自动兼容**: 系统会自动识别旧格式
-- ✅ **无需手动迁移**: 旧配置继续工作
-- ✅ **新配置使用新格式**: 更新技能状态时自动使用新格式键
+- Automatic compatibility: the system auto-detects the old format
+- No manual migration needed: old config keeps working
+- New config uses the new format when updating skill state
 
 ---
 
-## API 变更
+## API Changes
 
 ### GET /api/skills/{skill_name}
 
-**新增查询参数**:
-- `category` (可选): `public` 或 `custom`
+**New query parameter**:
+- `category` (optional): `public` or `custom`
 
-**行为变更**:
-- 如果只有一个同名技能，自动匹配（向后兼容）
-- 如果有多个同名技能，必须提供 `category` 参数
+**Behavior changes**:
+- If only one same-name skill exists, it auto-matches (backward compatible)
+- If multiple same-name skills exist, `category` is required
 
-**示例**:
+**Examples**:
 ```bash
-# 单个技能（向后兼容）
+# Single skill (backward compatible)
 GET /api/skills/my-skill
 
-# 多个同名技能（必须指定类别）
+# Multiple same-name skills (category required)
 GET /api/skills/my-skill?category=public
 GET /api/skills/my-skill?category=custom
 ```
 
 ### PUT /api/skills/{skill_name}
 
-**新增查询参数**:
-- `category` (可选): `public` 或 `custom`
+**New query parameter**:
+- `category` (optional): `public` or `custom`
 
-**行为变更**:
-- 配置存储使用新格式键 `{category}:{name}`
-- 如果只有一个同名技能，自动匹配（向后兼容）
-- 如果有多个同名技能，必须提供 `category` 参数
+**Behavior changes**:
+- Config storage uses the new composite key `{category}:{name}`
+- If only one same-name skill exists, it auto-matches (backward compatible)
+- If multiple same-name skills exist, `category` is required
 
-**示例**:
+**Examples**:
 ```bash
-# 更新 public 技能
+# Update a public skill
 PUT /api/skills/my-skill?category=public
 Body: { "enabled": true }
 
-# 更新 custom 技能
+# Update a custom skill
 PUT /api/skills/my-skill?category=custom
 Body: { "enabled": false }
 ```
 
 ---
 
-## 影响范围
+## Impact Scope
 
-### 后端
+### Backend
 
-1. **配置读取**: `ExtensionsConfig.is_skill_enabled()` - 支持新格式，向后兼容
-2. **配置写入**: `PUT /api/skills/{skill_name}` - 使用新格式键
-3. **技能加载**: `load_skills()` - 添加重复检查
-4. **API 端点**: 3 个端点支持可选的 `category` 参数
+1. **Config read**: `ExtensionsConfig.is_skill_enabled()` - supports new format, backward compatible
+2. **Config write**: `PUT /api/skills/{skill_name}` - uses new format key
+3. **Skill loading**: `load_skills()` - adds duplicate checks
+4. **API endpoints**: 3 endpoints support optional `category`
 
-### 前端
+### Frontend
 
-1. **API 调用**: `enableSkill()` - 必须传递 `category`
-2. **Hooks**: `useEnableSkill()` - 类型定义更新
-3. **组件**: `SkillSettingsList` - React key 和参数传递更新
+1. **API call**: `enableSkill()` - must pass `category`
+2. **Hooks**: `useEnableSkill()` - type definition updated
+3. **Component**: `SkillSettingsList` - React key and argument updates
 
-### 配置文件
+### Config
 
-- **格式变更**: 新配置使用 `{category}:{name}` 格式
-- **向后兼容**: 旧格式继续支持
-- **自动迁移**: 更新时自动使用新格式
-
----
-
-## 测试建议
-
-### 1. 向后兼容性测试
-
-- [ ] 旧格式配置文件应正常工作
-- [ ] 仅使用 `skill_name` 的 API 调用应正常工作（单个技能时）
-- [ ] 现有技能状态应保持不变
-
-### 2. 新功能测试
-
-- [ ] public 和 custom 同名技能应能独立控制
-- [ ] 打开/关闭一个技能不应影响另一个同名技能
-- [ ] API 调用传递 `category` 参数应正确工作
-
-### 3. 错误处理测试
-
-- [ ] public 类别内重复技能名称应报错
-- [ ] custom 类别内重复技能名称应报错
-- [ ] 多个同名技能时，不提供 `category` 应返回 400 错误
-
-### 4. 安装测试
-
-- [ ] 安装同名技能应被拒绝（409 错误）
-- [ ] 错误信息应包含现有技能的位置
+- **Format change**: New config uses `{category}:{name}` format
+- **Backward compatible**: Old format still supported
+- **Auto migration**: Updates use the new format key automatically
 
 ---
 
-## 已知问题（暂时保留）
+## Test Suggestions
 
-### ⚠️ 问题描述
+### 1. Backward compatibility tests
 
-**当前状态**: 同名技能冲突问题已识别但**暂时保留**，后续版本修复
+- [ ] Old-format config should work
+- [ ] API calls using only `skill_name` should work (single skill case)
+- [ ] Existing skill states should remain unchanged
 
-**问题表现**:
-- 如果 public 和 custom 目录下存在同名技能，虽然配置已使用组合键区分，但前端 UI 可能仍会出现混淆
-- 用户可能无法清楚区分哪个是 public，哪个是 custom
+### 2. New functionality tests
 
-**影响范围**:
-- 用户体验：可能无法清楚区分同名技能
-- 功能：技能状态可以独立控制（已修复）
-- 数据：配置正确存储（已修复）
+- [ ] Same-name public and custom skills should be independently controllable
+- [ ] Toggling one skill should not affect the other
+- [ ] API calls with `category` should work correctly
 
-### 后续修复建议
+### 3. Error handling tests
 
-1. **UI 增强**: 在技能列表中明确显示类别标识
-2. **名称验证**: 安装时检查是否与 public 技能同名，并给出警告
-3. **文档更新**: 说明同名技能的最佳实践
+- [ ] Duplicate skill names within public category should error
+- [ ] Duplicate skill names within custom category should error
+- [ ] Multiple same-name skills without `category` should return 400
+
+### 4. Install tests
+
+- [ ] Installing a same-name skill should be rejected (409)
+- [ ] Error message should include the existing skill's location
 
 ---
 
-## 回滚方案
+## Known Issue (temporarily retained)
 
-如果需要回滚这些改动：
+### Issue Description
 
-### 后端回滚
+**Current status**: The same-name skill conflict is identified but temporarily retained; a future release will fix it.
 
-1. **恢复配置读取逻辑**:
+**Symptoms**:
+- If public and custom directories contain same-name skills, config now uses composite keys but the frontend UI may still be confusing
+- Users may not be able to clearly distinguish public vs custom
+
+**Impact**:
+- UX: users may not clearly differentiate same-name skills
+- Functionality: skill states can be independently controlled (fixed)
+- Data: config is stored correctly (fixed)
+
+### Follow-up Suggestions
+
+1. **UI enhancement**: Clearly show category badges in the skill list
+2. **Name validation**: Warn on install if a custom skill matches a public skill name
+3. **Docs update**: Document best practices for same-name skills
+
+---
+
+## Rollback Plan
+
+If rollback is required:
+
+### Backend rollback
+
+1. **Restore config read logic**:
    ```python
-   # 恢复为仅使用 skill_name
+   # Restore to skill_name only
    skill_config = self.skills.get(skill_name)
    ```
 
-2. **恢复 API 端点**:
-   - 移除 `category` 参数
-   - 恢复原有的查找逻辑
+2. **Restore API endpoints**:
+   - Remove the `category` parameter
+   - Restore the old lookup logic
 
-3. **移除重复检查**:
-   - 移除 `category_skill_names` 跟踪逻辑
+3. **Remove duplicate checks**:
+   - Remove `category_skill_names` tracking
 
-### 前端回滚
+### Frontend rollback
 
-1. **恢复 API 调用**:
+1. **Restore API calls**:
    ```typescript
-   // 移除 category 参数
+   // Remove category parameter
    export async function enableSkill(skillName: string, enabled: boolean)
    ```
 
-2. **恢复组件**:
-   - React key 恢复为 `skill.name`
-   - 移除 `category` 参数传递
+2. **Restore components**:
+   - React key back to `skill.name`
+   - Remove `category` parameter passing
 
-### 配置迁移
+### Config migration
 
-- 新格式配置需要手动迁移回旧格式（如果已使用新格式）
-- 旧格式配置无需修改
-
----
-
-## 总结
-
-### 改动统计
-
-- **后端文件**: 3 个文件修改
-  - `backend/src/config/extensions_config.py`: +1 方法，修改 1 方法
-  - `backend/src/skills/loader.py`: +重复检查逻辑
-  - `backend/src/gateway/routers/skills.py`: +1 辅助函数，修改 3 个端点
-
-- **前端文件**: 3 个文件修改
-  - `frontend/src/core/skills/api.ts`: 修改 1 个函数
-  - `frontend/src/core/skills/hooks.ts`: 修改 1 个 hook
-  - `frontend/src/components/workspace/settings/skill-settings-page.tsx`: 修改组件
-
-- **代码行数**: 
-  - 新增: ~80 行
-  - 修改: ~30 行
-  - 删除: ~0 行（向后兼容）
-
-### 核心改进
-
-1. ✅ **配置唯一性**: 使用组合键确保配置唯一
-2. ✅ **向后兼容**: 旧配置继续工作
-3. ✅ **重复检查**: 防止配置冲突
-4. ✅ **代码复用**: 提取公共函数减少重复
-5. ✅ **错误提示**: 清晰的错误信息
-
-### 注意事项
-
-- ⚠️ **已知问题保留**: UI 区分同名技能的问题待后续修复
-- ✅ **向后兼容**: 现有配置和 API 调用继续工作
-- ✅ **最小改动**: 仅修改必要的代码
+- New-format config requires manual migration back to old format (if used)
+- Old format config needs no changes
 
 ---
 
-**文档版本**: 1.0  
-**最后更新**: 2026-02-10  
-**维护者**: AI Assistant
+## Summary
+
+### Change stats
+
+- **Backend files**: 3 files modified
+  - `backend/src/config/extensions_config.py`: +1 method, 1 method updated
+  - `backend/src/skills/loader.py`: add duplicate-check logic
+  - `backend/src/gateway/routers/skills.py`: +1 helper, 3 endpoints updated
+
+- **Frontend files**: 3 files modified
+  - `frontend/src/core/skills/api.ts`: 1 function updated
+  - `frontend/src/core/skills/hooks.ts`: 1 hook updated
+  - `frontend/src/components/workspace/settings/skill-settings-page.tsx`: component updated
+
+- **Lines of code**:
+  - Added: ~80 lines
+  - Updated: ~30 lines
+  - Deleted: ~0 lines (backward compatible)
+
+### Core Improvements
+
+1. **Config uniqueness**: Composite keys ensure uniqueness
+2. **Backward compatibility**: Old config keeps working
+3. **Duplicate checks**: Prevent config conflicts
+4. **Code reuse**: Shared helper functions reduce duplication
+5. **Error messages**: Clear, actionable errors
+
+### Notes
+
+- **Known issue retained**: UI differentiation for same-name skills remains for a later fix
+- **Backward compatible**: Existing config and API calls keep working
+- **Minimal changes**: Only necessary code changes were made
+
+---
+
+**Document version**: 1.0  
+**Last updated**: 2026-02-10  
+**Maintainer**: AI Assistant
