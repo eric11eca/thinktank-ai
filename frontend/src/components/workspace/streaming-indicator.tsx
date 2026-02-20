@@ -1,34 +1,116 @@
+import { useMemo } from "react";
+
+import {
+  TurnUsageDisplay,
+  type TurnUsageEstimate,
+} from "@/components/workspace/messages/turn-usage-display";
 import { cn } from "@/lib/utils";
+
+const ACTION_VERBS = [
+  "Ruminating",
+  "Sparkling",
+  "Conjuring",
+  "Dreaming",
+  "Noodling",
+  "Percolating",
+  "Blossoming",
+  "Musing",
+  "Imagining",
+  "Crafting",
+  "Weaving",
+  "Brainstorming",
+  "Tinkering",
+  "Brewing",
+  "Flourishing",
+  "Doodling",
+  "Wondering",
+  "Concocting",
+  "Simmering",
+  "Daydreaming",
+  "Hatching",
+  "Sculpting",
+  "Whirring",
+  "Puzzling",
+  "Illuminating",
+  "Germinating",
+  "Mulling",
+  "Pondering",
+  "Kindling",
+  "Frolicking",
+  "Composing",
+  "Unfurling",
+  "Meandering",
+  "Crystallizing",
+  "Distilling",
+  "Forging",
+  "Marinating",
+  "Orchestrating",
+  "Spellcasting",
+  "Gallivanting",
+  "Scribbling",
+  "Harmonizing",
+  "Unraveling",
+  "Synthesizing",
+  "Incubating",
+  "Perusing",
+  "Contemplating",
+  "Effervescing",
+  "Enchanting",
+  "Assembling",
+] as const;
 
 export function StreamingIndicator({
   className,
   size = "normal",
+  showUsage = false,
+  isLoading = false,
+  usageEstimate,
 }: {
   className?: string;
   size?: "normal" | "sm";
+  showUsage?: boolean;
+  isLoading?: boolean;
+  usageEstimate?: TurnUsageEstimate;
 }) {
   const dotSize = size === "sm" ? "w-1.5 h-1.5 mx-0.5" : "w-2 h-2 mx-1";
+  const verb = useMemo(
+    () => ACTION_VERBS[Math.floor(Math.random() * ACTION_VERBS.length)],
+    [],
+  );
 
   return (
-    <div className={cn("flex", className)}>
-      <div
-        className={cn(
-          dotSize,
-          "animate-bouncing rounded-full bg-[#a3a1a1] opacity-100",
-        )}
-      />
-      <div
-        className={cn(
-          dotSize,
-          "animate-bouncing rounded-full bg-[#a3a1a1] opacity-100 [animation-delay:0.2s]",
-        )}
-      />
-      <div
-        className={cn(
-          dotSize,
-          "animate-bouncing rounded-full bg-[#a3a1a1] opacity-100 [animation-delay:0.4s]",
-        )}
-      />
+    <div className={cn("flex flex-wrap items-center gap-3", className)}>
+      <div className="flex items-center gap-2">
+        <span className="text-[#f0a46b]">*</span>
+        <span className="text-[#f0a46b]">{verb}</span>
+        <div className="flex">
+          <div
+            className={cn(
+              dotSize,
+              "animate-bouncing rounded-full bg-[#f0a46b] opacity-100",
+            )}
+          />
+          <div
+            className={cn(
+              dotSize,
+              "animate-bouncing rounded-full bg-[#f0a46b] opacity-100 [animation-delay:0.2s]",
+            )}
+          />
+          <div
+            className={cn(
+              dotSize,
+              "animate-bouncing rounded-full bg-[#f0a46b] opacity-100 [animation-delay:0.4s]",
+            )}
+          />
+        </div>
+      </div>
+      {showUsage && (
+        <TurnUsageDisplay
+          isLoading={isLoading}
+          estimate={usageEstimate}
+          variant="inline"
+        />
+      )}
     </div>
   );
 }
