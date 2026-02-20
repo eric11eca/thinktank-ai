@@ -7,9 +7,11 @@ from src.agents.middlewares.clarification_middleware import ClarificationMiddlew
 from src.agents.middlewares.dangling_tool_call_middleware import DanglingToolCallMiddleware
 from src.agents.middlewares.memory_middleware import MemoryMiddleware
 from src.agents.middlewares.subagent_limit_middleware import SubagentLimitMiddleware
+from src.agents.middlewares.timeline_logging_middleware import TimelineLoggingMiddleware
 from src.agents.middlewares.thread_data_middleware import ThreadDataMiddleware
 from src.agents.middlewares.title_middleware import TitleMiddleware
 from src.agents.middlewares.uploads_middleware import UploadsMiddleware
+from src.agents.middlewares.usage_tracking_middleware import UsageTrackingMiddleware
 from src.agents.middlewares.view_image_middleware import ViewImageMiddleware
 from src.agents.thread_state import ThreadState
 from src.config import get_app_config
@@ -193,7 +195,13 @@ def _build_middlewares(config: RunnableConfig):
     Returns:
         List of middleware instances.
     """
-    middlewares = [ThreadDataMiddleware(), UploadsMiddleware(), SandboxMiddleware(), DanglingToolCallMiddleware()]
+    middlewares = [
+        ThreadDataMiddleware(),
+        UploadsMiddleware(),
+        SandboxMiddleware(),
+        DanglingToolCallMiddleware(),
+        UsageTrackingMiddleware(),
+    ]
 
     # Add summarization middleware if enabled
     summarization_middleware = _create_summarization_middleware()
@@ -228,6 +236,9 @@ def _build_middlewares(config: RunnableConfig):
     if subagent_enabled:
         max_concurrent_subagents = config.get("configurable", {}).get("max_concurrent_subagents", 3)
         middlewares.append(SubagentLimitMiddleware(max_concurrent=max_concurrent_subagents))
+
+    # Log timeline snapshots after all message mutations (before ClarificationMiddleware)
+    middlewares.append(TimelineLoggingMiddleware())
 
     # ClarificationMiddleware should always be last
     middlewares.append(ClarificationMiddleware())

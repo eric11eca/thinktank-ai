@@ -55,11 +55,14 @@ class SubagentResult:
     started_at: datetime | None = None
     completed_at: datetime | None = None
     ai_messages: list[dict[str, Any]] | None = None
+    token_usage: dict[str, int] | None = None
 
     def __post_init__(self):
         """Initialize mutable defaults."""
         if self.ai_messages is None:
             self.ai_messages = []
+        if self.token_usage is None:
+            self.token_usage = {"input_tokens": 0, "output_tokens": 0}
 
 
 # Global storage for background task results
@@ -268,6 +271,12 @@ class SubagentExecutor:
                         if not is_duplicate:
                             result.ai_messages.append(message_dict)
                             logger.info(f"[trace={self.trace_id}] Subagent {self.config.name} captured AI message #{len(result.ai_messages)}")
+
+                            # Accumulate token usage from this AI message
+                            msg_usage = getattr(last_message, "usage_metadata", None)
+                            if msg_usage and result.token_usage is not None:
+                                result.token_usage["input_tokens"] += msg_usage.get("input_tokens", 0)
+                                result.token_usage["output_tokens"] += msg_usage.get("output_tokens", 0)
 
             logger.info(f"[trace={self.trace_id}] Subagent {self.config.name} completed execution")
 

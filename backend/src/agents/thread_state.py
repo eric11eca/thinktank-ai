@@ -18,6 +18,23 @@ class ViewedImageData(TypedDict):
     mime_type: str
 
 
+class TokenUsageState(TypedDict):
+    input_tokens: int
+    output_tokens: int
+
+
+def merge_token_usage(existing: TokenUsageState | None, new: TokenUsageState | None) -> TokenUsageState:
+    """Accumulates token counts across model calls and turns."""
+    if existing is None:
+        return new or {"input_tokens": 0, "output_tokens": 0}
+    if new is None:
+        return existing
+    return {
+        "input_tokens": existing.get("input_tokens", 0) + new.get("input_tokens", 0),
+        "output_tokens": existing.get("output_tokens", 0) + new.get("output_tokens", 0),
+    }
+
+
 def merge_artifacts(existing: list[str] | None, new: list[str] | None) -> list[str]:
     """Reducer for artifacts list - merges and deduplicates artifacts."""
     if existing is None:
@@ -53,3 +70,4 @@ class ThreadState(AgentState):
     todos: NotRequired[list | None]
     uploaded_files: NotRequired[list[dict] | None]
     viewed_images: Annotated[dict[str, ViewedImageData], merge_viewed_images]  # image_path -> {base64, mime_type}
+    token_usage: Annotated[TokenUsageState, merge_token_usage]

@@ -11,6 +11,7 @@ from langgraph.config import get_stream_writer
 from langgraph.typing import ContextT
 
 from src.agents.lead_agent.prompt import get_skills_prompt_section
+from src.agents.middlewares.usage_tracking_middleware import add_subagent_usage
 from src.agents.thread_state import ThreadState
 from src.subagents import SubagentExecutor, get_subagent_config
 from src.subagents.executor import SubagentStatus, get_background_task_result
@@ -158,18 +159,29 @@ def task_tool(
             last_message_count = current_message_count
 
         # Check if task completed, failed, or timed out
-        if result.status == SubagentStatus.COMPLETED:
-            writer({"type": "task_completed", "task_id": task_id, "result": result.result})
-            logger.info(f"[trace={trace_id}] Task {task_id} completed after {poll_count} polls")
-            return f"Task Succeeded. Result: {result.result}"
-        elif result.status == SubagentStatus.FAILED:
-            writer({"type": "task_failed", "task_id": task_id, "error": result.error})
-            logger.error(f"[trace={trace_id}] Task {task_id} failed: {result.error}")
-            return f"Task failed. Error: {result.error}"
-        elif result.status == SubagentStatus.TIMED_OUT:
-            writer({"type": "task_timed_out", "task_id": task_id, "error": result.error})
-            logger.warning(f"[trace={trace_id}] Task {task_id} timed out: {result.error}")
-            return f"Task timed out. Error: {result.error}"
+        if result.status in (SubagentStatus.COMPLETED, SubagentStatus.FAILED, SubagentStatus.TIMED_OUT):
+            # Register subagent token usage for the lead agent's next after_model drain
+            if result.token_usage and thread_id:
+                add_subagent_usage(thread_id, result.token_usage)
+                # Also emit immediately for real-time frontend display
+                writer({
+                    "type": "usage_update",
+                    "input_tokens": result.token_usage.get("input_tokens", 0),
+                    "output_tokens": result.token_usage.get("output_tokens", 0),
+                })
+
+            if result.status == SubagentStatus.COMPLETED:
+                writer({"type": "task_completed", "task_id": task_id, "result": result.result})
+                logger.info(f"[trace={trace_id}] Task {task_id} completed after {poll_count} polls")
+                return f"Task Succeeded. Result: {result.result}"
+            elif result.status == SubagentStatus.FAILED:
+                writer({"type": "task_failed", "task_id": task_id, "error": result.error})
+                logger.error(f"[trace={trace_id}] Task {task_id} failed: {result.error}")
+                return f"Task failed. Error: {result.error}"
+            else:
+                writer({"type": "task_timed_out", "task_id": task_id, "error": result.error})
+                logger.warning(f"[trace={trace_id}] Task {task_id} timed out: {result.error}")
+                return f"Task timed out. Error: {result.error}"
 
         # Still running, wait before next poll
         time.sleep(5)  # Poll every 5 seconds
