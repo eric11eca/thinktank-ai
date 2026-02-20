@@ -80,7 +80,7 @@ export function MessageListItem({
           <textarea
             value={editedContent}
             onChange={(e) => setEditedContent(e.target.value)}
-            className="bg-muted text-foreground w-full rounded-lg border border-border p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="bg-muted text-foreground font-claude-user-body w-full rounded-lg border border-border p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
             rows={4}
             autoFocus
           />

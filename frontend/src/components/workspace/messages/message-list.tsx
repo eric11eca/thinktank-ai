@@ -180,6 +180,7 @@ export function MessageList({
             content={extractContentFromMessage(message)}
             isLoading={thread.isLoading}
             rehypePlugins={rehypePlugins}
+            className="font-claude-response-body"
           />
         );
       }
@@ -199,7 +200,7 @@ export function MessageList({
               content={extractContentFromMessage(group.messages[0])}
               isLoading={thread.isLoading}
               rehypePlugins={rehypePlugins}
-              className="mb-4"
+              className="font-claude-response-body mb-4"
             />
           )}
           <ArtifactFileList files={files} threadId={threadId} />

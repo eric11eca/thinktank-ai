@@ -44,8 +44,8 @@ export const MessageContent = ({
 }: MessageContentProps) => (
   <div
     className={cn(
-      "is-user:dark flex w-fit max-w-full min-w-0 flex-col gap-2 overflow-hidden",
-      "group-[.is-user]:bg-secondary group-[.is-user]:text-foreground group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:px-4 group-[.is-user]:py-3",
+      "is-user:dark flex w-fit max-w-full min-w-0 flex-col gap-2 overflow-hidden font-claude-response-body",
+      "group-[.is-user]:bg-[rgb(16_16_15)] group-[.is-user]:text-foreground group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:font-claude-user-body",
       "group-[.is-assistant]:text-foreground",
       className,
     )}
@@ -304,17 +304,12 @@ export const MessageBranchPage = ({
 export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
 export const MessageResponse = memo(
-  ({ className, style, ...props }: MessageResponseProps) => (
+  ({ className, ...props }: MessageResponseProps) => (
     <Streamdown
       className={cn(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         className,
       )}
-      style={{
-        fontFamily: '"SwissSerif", ui-serif, Georgia, serif',
-        fontWeight: 530,
-        ...style,
-      }}
       {...props}
     />
   ),

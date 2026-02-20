@@ -128,6 +128,7 @@ export function SubtaskCard({
               label={
                 <Streamdown
                   {...streamdownPluginsWithWordAnimation}
+                  className="font-claude-response-body"
                   components={{ a: CitationLink }}
                 >
                   {task.prompt}
@@ -158,6 +159,7 @@ export function SubtaskCard({
                       content={task.result}
                       isLoading={false}
                       rehypePlugins={rehypePlugins}
+                      className="font-claude-response-body"
                     />
                   ) : null
                 }
