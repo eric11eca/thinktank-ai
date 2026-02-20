@@ -606,15 +606,12 @@ function ChatInner() {
               {showTodoPanel && (
                 <aside className="relative min-h-0 w-80 shrink-0 pt-12 pr-4">
                   <div className="flex flex-col gap-3">
-                    {hasTodos && (
-                      <TodoList
-                        className="mt-4 w-full max-w-[calc(100vw-2rem)]"
-                        todos={thread.values.todos ?? []}
-                        collapsed={todoListCollapsed}
-                        hidden={!hasTodos}
-                        onToggle={() => setTodoListCollapsed(!todoListCollapsed)}
-                      />
-                    )}
+                    <TodoList
+                      className="mt-4 w-full max-w-[calc(100vw-2rem)]"
+                      todos={thread.values.todos ?? []}
+                      collapsed={todoListCollapsed}
+                      onToggle={() => setTodoListCollapsed(!todoListCollapsed)}
+                    />
                     <ContextPanel
                       modelName={contextModelName}
                       subagentEnabled={settings.context.mode === "ultra"}

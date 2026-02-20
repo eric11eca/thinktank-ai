@@ -1,4 +1,4 @@
-import { ChevronUpIcon, ListTodoIcon } from "lucide-react";
+import { CheckIcon, ChevronUpIcon, ListTodoIcon } from "lucide-react";
 
 import type { Todo } from "@/core/todos";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ export function TodoList({
   hidden?: boolean;
   onToggle?: () => void;
 }) {
+  const hasTodos = todos.length > 0;
   return (
     <div
       className={cn(
@@ -60,32 +61,47 @@ export function TodoList({
           collapsed ? "h-0 pb-3" : "h-40 pb-4",
         )}
       >
-        <QueueList className="mt-0 w-full">
-          {todos.map((todo, i) => (
-            <QueueItem key={i + (todo.content ?? "")}>
-              <div className="flex items-start gap-2">
-                <QueueItemIndicator
-                  className={cn(
-                    "shrink-0",
-                    todo.status === "in_progress" ? "bg-primary/70" : "",
-                  )}
-                  completed={todo.status === "completed"}
-                />
-                <QueueItemContent
-                  className={
-                    cn(
+        {collapsed ? null : hasTodos ? (
+          <QueueList className="mt-0 w-full">
+            {todos.map((todo, i) => (
+              <QueueItem key={i + (todo.content ?? "")}>
+                <div className="flex items-start gap-2">
+                  <QueueItemIndicator
+                    className={cn(
+                      "shrink-0",
+                      todo.status === "in_progress" ? "bg-primary/70" : "",
+                    )}
+                    completed={todo.status === "completed"}
+                  />
+                  <QueueItemContent
+                    className={cn(
                       "line-clamp-none whitespace-normal",
                       todo.status === "in_progress" ? "text-primary/70" : "",
-                    )
-                  }
-                  completed={todo.status === "completed"}
-                >
-                  {todo.content}
-                </QueueItemContent>
-              </div>
-            </QueueItem>
-          ))}
-        </QueueList>
+                    )}
+                    completed={todo.status === "completed"}
+                  >
+                    {todo.content}
+                  </QueueItemContent>
+                </div>
+              </QueueItem>
+            ))}
+          </QueueList>
+        ) : (
+          <div className="flex w-full flex-col justify-center gap-3 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <span className="border-muted-foreground/40 bg-muted/40 text-muted-foreground flex size-8 items-center justify-center rounded-full border">
+                <CheckIcon className="size-4" />
+              </span>
+              <span className="border-muted-foreground/40 bg-muted/40 text-muted-foreground flex size-8 items-center justify-center rounded-full border">
+                <CheckIcon className="size-4" />
+              </span>
+              <span className="border-muted-foreground/40 bg-background flex size-8 items-center justify-center rounded-full border" />
+            </div>
+            <p className="text-muted-foreground text-sm">
+              See task progress for longer tasks.
+            </p>
+          </div>
+        )}
       </main>
     </div>
   );
