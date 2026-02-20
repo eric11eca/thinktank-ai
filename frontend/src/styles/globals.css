@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@font-face {
+  font-family: "SwissSerif";
+  src: url("/fonts/SwissSerif_Roman_AI.woff2") format("woff2");
+  font-weight: 530;
+  font-style: normal;
+  font-display: swap;
+}
+
 @source "../node_modules/streamdown/dist/*.js";
 
 /* Heading */
