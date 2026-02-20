@@ -1,6 +1,7 @@
 import type { Message } from "@langchain/langgraph-sdk";
 import {
   BookOpenTextIcon,
+  ClockIcon,
   ChevronUp,
   FolderOpenIcon,
   GlobeIcon,
@@ -143,6 +144,8 @@ export function MessageGroup({
                 step.type === "reasoning" ? (
                   <ChainOfThoughtStep
                     key={step.id}
+                    icon={ClockIcon}
+                    className="text-foreground/85"
                     label={
                       <MarkdownContent
                         content={step.reasoning ?? ""}
@@ -205,6 +208,8 @@ export function MessageGroup({
               >
                 <ChainOfThoughtStep
                   key={lastReasoningStep.id}
+                  icon={ClockIcon}
+                  className="text-foreground/85"
                   label={
                     <MarkdownContent
                       content={lastReasoningStep.reasoning ?? ""}
@@ -248,18 +253,38 @@ function ToolCall({
     if (typeof args.query === "string") {
       label = t.toolCalls.searchOnWebFor(args.query);
     }
+    const getHostname = (url: string) => {
+      try {
+        return new URL(url).hostname.replace(/^www\./, "");
+      } catch {
+        return url;
+      }
+    };
     return (
       <ChainOfThoughtStep key={id} label={label} icon={SearchIcon}>
         {Array.isArray(result) && (
-          <ChainOfThoughtSearchResults>
-            {result.map((item) => (
-              <ChainOfThoughtSearchResult key={item.url}>
-                <a href={item.url} target="_blank" rel="noreferrer">
-                  {item.title}
-                </a>
-              </ChainOfThoughtSearchResult>
-            ))}
-          </ChainOfThoughtSearchResults>
+          <div className="bg-background/80 mt-2 overflow-hidden rounded-lg border">
+            <ul className="divide-y divide-border/70">
+              {result.map((item) => (
+                <li key={item.url}>
+                  <a
+                    className="group flex items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-muted/60"
+                    href={item.url}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <GlobeIcon className="text-muted-foreground size-4 shrink-0" />
+                    <span className="text-foreground min-w-0 flex-1 truncate">
+                      {item.title}
+                    </span>
+                    <span className="text-muted-foreground shrink-0 text-xs">
+                      {getHostname(item.url)}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </ChainOfThoughtStep>
     );
