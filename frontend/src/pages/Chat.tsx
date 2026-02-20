@@ -608,7 +608,7 @@ function ChatInner() {
                   <div className="flex flex-col gap-3">
                     {hasTodos && (
                       <TodoList
-                        className="w-full max-w-[calc(100vw-2rem)]"
+                        className="mt-4 w-full max-w-[calc(100vw-2rem)]"
                         todos={thread.values.todos ?? []}
                         collapsed={todoListCollapsed}
                         hidden={!hasTodos}

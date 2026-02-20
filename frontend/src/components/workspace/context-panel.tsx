@@ -43,7 +43,7 @@ export function ContextPanel({
   return (
     <div
       className={cn(
-        "flex w-full flex-col gap-2 rounded-lg border p-0.5",
+        "bg-sidebar flex w-full flex-col gap-2 rounded-lg border p-0.5",
         className,
       )}
     >

@@ -26,7 +26,7 @@ export function TodoList({
   return (
     <div
       className={cn(
-        "flex h-fit w-full flex-col gap-2 rounded-lg border p-0.5 transition-all duration-200 ease-out",
+        "bg-sidebar flex h-fit w-full flex-col gap-2 rounded-lg border p-0.5 transition-all duration-200 ease-out",
         hidden ? "pointer-events-none translate-y-1 opacity-0" : "",
         className,
       )}

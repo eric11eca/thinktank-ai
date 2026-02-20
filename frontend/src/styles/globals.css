@@ -437,22 +437,20 @@
     text-fill-color: transparent;
   }
 
-  /* Dot grid background pattern */
+  /* Grid background pattern */
   .bg-dot-grid {
-    background-image: radial-gradient(
-      circle,
-      oklch(0.7 0 0 / 15%) 1px,
-      transparent 1px
-    );
+    background-color: oklch(0.975 0.003 90);
+    background-image:
+      linear-gradient(to right, oklch(0.86 0.003 90 / 55%) 1px, transparent 1px),
+      linear-gradient(to bottom, oklch(0.86 0.003 90 / 55%) 1px, transparent 1px);
     background-size: 24px 24px;
   }
 
   .dark .bg-dot-grid {
-    background-image: radial-gradient(
-      circle,
-      oklch(1 0 0 / 8%) 1px,
-      transparent 1px
-    );
+    background-color: #242422;
+    background-image:
+      linear-gradient(to right, #161615 1px, transparent 1px),
+      linear-gradient(to bottom, #161615 1px, transparent 1px);
   }
 }
 
