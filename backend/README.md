@@ -48,7 +48,7 @@ DeerFlow is a LangGraph-based AI super agent with sandbox execution, persistent 
 The single LangGraph agent (`lead_agent`) is the runtime entry point, created via `make_lead_agent(config)`. It combines:
 
 - **Dynamic model selection** with thinking and vision support
-- **Middleware chain** for cross-cutting concerns (9 middlewares)
+- **Middleware chain** for cross-cutting concerns (12 middlewares, some optional)
 - **Tool system** with sandbox, MCP, community, and built-in tools
 - **Subagent delegation** for parallel task execution
 - **System prompt** with skills injection, memory context, and working directory guidance
@@ -69,7 +69,11 @@ Middlewares execute in strict order, each handling a specific concern:
 | 8 | **MemoryMiddleware** | Queues conversations for async memory extraction |
 | 9 | **ViewImageMiddleware** | Injects image data for vision-capable models (conditional) |
 | 10 | **SubagentLimitMiddleware** | Truncates excess parallel subagent tool calls (optional) |
-| 11 | **ClarificationMiddleware** | Intercepts clarification requests and interrupts execution (must be last) |
+| 11 | **TimelineLoggingMiddleware** | Writes per-thread message timeline to JSON for auditing |
+| 12 | **ClarificationMiddleware** | Intercepts clarification requests and interrupts execution (must be last) |
+
+Timeline logs are written per thread to:
+`backend/.deer-flow/threads/{thread_id}/user-data/outputs/agent_timeline.json`
 
 ### Sandbox System
 

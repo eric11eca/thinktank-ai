@@ -24,7 +24,7 @@ deer-flow/
 │   ├── src/
 │   │   ├── agents/            # LangGraph agent system
 │   │   │   ├── lead_agent/    # Main agent (factory + system prompt)
-│   │   │   ├── middlewares/   # 10 middleware components
+│   │   │   ├── middlewares/   # 11 middleware components
 │   │   │   ├── memory/        # Memory extraction, queue, prompts
 │   │   │   └── thread_state.py # ThreadState schema
 │   │   ├── gateway/           # FastAPI Gateway API
@@ -119,7 +119,11 @@ Middlewares execute in strict order in `src/agents/lead_agent/agent.py`:
 8. **MemoryMiddleware** - Queues conversations for async memory update (filters to user + final AI responses)
 9. **ViewImageMiddleware** - Injects base64 image data before LLM call (conditional on vision support)
 10. **SubagentLimitMiddleware** - Truncates excess `task` tool calls from model response to enforce `MAX_CONCURRENT_SUBAGENTS` limit (optional, if subagent_enabled)
-11. **ClarificationMiddleware** - Intercepts `ask_clarification` tool calls, interrupts via `Command(goto=END)` (must be last)
+11. **TimelineLoggingMiddleware** - Persists a chronological JSON log of thread messages for auditing
+12. **ClarificationMiddleware** - Intercepts `ask_clarification` tool calls, interrupts via `Command(goto=END)` (must be last)
+
+Timeline logs are written per thread to:
+`backend/.deer-flow/threads/{thread_id}/user-data/outputs/agent_timeline.json`
 
 ### Configuration System
 
