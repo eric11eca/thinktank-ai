@@ -443,7 +443,7 @@
     background-image:
       linear-gradient(to right, oklch(0.86 0.003 90 / 55%) 1px, transparent 1px),
       linear-gradient(to bottom, oklch(0.86 0.003 90 / 55%) 1px, transparent 1px);
-    background-size: 24px 24px;
+    background-size: 36px 36px;
   }
 
   .dark .bg-dot-grid {
