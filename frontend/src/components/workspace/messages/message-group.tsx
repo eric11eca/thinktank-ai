@@ -115,6 +115,7 @@ export function MessageGroup({
           onClick={() => setShowAbove(!showAbove)}
         >
           <ChainOfThoughtStep
+            className="my-0"
             label={
               <span className="opacity-60">
                 {showAbove
@@ -137,7 +138,7 @@ export function MessageGroup({
         <ChainOfThoughtContent className="px-4 pb-2">
           <div
             ref={toolCallsScrollRef}
-            className="max-h-72 overflow-y-auto pr-2"
+            className="max-h-[36rem] overflow-y-auto pr-2"
           >
             {showAbove &&
               aboveLastToolCallSteps.map((step) =>
@@ -186,7 +187,7 @@ export function MessageGroup({
           >
             <div className="flex w-full items-center justify-between">
               <ChainOfThoughtStep
-                className="font-normal"
+                className="my-0 font-normal"
                 label={t.common.thinking}
                 icon={LightbulbIcon}
               ></ChainOfThoughtStep>
@@ -204,7 +205,7 @@ export function MessageGroup({
             <ChainOfThoughtContent className="px-4 pb-2">
               <div
                 ref={thinkingScrollRef}
-                className="max-h-72 overflow-y-auto pr-2"
+                className="max-h-[36rem] overflow-y-auto pr-2"
               >
                 <ChainOfThoughtStep
                   key={lastReasoningStep.id}
