@@ -1,17 +1,9 @@
-# Thinktank.ai - 2.0
+# Thinktank.ai - 1.0
 
 Thinktank.ai is an open-source **super agent harness** that orchestrates **sub-agents**, **memory**, and **sandboxes** to do almost anything — powered by **extensible skills**.
 
-https://github.com/user-attachments/assets/a8bcadc4-e040-4cf2-8fda-dd768b999c18
-
 > [!NOTE]
-> **Thinktank.ai 2.0 is a ground-up rewrite.** It shares no code with v1. If you're looking for the original Deep Research framework, it's maintained on the [`1.x` branch](https://github.com/bytedance/thinktank-ai/tree/main-1.x) — contributions there are still welcome. Active development has moved to 2.0.
-
-## Offiical Website
-
-Learn more and see **real demos** on our official website.
-
-**[deerflow.tech](https://deerflow.tech/)**
+> **Thinktank.ai 1.0 is a development continuation.** It shares many base and style codes with Bytedance Deer Flow. If you're looking for the original Deer Flow framework, it's maintained on the [`main` branch](https://github.com/bytedance/deer-flow).
 
 ---
 
@@ -39,7 +31,7 @@ Learn more and see **real demos** on our official website.
 
 1. Clone the git repo of DeerFlow:
    ```bash
-   git clone https://github.com/bytedance/deer-flow.git && cd deer-flow
+   git clone https://github.com/eric11eca/studious-ai.git && cd studious-ai
    ```
 2. Create local config files by copying the example files:
    ```bash
@@ -61,7 +53,7 @@ Learn more and see **real demos** on our official website.
 
    Model selection persists per device; regenerate/edit actions reuse the current model unless you change it via the selector.
 
-   Thinking blocks auto-expand while tokens are streaming so users can observe the reasoning as it is generated, auto-scroll to new tokens, and scroll within a capped height.
+   Thinking blocks auto-expand while tokens are streaming, so users can observe the reasoning as it is generated, auto-scroll to new tokens, and scroll within a capped height.
 
 #### Sandbox Configuration
 
@@ -105,7 +97,7 @@ The fastest way to get started with a consistent environment:
 
 2. **Access**: http://localhost:2026
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed Docker development guide.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for a detailed Docker development guide.
 
 #### Option 2: Local Development
 
@@ -127,19 +119,11 @@ If you prefer running services locally:
    make dev
    ```
 
-4. **Access**: http://localhost:2026
+4. **Access**: http://localhost:3000
 
-## From Deep Research to Super Agent Harness
+## Thinktank.ai as Super Agent Harness for the Public Sector
 
-Thinktank.ai started as a Deep Research framework — and the community ran with it. Since launch, developers have pushed it far beyond research: building data pipelines, generating slide decks, spinning up dashboards, automating content workflows. Things we never anticipated.
-
-That told us something important: Thinktank.ai wasn't just a research tool. It was a **harness** — a runtime that gives agents the infrastructure to actually get work done.
-
-So we rebuilt it from scratch.
-
-Thinktank.ai 2.0 is no longer a framework you wire together. It's a super agent harness — batteries included, fully extensible. Built on LangGraph and LangChain, it ships with everything an agent needs out of the box: a filesystem, memory, skills, sandboxed execution, and the ability to plan and spawn sub-agents for complex, multi-step tasks.
-
-Use it as-is. Or tear it apart and make it yours.
+Thinktank.ai 1.0 is a super agent harness — batteries included, fully extensible. Built on LangGraph and LangChain, it ships with everything an agent needs out of the box: a filesystem, memory, skills, sandboxed execution, and the ability to plan and spawn sub-agents for complex, multi-step tasks.
 
 ## Core Features
 
@@ -196,7 +180,7 @@ This is the difference between a chatbot with tool access and an agent with an a
 
 **Isolated Sub-Agent Context**: Each sub-agent runs in its own isolated context. This means that the sub-agent will not be able to see the context of the main agent or other sub-agents. This is important to ensure that the sub-agent is able to focus on the task at hand and not be distracted by the context of the main agent or other sub-agents.
 
-**Summarization**: Within a session, Thinktank.ai manages context aggressively — summarizing completed sub-tasks, offloading intermediate results to the filesystem, compressing what's no longer immediately relevant. This lets it stay sharp across long, multi-step tasks without blowing the context window.
+**Summarization**: Within a session, Thinktank.ai manages context aggressively — summarizing completed sub-tasks, offloading intermediate results to the filesystem, and compressing what's no longer immediately relevant. This lets it stay sharp across long, multi-step tasks without blowing the context window.
 
 ### Long-Term Memory
 
@@ -233,21 +217,8 @@ This project is open source and available under the [MIT License](./LICENSE).
 Thinktank.ai is built upon the incredible work of the open-source community. We are deeply grateful to all the projects and contributors whose efforts have made Thinktank.ai possible. Truly, we stand on the shoulders of giants.
 
 We would like to extend our sincere appreciation to the following projects for their invaluable contributions:
-
+- **[DeerFlow](https://github.com/bytedance/deer-flow)**: Their impressive agent system that serves as the foundation and initialization, enabling robust new features and advanced R&D future works.
 - **[LangChain](https://github.com/langchain-ai/langchain)**: Their exceptional framework powers our LLM interactions and chains, enabling seamless integration and functionality.
 - **[LangGraph](https://github.com/langchain-ai/langgraph)**: Their innovative approach to multi-agent orchestration has been instrumental in enabling Thinktank.ai's sophisticated workflows.
 
 These projects exemplify the transformative power of open-source collaboration, and we are proud to build upon their foundations.
-
-### Key Contributors
-
-A heartfelt thank you goes out to the core authors of `Thinktank.ai`, whose vision, passion, and dedication have brought this project to life:
-
-- **[Daniel Walnut](https://github.com/hetaoBackend/)**
-- **[Henry Li](https://github.com/magiccube/)**
-
-Your unwavering commitment and expertise have been the driving force behind Thinktank.ai's success. We are honored to have you at the helm of this journey.
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=bytedance/thinktank-ai&type=Date)](https://star-history.com/#bytedance/thinktank-ai&Date)
