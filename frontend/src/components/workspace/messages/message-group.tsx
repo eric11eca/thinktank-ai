@@ -104,7 +104,10 @@ export function MessageGroup({
   const rehypePlugins = useRehypeSplitWordsIntoSpans(isLoading);
   return (
     <ChainOfThought
-      className={cn("w-full gap-2 rounded-lg border p-0.5", className)}
+      className={cn(
+        "bg-background/50 w-full gap-2 rounded-lg border p-0.5",
+        className,
+      )}
       open={true}
     >
       {aboveLastToolCallSteps.length > 0 && (
