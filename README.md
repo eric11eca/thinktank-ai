@@ -41,15 +41,18 @@ Thinktank.ai is an open-source **super agent harness** that orchestrates **sub-a
 3. Update the configs:
 
 - **Required**
-   - `config.yaml`: configure your preferred models.
-   - `.env`: configure your API keys.
+   - `config.yaml`: backend defaults (system prompts, tools, sandbox, and fallback models).
+   - `.env`: backend service keys (optional if you only use per-user keys via Settings).
+- **Model setup (recommended)**
+   - Open **Settings → Models** in the UI to enable providers, paste API keys (stored in localStorage), validate them, and select which models appear in the model picker.
+   - On app start, Thinktank.ai fetches the latest available models from each enabled provider.
 - **Optional**
    - `frontend/.env`: configure backend API URLs.
    - `extensions_config.json`: configure desired MCP servers and skills.
 
    For OpenAI reasoning-capable models, enable thinking via `when_thinking_enabled.reasoning` (this switches to the Responses API and lets you set `effort`). When thinking is enabled, Thinktank.ai surfaces a short reasoning summary in the chat UI.
 
-   Note: `.env` is loaded from the current working directory or its parents. If a model `api_key` resolves to an unset `$ENV_VAR`, Thinktank.ai fails fast with a message pointing at the missing variable.
+   Note: `.env` is loaded from the current working directory or its parents. If a model `api_key` resolves to an unset `$ENV_VAR`, Thinktank.ai fails fast with a message pointing at the missing variable. When using Settings-based keys, the backend does not persist secrets.
 
    Model selection persists per device; regenerate/edit actions reuse the current model unless you change it via the selector.
 

@@ -121,6 +121,7 @@ FastAPI application providing REST endpoints for frontend integration:
 | Route | Purpose |
 |-------|---------|
 | `GET /api/models` | List available LLM models |
+| `PUT/GET/DELETE /api/providers/{provider}/key` | Store, check, or delete a per-device provider API key (requires `x-device-id`) |
 | `GET/PUT /api/mcp/config` | Manage MCP server configurations |
 | `GET/PUT /api/skills` | List and manage skills |
 | `POST /api/skills/install` | Install skill from `.skill` archive |
@@ -131,6 +132,10 @@ FastAPI application providing REST endpoints for frontend integration:
 | `POST /api/threads/{id}/uploads` | Upload files (auto-converts PDF/PPT/Excel/Word to Markdown) |
 | `GET /api/threads/{id}/uploads/list` | List uploaded files |
 | `GET /api/threads/{id}/artifacts/{path}` | Serve generated artifacts |
+
+Provider model discovery constraints:
+- OpenAI: only GPT-5.2 models, excluding codex.
+- Anthropic: only models containing 4.6.
 
 ---
 

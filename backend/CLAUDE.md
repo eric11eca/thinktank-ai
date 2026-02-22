@@ -143,6 +143,22 @@ Config values starting with `$` are resolved as environment variables (e.g., `$O
 
 Note: OpenAI models enable thinking via the Responses API. Use `when_thinking_enabled.reasoning` (for example `effort: high`) to switch to the Responses API and control reasoning effort; do not send a `thinking` payload to Chat Completions.
 
+**Runtime Model Selection (per-user):**
+
+- The frontend can pass a `model_spec` object in `config.configurable` to bypass `config.yaml` and create a model dynamically.
+- `model_spec` includes `{ provider, model_id, tier, api_key, supports_vision }`.
+- API keys are sent per request and are not persisted server-side.
+- Provider model discovery and validation are exposed via:
+  - `POST /api/providers/{provider}/models`
+  - `POST /api/providers/{provider}/validate`
+- Provider API keys can be stored per-device in the gateway and referenced via:
+  - `PUT /api/providers/{provider}/key`
+  - `GET /api/providers/{provider}/key`
+  - `DELETE /api/providers/{provider}/key`
+- These endpoints expect the `x-device-id` header to identify the device.
+- OpenAI model discovery only includes GPT-5.2 (excluding codex).
+- Anthropic model discovery only includes models containing 4.6.
+
 **Extensions Configuration** (`extensions_config.json`):
 
 MCP servers and skills are configured together in `extensions_config.json` in project root:
@@ -162,6 +178,7 @@ FastAPI application on port 8001 with health check at `GET /health`.
 | Router | Endpoints |
 |--------|-----------|
 | **Models** (`/api/models`) | `GET /` - list models; `GET /{name}` - model details |
+| **Providers** (`/api/providers`) | `POST /{provider}/models` - list provider models; `POST /{provider}/validate` - validate API key |
 | **Agent** (`/api/agent`) | `GET /context` - resolved tools and enabled skills |
 | **MCP** (`/api/mcp`) | `GET /config` - get config; `PUT /config` - update config (saves to extensions_config.json) |
 | **Skills** (`/api/skills`) | `GET /` - list skills; `GET /{name}` - details; `PUT /{name}` - update enabled; `POST /install` - install from .skill archive |
