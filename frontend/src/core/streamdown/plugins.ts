@@ -1,5 +1,4 @@
 import { math } from "@streamdown/math";
-import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import type { StreamdownProps } from "streamdown";
 
@@ -11,7 +10,6 @@ export const streamdownPlugins = {
     math.remarkPlugin,
   ] as StreamdownProps["remarkPlugins"],
   rehypePlugins: [
-    rehypeRaw,
     math.rehypePlugin,
   ] as StreamdownProps["rehypePlugins"],
 };
