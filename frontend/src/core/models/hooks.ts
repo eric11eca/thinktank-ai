@@ -83,6 +83,7 @@ export function useModels({ enabled = true }: { enabled?: boolean } = {}) {
             ...latest.models.providers,
             ...updates,
           },
+          enabled_models: latest.models.enabled_models,
         });
       }
     });

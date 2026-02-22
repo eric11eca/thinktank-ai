@@ -137,6 +137,7 @@ function ProviderSection({
             ...updates,
           },
         },
+        enabled_models: latest.models.enabled_models,
       });
     },
     [providerConfig, providerId, setSettings],
@@ -329,14 +330,17 @@ function ProviderModelsList({
 
   const toggleModel = useCallback(
     (modelId: string, enabled: boolean) => {
+      const latest = getLocalSettings();
+      const latestEnabledModels = latest.models.enabled_models ?? {};
       setSettings("models", {
+        providers: latest.models.providers,
         enabled_models: {
-          ...enabledModels,
+          ...latestEnabledModels,
           [modelId]: enabled,
         },
       });
     },
-    [enabledModels, setSettings],
+    [setSettings],
   );
 
   if (!providerConfig.has_key) {
