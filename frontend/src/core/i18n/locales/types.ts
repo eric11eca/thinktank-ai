@@ -32,6 +32,7 @@ export interface Translations {
     save: string;
     install: string;
     create: string;
+    remove: string;
   };
 
   // Welcome
@@ -65,6 +66,8 @@ export interface Translations {
     ultraMode: string;
     ultraModeDescription: string;
     searchModels: string;
+    missingApiKey: string;
+    selectModel: string;
     surpriseMe: string;
     surpriseMePrompt: string;
     suggestions: {
@@ -165,6 +168,7 @@ export interface Translations {
     description: string;
     sections: {
       appearance: string;
+      models: string;
       memory: string;
       tools: string;
       skills: string;
@@ -216,6 +220,17 @@ export interface Translations {
       darkDescription: string;
       languageTitle: string;
       languageDescription: string;
+    };
+    models: {
+      title: string;
+      description: string;
+      apiKeyLabel: string;
+      apiKeyPlaceholder: string;
+      apiKeyStored: string;
+      validate: string;
+      enterApiKeyHint: string;
+      noModelsHint: string;
+      modelsLabel: string;
     };
     tools: {
       title: string;

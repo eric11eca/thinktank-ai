@@ -41,6 +41,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useI18n } from "@/core/i18n/hooks";
+import { useLocalSettings } from "@/core/settings";
 import { useModels } from "@/core/models/hooks";
 import type { AgentThreadContext } from "@/core/threads";
 import { cn } from "@/lib/utils";
@@ -103,6 +104,7 @@ export function InputBox({
   onStop?: () => void;
 }) {
   const { t } = useI18n();
+  const [settings] = useLocalSettings();
   const [searchParams] = useSearchParams();
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const { models } = useModels();
@@ -112,23 +114,35 @@ export function InputBox({
       setTimeout(() => {
         onContextChange?.({
           ...context,
-          model_name: model.name,
+          model_name: model.id,
           mode: model.supports_thinking ? "pro" : "flash",
         });
       }, 0);
       return model;
     }
-    return models.find((m) => m.name === context.model_name);
+    return models.find((m) => m.id === context.model_name);
   }, [context, models, onContextChange]);
   const supportThinking = useMemo(
     () => selectedModel?.supports_thinking ?? false,
     [selectedModel],
   );
+  const selectedProviderConfig = useMemo(() => {
+    if (!selectedModel) {
+      return undefined;
+    }
+    return settings.models.providers[selectedModel.provider];
+  }, [selectedModel, settings.models.providers]);
+  const isMissingProviderKey = useMemo(() => {
+    if (!selectedModel) {
+      return false;
+    }
+    return !selectedProviderConfig?.has_key;
+  }, [selectedModel, selectedProviderConfig?.has_key]);
   const handleModelSelect = useCallback(
-    (model_name: string) => {
+    (model_id: string) => {
       onContextChange?.({
         ...context,
-        model_name,
+        model_name: model_id,
       });
       setModelDialogOpen(false);
     },
@@ -152,9 +166,12 @@ export function InputBox({
       if (!message.text) {
         return;
       }
+      if (isMissingProviderKey) {
+        return;
+      }
       onSubmit?.(message);
     },
-    [onSubmit, onStop, status],
+    [isMissingProviderKey, onSubmit, onStop, status],
   );
   return (
     <PromptInput
@@ -368,44 +385,56 @@ export function InputBox({
           </PromptInputActionMenu>
         </PromptInputTools>
         <PromptInputTools className="gap-2">
-          <ModelSelector
-            open={modelDialogOpen}
-            onOpenChange={setModelDialogOpen}
-          >
-            <ModelSelectorTrigger asChild>
-              <PromptInputButton className="gap-2 rounded-lg border border-border bg-muted/50 px-4 py-2 hover:bg-muted">
-                <ModelSelectorName className="text-sm font-medium">
-                  {selectedModel?.display_name ?? t.inputBox.selectModel ?? "Select model"}
-                </ModelSelectorName>
-                <ChevronDownIcon className="size-4 text-muted-foreground" />
-              </PromptInputButton>
-            </ModelSelectorTrigger>
-            <ModelSelectorContent className="w-80">
-              <ModelSelectorInput placeholder={t.inputBox.searchModels} />
-              <ModelSelectorList>
-                {models.map((m) => (
-                  <ModelSelectorItem
-                    key={m.name}
-                    value={m.name}
-                    onSelect={() => handleModelSelect(m.name)}
-                    className="flex-col items-start gap-1 py-3"
-                  >
-                    <div className="flex w-full items-center justify-between">
-                      <ModelSelectorName className="text-base font-medium">{m.display_name}</ModelSelectorName>
-                      {m.name === context.model_name && (
-                        <CheckIcon className="size-4 text-primary" />
-                      )}
-                    </div>
-                    <span className="text-sm text-muted-foreground">
-                      {m.supports_thinking ? "Best for everyday tasks" : "Fastest for quick answers"}
-                    </span>
-                  </ModelSelectorItem>
-                ))}
-              </ModelSelectorList>
-            </ModelSelectorContent>
-          </ModelSelector>
+          <div className="flex flex-col gap-1">
+            <ModelSelector
+              open={modelDialogOpen}
+              onOpenChange={setModelDialogOpen}
+            >
+              <ModelSelectorTrigger asChild>
+                <PromptInputButton className="gap-2 rounded-lg border border-border bg-muted/50 px-4 py-2 hover:bg-muted">
+                  <ModelSelectorName className="text-sm font-medium">
+                    {selectedModel?.display_name ?? t.inputBox.selectModel ?? "Select model"}
+                  </ModelSelectorName>
+                  <ChevronDownIcon className="size-4 text-muted-foreground" />
+                </PromptInputButton>
+              </ModelSelectorTrigger>
+              <ModelSelectorContent className="w-80">
+                <ModelSelectorInput placeholder={t.inputBox.searchModels} />
+                {isMissingProviderKey && (
+                  <div className="px-4 pt-3 text-xs text-rose-500">
+                    {t.inputBox.missingApiKey}
+                  </div>
+                )}
+                <ModelSelectorList>
+                  {models.map((m) => (
+                    <ModelSelectorItem
+                      key={m.id}
+                      value={m.id}
+                      onSelect={() => handleModelSelect(m.id)}
+                      className="flex-col items-start gap-1 py-3"
+                    >
+                      <div className="flex w-full items-center justify-between">
+                        <ModelSelectorName className="text-base font-medium">{m.display_name}</ModelSelectorName>
+                        {m.id === context.model_name && (
+                          <CheckIcon className="size-4 text-primary" />
+                        )}
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {m.supports_thinking ? "Best for everyday tasks" : "Fastest for quick answers"}
+                      </span>
+                    </ModelSelectorItem>
+                  ))}
+                </ModelSelectorList>
+              </ModelSelectorContent>
+            </ModelSelector>
+            {isMissingProviderKey && (
+              <div className="text-xs text-rose-500">
+                {t.inputBox.missingApiKey}
+              </div>
+            )}
+          </div>
           <SubmitButton
-            disabled={disabled}
+            disabled={disabled || isMissingProviderKey}
             status={status}
           />
         </PromptInputTools>

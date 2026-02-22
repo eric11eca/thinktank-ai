@@ -43,6 +43,7 @@ export const zhCN: Translations = {
     save: "保存",
     install: "安装",
     create: "创建",
+    remove: "移除",
   },
 
   // Welcome
@@ -81,6 +82,8 @@ export const zhCN: Translations = {
     ultraModeDescription:
       "继承自 Pro 模式，可调用子代理分工协作，适合复杂多步骤任务，能力最强",
     searchModels: "搜索模型...",
+    missingApiKey: "请在 设置 → 模型 中为该供应商添加 API Key 才能发送消息。",
+    selectModel: "选择模型",
     surpriseMe: "小惊喜",
     surpriseMePrompt: "给我一个小惊喜吧",
     suggestions: [
@@ -214,6 +217,7 @@ export const zhCN: Translations = {
     description: "根据你的偏好调整 Thinktank.ai 的界面和行为。",
     sections: {
       appearance: "外观",
+      models: "模型",
       memory: "记忆",
       tools: "工具",
       skills: "技能",
@@ -266,6 +270,17 @@ export const zhCN: Translations = {
       darkDescription: "更暗的配色，减少眩光方便专注。",
       languageTitle: "语言",
       languageDescription: "在不同语言之间切换。",
+    },
+    models: {
+      title: "模型",
+      description: "连接供应商、校验 API Key，并选择在模型列表中显示的模型。",
+      apiKeyLabel: "API Key",
+      apiKeyPlaceholder: "请输入 API Key",
+      apiKeyStored: "API Key 已存储在当前设备。",
+      validate: "验证",
+      enterApiKeyHint: "请输入 API Key 以加载模型。",
+      noModelsHint: "该供应商未返回可用模型。",
+      modelsLabel: "可用模型",
     },
     tools: {
       title: "工具",

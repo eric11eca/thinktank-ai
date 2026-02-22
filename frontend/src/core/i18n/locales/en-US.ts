@@ -43,6 +43,7 @@ export const enUS: Translations = {
     save: "Save",
     install: "Install",
     create: "Create",
+    remove: "Remove",
   },
 
   // Welcome
@@ -83,6 +84,9 @@ export const enUS: Translations = {
     ultraModeDescription:
       "Pro mode with subagents to divide work; best for complex multi-step tasks",
     searchModels: "Search models...",
+    missingApiKey:
+      "Add an API key for this provider in Settings → Models to send messages.",
+    selectModel: "Select model",
     surpriseMe: "Surprise",
     surpriseMePrompt: "Surprise me",
     suggestions: [
@@ -219,6 +223,7 @@ export const enUS: Translations = {
     description: "Adjust how Thinktank.ai looks and behaves for you.",
     sections: {
       appearance: "Appearance",
+      models: "Models",
       memory: "Memory",
       tools: "Tools",
       skills: "Skills",
@@ -272,6 +277,18 @@ export const enUS: Translations = {
       darkDescription: "Dim palette that reduces glare for focus.",
       languageTitle: "Language",
       languageDescription: "Switch between languages.",
+    },
+    models: {
+      title: "Models",
+      description:
+        "Connect providers, validate API keys, and choose which models appear in the selector.",
+      apiKeyLabel: "API key",
+      apiKeyPlaceholder: "Paste your API key",
+      apiKeyStored: "API key stored on this device.",
+      validate: "Validate",
+      enterApiKeyHint: "Enter an API key to load models.",
+      noModelsHint: "No models returned for this provider.",
+      modelsLabel: "Available models",
     },
     tools: {
       title: "Tools",

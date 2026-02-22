@@ -1,6 +1,7 @@
 import { type BaseMessage } from "@langchain/core/messages";
 import type { Thread } from "@langchain/langgraph-sdk";
 
+import type { RuntimeModelSpec } from "../models/types";
 import type { Todo } from "../todos";
 
 export interface TokenUsage {
@@ -21,6 +22,8 @@ export interface AgentThread extends Thread<AgentThreadState> {}
 export interface AgentThreadContext extends Record<string, unknown> {
   thread_id: string;
   model_name: string | undefined;
+  model_spec?: RuntimeModelSpec;
+  device_id?: string;
   thinking_enabled: boolean;
   is_plan_mode: boolean;
   subagent_enabled: boolean;

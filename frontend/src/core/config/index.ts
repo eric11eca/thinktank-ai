@@ -1,10 +1,15 @@
 import { env } from "@/env";
 
 export function getBackendBaseURL() {
-  if (env.VITE_BACKEND_BASE_URL) {
-    return env.VITE_BACKEND_BASE_URL;
+  const base = env.VITE_BACKEND_BASE_URL?.trim();
+  if (!base) {
+    return "";
   }
-  return "";
+  const normalized = base.replace(/\/+$/, "");
+  if (normalized.endsWith("/api")) {
+    return normalized.slice(0, -4);
+  }
+  return normalized;
 }
 
 export function getLangGraphBaseURL() {

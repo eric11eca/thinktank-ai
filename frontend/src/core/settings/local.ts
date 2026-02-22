@@ -1,3 +1,4 @@
+import type { ProviderId } from "../models/types";
 import type { AgentThreadContext } from "../threads";
 
 export const DEFAULT_LOCAL_SETTINGS: LocalSettings = {
@@ -7,6 +8,39 @@ export const DEFAULT_LOCAL_SETTINGS: LocalSettings = {
   context: {
     model_name: undefined,
     mode: undefined,
+  },
+  models: {
+    providers: {
+      openai: {
+        enabled: false,
+        has_key: false,
+      },
+      anthropic: {
+        enabled: false,
+        has_key: false,
+      },
+      gemini: {
+        enabled: false,
+        has_key: false,
+      },
+      deepseek: {
+        enabled: false,
+        has_key: false,
+      },
+      kimi: {
+        enabled: false,
+        has_key: false,
+      },
+      zai: {
+        enabled: false,
+        has_key: false,
+      },
+      minimax: {
+        enabled: false,
+        has_key: false,
+      },
+    },
+    enabled_models: {},
   },
   layout: {
     sidebar_collapsed: false,
@@ -24,6 +58,20 @@ export interface LocalSettings {
     "thread_id" | "is_plan_mode" | "thinking_enabled" | "subagent_enabled"
   > & {
     mode: "flash" | "thinking" | "pro" | "ultra" | undefined;
+  };
+  models: {
+    providers: Record<
+      ProviderId,
+      {
+        enabled: boolean;
+        has_key: boolean;
+        api_key?: string;
+        last_validated_at?: string;
+        last_validation_status?: "valid" | "invalid" | "unknown";
+        last_validation_message?: string;
+      }
+    >;
+    enabled_models: Record<string, boolean>;
   };
   layout: {
     sidebar_collapsed: boolean;
@@ -43,6 +91,18 @@ export function getLocalSettings(): LocalSettings {
         context: {
           ...DEFAULT_LOCAL_SETTINGS.context,
           ...settings.context,
+        },
+        models: {
+          ...DEFAULT_LOCAL_SETTINGS.models,
+          ...settings.models,
+          providers: {
+            ...DEFAULT_LOCAL_SETTINGS.models.providers,
+            ...(settings.models?.providers ?? {}),
+          },
+          enabled_models: {
+            ...DEFAULT_LOCAL_SETTINGS.models.enabled_models,
+            ...(settings.models?.enabled_models ?? {}),
+          },
         },
         layout: {
           ...DEFAULT_LOCAL_SETTINGS.layout,
