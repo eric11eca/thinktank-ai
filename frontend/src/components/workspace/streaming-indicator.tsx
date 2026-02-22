@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 
 import {
   TurnUsageDisplay,
@@ -65,18 +65,40 @@ export function StreamingIndicator({
   showUsage = false,
   isLoading = false,
   usageEstimate,
+  verbSeed,
 }: {
   className?: string;
   size?: "normal" | "sm";
   showUsage?: boolean;
   isLoading?: boolean;
   usageEstimate?: TurnUsageEstimate;
+  verbSeed?: number;
 }) {
   const dotSize = size === "sm" ? "w-1.5 h-1.5 mx-0.5" : "w-2 h-2 mx-1";
-  const verb = useMemo(
-    () => ACTION_VERBS[Math.floor(Math.random() * ACTION_VERBS.length)],
-    [],
+  const pickRandomVerb = () =>
+    ACTION_VERBS[Math.floor(Math.random() * ACTION_VERBS.length)];
+  const pickNextVerb = (current?: (typeof ACTION_VERBS)[number]) => {
+    if (ACTION_VERBS.length <= 1) {
+      return ACTION_VERBS[0];
+    }
+    let next = pickRandomVerb();
+    if (current && next === current) {
+      const currentIndex = ACTION_VERBS.indexOf(current);
+      const offset = Math.floor(Math.random() * (ACTION_VERBS.length - 1)) + 1;
+      next = ACTION_VERBS[(currentIndex + offset) % ACTION_VERBS.length];
+    }
+    return next;
+  };
+  const [verb, setVerb] = useState<(typeof ACTION_VERBS)[number]>(() =>
+    pickRandomVerb(),
   );
+
+  useEffect(() => {
+    if (verbSeed === undefined) {
+      return;
+    }
+    setVerb((current) => pickNextVerb(current));
+  }, [verbSeed]);
 
   return (
     <div className={cn("flex flex-wrap items-center gap-3", className)}>
