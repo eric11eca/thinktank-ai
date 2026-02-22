@@ -37,8 +37,10 @@ import { Tooltip } from "@/components/workspace/tooltip";
 import { Welcome } from "@/components/workspace/welcome";
 import { getBackendBaseURL } from "@/core/config";
 import { useI18n } from "@/core/i18n/hooks";
+import { getRuntimeModelSpec, useModels } from "@/core/models/hooks";
 import { useNotification } from "@/core/notification/hooks";
 import { useLocalSettings } from "@/core/settings";
+import { getDeviceId } from "@/core/settings/device";
 import { type AgentThread, type AgentThreadState } from "@/core/threads";
 import {
   type ThreadResubmitOptions,
@@ -78,6 +80,7 @@ function ChatInner() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [settings, setSettings] = useLocalSettings();
+  const [streamingVerbSeed, setStreamingVerbSeed] = useState(0);
   const { setOpen: setSidebarOpen } = useSidebar();
   const {
     artifacts,
@@ -238,6 +241,16 @@ function ChatInner() {
     typeof settings.context.model_name === "string"
       ? settings.context.model_name
       : undefined;
+  const { models } = useModels();
+  const deviceId = getDeviceId();
+  const selectedModel = useMemo(
+    () => models.find((model) => model.id === contextModelName),
+    [models, contextModelName],
+  );
+  const runtimeModelSpec = useMemo(
+    () => getRuntimeModelSpec(selectedModel, deviceId),
+    [selectedModel, deviceId],
+  );
 
   const handleSubmit = useSubmitThread({
     isNewThread,
@@ -245,6 +258,8 @@ function ChatInner() {
     thread,
     threadContext: {
       ...settings.context,
+      model_spec: runtimeModelSpec,
+      device_id: deviceId,
       thinking_enabled: settings.context.mode !== "flash",
       is_plan_mode:
         settings.context.mode === "pro" || settings.context.mode === "ultra",
@@ -262,6 +277,7 @@ function ChatInner() {
       if (isNewThread && !hasConversation) {
         setHasPendingSubmit(true);
       }
+      setStreamingVerbSeed((prev) => prev + 1);
       return handleSubmit(message);
     },
     [handleSubmit, hasConversation, isNewThread],
@@ -548,6 +564,7 @@ function ChatInner() {
                       paddingBottom={showLanding ? 400 : 160}
                       isRegenerating={isRegenerating}
                       isTransitioning={isTransitioningConversation}
+                      streamingVerbSeed={streamingVerbSeed}
                       onEditMessage={handleEditMessage}
                       onRegenerateMessage={handleRegenerateMessage}
                     />

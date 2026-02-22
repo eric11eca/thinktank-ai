@@ -70,12 +70,24 @@ export function setTurnUsageThread(
   options?: { restore?: boolean },
 ) {
   _turnUsageThreadId = threadId;
-  if (!threadId || !options?.restore) return;
-  const stored = readStoredUsage(threadId);
-  if (stored) {
-    _turnUsage = stored;
+  if (!threadId) {
+    if (_turnUsage !== null) {
+      _turnUsage = null;
+      _emitChange();
+    }
+    return;
+  }
+  if (options?.restore) {
+    const stored = readStoredUsage(threadId);
+    _turnUsage = stored ?? null;
+    _emitChange();
+    return;
+  }
+  if (_turnUsage !== null) {
+    _turnUsage = null;
     _emitChange();
   }
+  writeStoredUsage(threadId, null);
 }
 
 /** Accumulate a token delta into the current turn. Sets startTime on the first call. */
