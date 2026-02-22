@@ -221,14 +221,21 @@ def _build_middlewares(config: RunnableConfig):
     middlewares.append(MemoryMiddleware())
 
     # Add ViewImageMiddleware only if the current model supports vision
-    model_name = config.get("configurable", {}).get("model_name") or config.get("configurable", {}).get("model")
+    configurable = config.get("configurable", {})
+    model_name = configurable.get("model_name") or configurable.get("model")
+    runtime_model = configurable.get("model_spec")
     app_config = get_app_config()
     # If no model_name specified, use the first model (default)
     if model_name is None and app_config.models:
         model_name = app_config.models[0].name
 
     model_config = app_config.get_model_config(model_name) if model_name else None
-    if model_config is not None and model_config.supports_vision:
+    supports_vision = None
+    if isinstance(runtime_model, dict):
+        supports_vision = runtime_model.get("supports_vision")
+    if supports_vision is True:
+        middlewares.append(ViewImageMiddleware())
+    elif model_config is not None and model_config.supports_vision:
         middlewares.append(ViewImageMiddleware())
 
     # Add SubagentLimitMiddleware to truncate excess parallel task calls
@@ -249,15 +256,17 @@ def make_lead_agent(config: RunnableConfig):
     # Lazy import to avoid circular dependency
     from src.tools import get_available_tools
 
-    thinking_enabled = config.get("configurable", {}).get("thinking_enabled", True)
-    model_name = config.get("configurable", {}).get("model_name") or config.get("configurable", {}).get("model")
-    is_plan_mode = config.get("configurable", {}).get("is_plan_mode", False)
-    subagent_enabled = config.get("configurable", {}).get("subagent_enabled", False)
-    max_concurrent_subagents = config.get("configurable", {}).get("max_concurrent_subagents", 3)
+    configurable = config.get("configurable", {})
+    thinking_enabled = configurable.get("thinking_enabled", True)
+    model_name = configurable.get("model_name") or configurable.get("model")
+    runtime_model = configurable.get("model_spec")
+    is_plan_mode = configurable.get("is_plan_mode", False)
+    subagent_enabled = configurable.get("subagent_enabled", False)
+    max_concurrent_subagents = configurable.get("max_concurrent_subagents", 3)
     print(f"thinking_enabled: {thinking_enabled}, model_name: {model_name}, is_plan_mode: {is_plan_mode}, subagent_enabled: {subagent_enabled}, max_concurrent_subagents: {max_concurrent_subagents}")
     return create_agent(
-        model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled),
-        tools=get_available_tools(model_name=model_name, subagent_enabled=subagent_enabled),
+        model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled, runtime_model=runtime_model),
+        tools=get_available_tools(model_name=model_name, runtime_model=runtime_model, subagent_enabled=subagent_enabled),
         middleware=_build_middlewares(config),
         system_prompt=apply_prompt_template(
             subagent_enabled=subagent_enabled,

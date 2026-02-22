@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from src.gateway.config import get_gateway_config
-from src.gateway.routers import agent, artifacts, mcp, memory, models, skills, threads, uploads
+from src.gateway.routers import agent, artifacts, keys, mcp, memory, models, providers, skills, threads, uploads
 
 # Configure logging
 logging.basicConfig(
@@ -71,6 +71,10 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
                 "description": "Operations for querying available AI models and their configurations",
             },
             {
+                "name": "providers",
+                "description": "Operations for listing provider models and validating API keys",
+            },
+            {
                 "name": "agent",
                 "description": "Inspect the resolved agent context (tools and skills)",
             },
@@ -110,6 +114,10 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
     # Include routers
     # Models API is mounted at /api/models
     app.include_router(models.router)
+
+    # Provider model discovery API
+    app.include_router(providers.router)
+    app.include_router(keys.router)
 
     # Agent context API is mounted at /api/agent
     app.include_router(agent.router)
