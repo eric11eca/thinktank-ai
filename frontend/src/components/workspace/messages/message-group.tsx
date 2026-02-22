@@ -149,7 +149,7 @@ export function MessageGroup({
                   <ChainOfThoughtStep
                     key={step.id}
                     icon={ClockIcon}
-                    className="text-foreground/85"
+                    className="text-[rgb(175,174,163)]"
                     label={
                       <MarkdownContent
                         content={step.reasoning ?? ""}
@@ -213,7 +213,7 @@ export function MessageGroup({
                 <ChainOfThoughtStep
                   key={lastReasoningStep.id}
                   icon={ClockIcon}
-                  className="text-foreground/85"
+                  className="text-[rgb(175,174,163)]"
                   label={
                     <MarkdownContent
                       content={lastReasoningStep.reasoning ?? ""}
