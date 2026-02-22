@@ -74,14 +74,19 @@ def _create_runtime_model(spec: RuntimeModelSpec, thinking_enabled: bool, **kwar
     settings.update(_runtime_tier_settings(spec, thinking_enabled))
     settings.update(kwargs)
 
+    settings.setdefault("max_tokens", 128000)
     if provider == "anthropic":
-        settings.setdefault("max_tokens", 4096)
+        thinking_config = settings.get("thinking")
+        if isinstance(thinking_config, dict):
+            budget_tokens = thinking_config.get("budget_tokens")
+            if isinstance(budget_tokens, int) and budget_tokens > settings["max_tokens"]:
+                settings["max_tokens"] = budget_tokens
         return ChatAnthropic(**settings)
     if provider == "deepseek":
         if spec.base_url or PROVIDER_BASE_URLS.get(provider):
             settings.setdefault("api_base", spec.base_url or PROVIDER_BASE_URLS[provider])
             settings.pop("base_url", None)
-        settings.setdefault("max_tokens", 4096)
+        settings.setdefault("max_tokens", 65536)
         return PatchedChatDeepSeek(**settings)
 
     return ChatOpenAI(**settings)

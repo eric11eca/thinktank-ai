@@ -143,6 +143,8 @@ Config values starting with `$` are resolved as environment variables (e.g., `$O
 
 Note: OpenAI models enable thinking via the Responses API. Use `when_thinking_enabled.reasoning` (for example `effort: high`) to switch to the Responses API and control reasoning effort; do not send a `thinking` payload to Chat Completions.
 
+When using Anthropic extended thinking, ensure `max_tokens` is at least `thinking.budget_tokens` to avoid request errors.
+
 **Runtime Model Selection (per-user):**
 
 - The frontend can pass a `model_spec` object in `config.configurable` to bypass `config.yaml` and create a model dynamically.
