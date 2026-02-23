@@ -51,7 +51,7 @@ models:
 **Supported Providers**:
 - OpenAI (`langchain_openai:ChatOpenAI`)
 - Anthropic (`langchain_anthropic:ChatAnthropic`)
-- DeepSeek (`langchain_deepseek:ChatDeepSeek`)
+- DeepSeek (`src.models.patched_deepseek:PatchedChatDeepSeek`)
 - Any LangChain-compatible provider
 
 **Thinking Models**:
