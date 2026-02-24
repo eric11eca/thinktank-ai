@@ -39,9 +39,9 @@ class SandboxMiddleware(AgentMiddleware[SandboxMiddlewareState]):
         super().__init__()
         self._lazy_init = lazy_init
 
-    def _acquire_sandbox(self, thread_id: str) -> str:
+    def _acquire_sandbox(self, thread_id: str, user_id: str | None = None) -> str:
         provider = get_sandbox_provider()
-        sandbox_id = provider.acquire(thread_id)
+        sandbox_id = provider.acquire(thread_id, user_id=user_id)
         print(f"Acquiring sandbox {sandbox_id}")
         return sandbox_id
 
@@ -54,7 +54,8 @@ class SandboxMiddleware(AgentMiddleware[SandboxMiddlewareState]):
         # Eager initialization (original behavior)
         if "sandbox" not in state or state["sandbox"] is None:
             thread_id = runtime.context["thread_id"]
+            user_id = runtime.context.get("user_id")
             print(f"Thread ID: {thread_id}")
-            sandbox_id = self._acquire_sandbox(thread_id)
+            sandbox_id = self._acquire_sandbox(thread_id, user_id=user_id)
             return {"sandbox": {"sandbox_id": sandbox_id}}
         return super().before_agent(state, runtime)
