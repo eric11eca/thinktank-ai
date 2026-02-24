@@ -1,0 +1,55 @@
+# Production Dockerfile for DeerFlow Backend
+# Multi-stage build with non-root user for security
+
+# ── Stage 1: Builder ─────────────────────────────────────────────────────────
+FROM python:3.12-slim AS builder
+
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
+
+WORKDIR /app
+
+# Copy backend source
+COPY backend ./backend
+
+# Install production dependencies only (no dev deps like pytest, ruff)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    sh -c "cd backend && uv sync --no-dev"
+
+# ── Stage 2: Runtime ─────────────────────────────────────────────────────────
+FROM python:3.12-slim
+
+# Install minimal runtime dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy uv from builder
+COPY --from=builder /root/.local/bin/uv /usr/local/bin/uv
+
+# Copy application with installed virtualenv
+COPY --from=builder /app /app
+
+# Create non-root user
+RUN useradd -m -r -s /bin/false appuser
+
+WORKDIR /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose ports (gateway: 8001, langgraph: 2024)
+EXPOSE 8001 2024
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+# Default: run Gateway with Gunicorn (override in docker-compose for other services)
+CMD ["sh", "-c", "cd backend && uv run gunicorn src.gateway.app:app -c gunicorn.conf.py"]

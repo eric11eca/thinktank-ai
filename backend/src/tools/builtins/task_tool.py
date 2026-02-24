@@ -82,11 +82,13 @@ def task_tool(
     thread_id = None
     parent_model = None
     trace_id = None
+    user_id = None
 
     if runtime is not None:
         sandbox_state = runtime.state.get("sandbox")
         thread_data = runtime.state.get("thread_data")
         thread_id = runtime.context.get("thread_id")
+        user_id = runtime.context.get("user_id")
 
         # Try to get parent model from configurable
         metadata = runtime.config.get("metadata", {})
@@ -115,7 +117,7 @@ def task_tool(
 
     # Start background execution (always async to prevent blocking)
     # Use tool_call_id as task_id for better traceability
-    task_id = executor.execute_async(prompt, task_id=tool_call_id)
+    task_id = executor.execute_async(prompt, task_id=tool_call_id, user_id=user_id)
     logger.info(f"[trace={trace_id}] Started background task {task_id}, polling for completion...")
 
     # Poll for task completion in backend (removes need for LLM to poll)

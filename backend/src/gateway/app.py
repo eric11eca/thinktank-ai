@@ -153,17 +153,22 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
         """Health check endpoint.
 
         Returns service health status. When DATABASE_URL is configured,
-        also checks database connectivity.
+        also checks database connectivity. When REDIS_URL is configured,
+        also checks Redis connectivity.
 
         Returns:
             Service health status information with component checks.
         """
         from src.db.engine import check_db_connection, is_db_enabled
+        from src.queue.redis_connection import check_redis_health, is_redis_available
 
         checks: dict[str, str] = {"gateway": "healthy"}
 
         if is_db_enabled():
             checks["database"] = check_db_connection()
+
+        if is_redis_available():
+            checks["redis"] = check_redis_health()
 
         all_healthy = all(v == "healthy" for v in checks.values())
         status = "healthy" if all_healthy else "degraded"

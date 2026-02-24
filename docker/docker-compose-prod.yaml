@@ -1,0 +1,162 @@
+# DeerFlow Production Environment
+# Usage: docker compose -f docker-compose-prod.yaml up --build
+#
+# Services:
+#   - postgres: PostgreSQL database (port 5432, internal)
+#   - redis: Redis cache/queue (port 6379, internal)
+#   - gateway: Backend Gateway API (scalable, Gunicorn + UvicornWorker)
+#   - langgraph: LangGraph agent server (scalable, sticky sessions)
+#   - worker: Background memory update worker (scalable)
+#   - nginx: Reverse proxy / load balancer (port 80)
+#
+# Scaling:
+#   docker compose -f docker-compose-prod.yaml up --build \
+#     --scale gateway=2 --scale langgraph=2 --scale worker=2
+#
+# Environment variables:
+#   DB_PASSWORD: PostgreSQL password (required)
+#   GATEWAY_REPLICAS: Number of gateway replicas (default: 2)
+#   LANGGRAPH_REPLICAS: Number of LangGraph replicas (default: 2)
+#   WORKER_REPLICAS: Number of background workers (default: 2)
+#   GATEWAY_WORKERS: Gunicorn workers per gateway replica (default: auto)
+
+services:
+  # ── Database ────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: thinktank-postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: thinktank
+      POSTGRES_USER: thinktank
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U thinktank"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: always
+    networks:
+      - thinktank
+
+  # ── Cache / Queue ───────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: thinktank-redis
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    networks:
+      - thinktank
+
+  # ── Gateway API (scalable) ──────────────────────────────────────────
+  gateway:
+    build:
+      context: ../
+      dockerfile: backend/Dockerfile.prod
+    command: >
+      sh -c "cd backend && uv run alembic upgrade head &&
+      uv run gunicorn src.gateway.app:app -c gunicorn.conf.py"
+    environment:
+      DATABASE_URL: postgresql://thinktank:${DB_PASSWORD}@postgres:5432/thinktank
+      REDIS_URL: redis://redis:6379/0
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: ${GATEWAY_REPLICAS:-2}
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+    restart: always
+    networks:
+      - thinktank
+
+  # ── LangGraph Server (scalable with sticky sessions) ────────────────
+  langgraph:
+    build:
+      context: ../
+      dockerfile: backend/Dockerfile.prod
+    command: >
+      sh -c "cd backend && uv run langgraph up
+      --host 0.0.0.0 --port 2024
+      --postgres-uri postgresql://thinktank:${DB_PASSWORD}@postgres:5432/thinktank"
+    environment:
+      DATABASE_URL: postgresql://thinktank:${DB_PASSWORD}@postgres:5432/thinktank
+      REDIS_URL: redis://redis:6379/0
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      replicas: ${LANGGRAPH_REPLICAS:-2}
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8G
+    restart: always
+    networks:
+      - thinktank
+
+  # ── Background Workers (memory updates, async tasks) ────────────────
+  worker:
+    build:
+      context: ../
+      dockerfile: backend/Dockerfile.prod
+    command: sh -c "cd backend && uv run python worker.py"
+    environment:
+      DATABASE_URL: postgresql://thinktank:${DB_PASSWORD}@postgres:5432/thinktank
+      REDIS_URL: redis://redis:6379/0
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: ${WORKER_REPLICAS:-2}
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
+    restart: always
+    networks:
+      - thinktank
+
+  # ── Reverse Proxy / Load Balancer ───────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: thinktank-nginx
+    ports:
+      - "${NGINX_PORT:-80}:80"
+    volumes:
+      - ./nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - gateway
+      - langgraph
+    restart: always
+    networks:
+      - thinktank
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  thinktank:
+    driver: bridge
