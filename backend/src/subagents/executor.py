@@ -1,7 +1,9 @@
 """Subagent execution engine."""
 
 import logging
+import os
 import threading
+import time
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeoutError
@@ -69,12 +71,68 @@ class SubagentResult:
 _background_tasks: dict[str, SubagentResult] = {}
 _background_tasks_lock = threading.Lock()
 
+# Thread pool sizing: configurable via environment, defaults to max(8, cpu_count * 2)
+_SCHEDULER_WORKERS = int(os.environ.get(
+    "SUBAGENT_SCHEDULER_WORKERS",
+    max(8, (os.cpu_count() or 4) * 2),
+))
+_EXECUTION_WORKERS = int(os.environ.get(
+    "SUBAGENT_EXECUTION_WORKERS",
+    max(8, (os.cpu_count() or 4) * 2),
+))
+
 # Thread pool for background task scheduling and orchestration
-_scheduler_pool = ThreadPoolExecutor(max_workers=3, thread_name_prefix="subagent-scheduler-")
+_scheduler_pool = ThreadPoolExecutor(
+    max_workers=_SCHEDULER_WORKERS,
+    thread_name_prefix="subagent-scheduler-",
+)
 
 # Thread pool for actual subagent execution (with timeout support)
-# Larger pool to avoid blocking when scheduler submits execution tasks
-_execution_pool = ThreadPoolExecutor(max_workers=3, thread_name_prefix="subagent-exec-")
+_execution_pool = ThreadPoolExecutor(
+    max_workers=_EXECUTION_WORKERS,
+    thread_name_prefix="subagent-exec-",
+)
+
+# ---------------------------------------------------------------------------
+# Per-user concurrency control
+# ---------------------------------------------------------------------------
+MAX_CONCURRENT_SUBAGENTS_PER_USER = int(
+    os.environ.get("MAX_CONCURRENT_SUBAGENTS_PER_USER", 3)
+)
+
+# Bounded LRU cache of per-user semaphores: user_id -> (Semaphore, last_used)
+_user_semaphores: dict[str, tuple[threading.Semaphore, float]] = {}
+_user_semaphores_lock = threading.Lock()
+_MAX_SEMAPHORE_CACHE_SIZE = 1000
+
+
+def _get_user_semaphore(user_id: str) -> threading.Semaphore:
+    """Get or create a per-user concurrency semaphore.
+
+    Uses a bounded LRU cache. When the cache exceeds _MAX_SEMAPHORE_CACHE_SIZE,
+    the oldest 20% of entries (by last-used timestamp) are evicted.
+    """
+    with _user_semaphores_lock:
+        entry = _user_semaphores.get(user_id)
+        now = time.monotonic()
+
+        if entry is not None:
+            sem, _ = entry
+            _user_semaphores[user_id] = (sem, now)
+            return sem
+
+        # Evict oldest entries if cache is full
+        if len(_user_semaphores) >= _MAX_SEMAPHORE_CACHE_SIZE:
+            sorted_entries = sorted(
+                _user_semaphores.items(), key=lambda x: x[1][1]
+            )
+            evict_count = _MAX_SEMAPHORE_CACHE_SIZE // 5  # Remove 20%
+            for key, _ in sorted_entries[:evict_count]:
+                del _user_semaphores[key]
+
+        sem = threading.Semaphore(MAX_CONCURRENT_SUBAGENTS_PER_USER)
+        _user_semaphores[user_id] = (sem, now)
+        return sem
 
 
 def _filter_tools(
@@ -331,12 +389,18 @@ class SubagentExecutor:
 
         return result
 
-    def execute_async(self, task: str, task_id: str | None = None) -> str:
+    def execute_async(
+        self,
+        task: str,
+        task_id: str | None = None,
+        user_id: str | None = None,
+    ) -> str:
         """Start a task execution in the background.
 
         Args:
             task: The task description for the subagent.
             task_id: Optional task ID to use. If not provided, a random UUID will be generated.
+            user_id: Optional user ID for per-user concurrency limiting.
 
         Returns:
             Task ID that can be used to check status later.
@@ -359,12 +423,29 @@ class SubagentExecutor:
 
         # Submit to scheduler pool
         def run_task():
-            with _background_tasks_lock:
-                _background_tasks[task_id].status = SubagentStatus.RUNNING
-                _background_tasks[task_id].started_at = datetime.now()
-                result_holder = _background_tasks[task_id]
+            # Acquire per-user semaphore to enforce concurrency limits
+            sem = _get_user_semaphore(user_id or "anonymous")
+            acquired = sem.acquire(timeout=30)
+            if not acquired:
+                logger.warning(
+                    f"[trace={self.trace_id}] Subagent {self.config.name} "
+                    f"concurrency limit reached for user {user_id}"
+                )
+                with _background_tasks_lock:
+                    _background_tasks[task_id].status = SubagentStatus.FAILED
+                    _background_tasks[task_id].error = (
+                        f"Concurrency limit reached: max {MAX_CONCURRENT_SUBAGENTS_PER_USER} "
+                        f"concurrent subagents per user"
+                    )
+                    _background_tasks[task_id].completed_at = datetime.now()
+                return
 
             try:
+                with _background_tasks_lock:
+                    _background_tasks[task_id].status = SubagentStatus.RUNNING
+                    _background_tasks[task_id].started_at = datetime.now()
+                    result_holder = _background_tasks[task_id]
+
                 # Submit execution to execution pool with timeout
                 # Pass result_holder so execute() can update it in real-time
                 execution_future: Future = _execution_pool.submit(self.execute, task, result_holder)
@@ -391,12 +472,11 @@ class SubagentExecutor:
                     _background_tasks[task_id].status = SubagentStatus.FAILED
                     _background_tasks[task_id].error = str(e)
                     _background_tasks[task_id].completed_at = datetime.now()
+            finally:
+                sem.release()
 
         _scheduler_pool.submit(run_task)
         return task_id
-
-
-MAX_CONCURRENT_SUBAGENTS = 3
 
 
 def get_background_task_result(task_id: str) -> SubagentResult | None:
