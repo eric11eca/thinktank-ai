@@ -1,3 +1,4 @@
+import { getAccessToken } from "../auth/token";
 import type { ProviderId } from "../models/types";
 import type { AgentThreadContext } from "../threads";
 
@@ -47,7 +48,32 @@ export const DEFAULT_LOCAL_SETTINGS: LocalSettings = {
   },
 };
 
-const LOCAL_SETTINGS_KEY = "thinktank.local-settings";
+const LOCAL_SETTINGS_BASE_KEY = "thinktank.local-settings";
+
+/**
+ * Get a user-scoped localStorage key for settings.
+ * Extracts the user ID from the JWT token so each user gets
+ * their own settings on the same browser.
+ */
+function getLocalSettingsKey(): string {
+  const token = getAccessToken();
+  if (token) {
+    try {
+      const parts = token.split(".");
+      if (parts.length === 3) {
+        const payload = JSON.parse(
+          atob(parts[1]!.replace(/-/g, "+").replace(/_/g, "/")),
+        );
+        if (payload.sub) {
+          return `${LOCAL_SETTINGS_BASE_KEY}.${payload.sub}`;
+        }
+      }
+    } catch {
+      // Fall through to default key
+    }
+  }
+  return LOCAL_SETTINGS_BASE_KEY;
+}
 
 export interface LocalSettings {
   notification: {
@@ -82,7 +108,8 @@ export function getLocalSettings(): LocalSettings {
   if (typeof window === "undefined") {
     return DEFAULT_LOCAL_SETTINGS;
   }
-  const json = localStorage.getItem(LOCAL_SETTINGS_KEY);
+  const key = getLocalSettingsKey();
+  const json = localStorage.getItem(key);
   try {
     if (json) {
       const settings = JSON.parse(json);
@@ -120,5 +147,6 @@ export function getLocalSettings(): LocalSettings {
 }
 
 export function saveLocalSettings(settings: LocalSettings) {
-  localStorage.setItem(LOCAL_SETTINGS_KEY, JSON.stringify(settings));
+  const key = getLocalSettingsKey();
+  localStorage.setItem(key, JSON.stringify(settings));
 }
