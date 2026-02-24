@@ -7,9 +7,15 @@ from langchain.agents import AgentState
 from langchain.agents.middleware import AgentMiddleware
 from langgraph.runtime import Runtime
 
-from src.subagents.executor import MAX_CONCURRENT_SUBAGENTS
+import os
 
 logger = logging.getLogger(__name__)
+
+# Per-user concurrency limit (mirrors executor.MAX_CONCURRENT_SUBAGENTS_PER_USER).
+# Defined here to avoid circular imports between agents and subagents packages.
+MAX_CONCURRENT_SUBAGENTS_PER_USER = int(
+    os.environ.get("MAX_CONCURRENT_SUBAGENTS_PER_USER", 3)
+)
 
 # Valid range for max_concurrent_subagents
 MIN_SUBAGENT_LIMIT = 2
@@ -30,10 +36,10 @@ class SubagentLimitMiddleware(AgentMiddleware[AgentState]):
 
     Args:
         max_concurrent: Maximum number of concurrent subagent calls allowed.
-            Defaults to MAX_CONCURRENT_SUBAGENTS (3). Clamped to [2, 4].
+            Defaults to MAX_CONCURRENT_SUBAGENTS_PER_USER (3). Clamped to [2, 4].
     """
 
-    def __init__(self, max_concurrent: int = MAX_CONCURRENT_SUBAGENTS):
+    def __init__(self, max_concurrent: int = MAX_CONCURRENT_SUBAGENTS_PER_USER):
         super().__init__()
         self.max_concurrent = _clamp_subagent_limit(max_concurrent)
 
