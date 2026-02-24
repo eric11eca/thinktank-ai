@@ -6,5 +6,9 @@
   "env": ".env",
   "graphs": {
     "lead_agent": "src.agents:make_lead_agent"
+  },
+  "store": {
+    "type": "postgres",
+    "uri": "$DATABASE_URL"
   }
 }

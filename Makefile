@@ -1,6 +1,9 @@
 # DeerFlow - Unified Development Environment
 
-.PHONY: help config check install dev stop clean docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway
+.PHONY: help config check install dev stop clean db-start db-stop db-migrate db-reset docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway
+
+# Default DATABASE_URL for the local PostgreSQL container
+DB_URL ?= postgresql://deerflow:deerflow@localhost:5432/deerflow
 
 help:
 	@echo "DeerFlow Development Commands:"
@@ -10,6 +13,12 @@ help:
 	@echo "  make dev             - Start all services (frontend + backend + nginx on localhost:2026)"
 	@echo "  make stop            - Stop all running services"
 	@echo "  make clean           - Clean up processes and temporary files"
+	@echo ""
+	@echo "Database Commands:"
+	@echo "  make db-start        - Start PostgreSQL in Docker (localhost:5432)"
+	@echo "  make db-stop         - Stop PostgreSQL container"
+	@echo "  make db-migrate      - Run Alembic migrations against local PostgreSQL"
+	@echo "  make db-reset        - Drop and recreate the database (destructive!)"
 	@echo ""
 	@echo "Docker Development Commands:"
 	@echo "  make docker-init     - Build the custom k3s image (with pre-cached sandbox image)"
@@ -145,6 +154,56 @@ setup-sandbox:
 		exit 1; \
 	fi
 
+# ==========================================
+# Database Commands
+# ==========================================
+
+# Start PostgreSQL in a Docker container
+db-start:
+	@if docker ps --format '{{.Names}}' | grep -q '^deer-flow-postgres$$'; then \
+		echo "✓ PostgreSQL is already running"; \
+	else \
+		echo "Starting PostgreSQL..."; \
+		docker run -d \
+			--name deer-flow-postgres \
+			-e POSTGRES_USER=deerflow \
+			-e POSTGRES_PASSWORD=deerflow \
+			-e POSTGRES_DB=deerflow \
+			-p 5432:5432 \
+			-v deer-flow-pgdata:/var/lib/postgresql/data \
+			postgres:16-alpine >/dev/null; \
+		echo "Waiting for PostgreSQL to be ready..."; \
+		for i in $$(seq 1 30); do \
+			if docker exec deer-flow-postgres pg_isready -U deerflow >/dev/null 2>&1; then \
+				echo "✓ PostgreSQL is ready on localhost:5432"; \
+				echo "  DATABASE_URL=$(DB_URL)"; \
+				break; \
+			fi; \
+			sleep 1; \
+		done; \
+	fi
+
+# Stop PostgreSQL container
+db-stop:
+	@echo "Stopping PostgreSQL..."
+	@-docker stop deer-flow-postgres 2>/dev/null || true
+	@-docker rm deer-flow-postgres 2>/dev/null || true
+	@echo "✓ PostgreSQL stopped"
+
+# Run Alembic migrations
+db-migrate: db-start
+	@echo "Running database migrations..."
+	@cd backend && DATABASE_URL=$(DB_URL) uv run alembic upgrade head
+	@echo "✓ Migrations complete"
+
+# Reset database (destructive!)
+db-reset:
+	@echo "Resetting database..."
+	@-docker stop deer-flow-postgres 2>/dev/null || true
+	@-docker rm deer-flow-postgres 2>/dev/null || true
+	@-docker volume rm deer-flow-pgdata 2>/dev/null || true
+	@echo "✓ Database reset. Run 'make db-start && make db-migrate' to recreate."
+
 # Start all services
 dev:
 	@echo "Stopping existing services if any..."
@@ -160,6 +219,38 @@ dev:
 	@echo "=========================================="
 	@echo "  Starting DeerFlow Development Server"
 	@echo "=========================================="
+	@echo ""
+	@# Start PostgreSQL if Docker is available
+	@if command -v docker >/dev/null 2>&1; then \
+		if docker ps --format '{{.Names}}' | grep -q '^deer-flow-postgres$$'; then \
+			echo "✓ PostgreSQL already running"; \
+		else \
+			if docker ps -a --format '{{.Names}}' | grep -q '^deer-flow-postgres$$'; then \
+				docker start deer-flow-postgres >/dev/null; \
+			else \
+				docker run -d \
+					--name deer-flow-postgres \
+					-e POSTGRES_USER=deerflow \
+					-e POSTGRES_PASSWORD=deerflow \
+					-e POSTGRES_DB=deerflow \
+					-p 5432:5432 \
+					-v deer-flow-pgdata:/var/lib/postgresql/data \
+					postgres:16-alpine >/dev/null; \
+			fi; \
+			for i in $$(seq 1 30); do \
+				if docker exec deer-flow-postgres pg_isready -U deerflow >/dev/null 2>&1; then \
+					break; \
+				fi; \
+				sleep 1; \
+			done; \
+			echo "✓ PostgreSQL ready on localhost:5432"; \
+		fi; \
+		echo "Running database migrations..."; \
+		cd backend && DATABASE_URL=$(DB_URL) uv run alembic upgrade head 2>&1 | tail -1; \
+		echo "✓ Database migrations applied"; \
+	else \
+		echo "⚠ Docker not found — running without PostgreSQL (file-based storage)"; \
+	fi
 	@echo ""
 	@echo "Services starting up..."
 	@echo "  → Backend: LangGraph + Gateway"
@@ -177,17 +268,29 @@ dev:
 		pkill -9 nginx 2>/dev/null || true; \
 		echo "Cleaning up sandbox containers..."; \
 		./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true; \
-		echo "✓ All services stopped"; \
+		echo "✓ All services stopped (PostgreSQL container kept running)"; \
 		exit 0; \
 	}; \
 	trap cleanup INT TERM; \
 	mkdir -p logs; \
+	DB_AVAILABLE=0; \
+	if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^deer-flow-postgres$$'; then \
+		DB_AVAILABLE=1; \
+	fi; \
 	echo "Starting LangGraph server..."; \
-	cd backend && NO_COLOR=1 uv run langgraph dev --no-browser --allow-blocking --no-reload > ../logs/langgraph.log 2>&1 & \
+	if [ $$DB_AVAILABLE -eq 1 ]; then \
+		cd backend && DATABASE_URL=$(DB_URL) NO_COLOR=1 uv run langgraph dev --no-browser --allow-blocking --no-reload > ../logs/langgraph.log 2>&1 & \
+	else \
+		cd backend && NO_COLOR=1 uv run langgraph dev --no-browser --allow-blocking --no-reload > ../logs/langgraph.log 2>&1 & \
+	fi; \
 	sleep 3; \
 	echo "✓ LangGraph server started on localhost:2024"; \
 	echo "Starting Gateway API..."; \
-	cd backend && uv run uvicorn src.gateway.app:app --host 0.0.0.0 --port 8001 > ../logs/gateway.log 2>&1 & \
+	if [ $$DB_AVAILABLE -eq 1 ]; then \
+		cd backend && DATABASE_URL=$(DB_URL) uv run uvicorn src.gateway.app:app --host 0.0.0.0 --port 8001 > ../logs/gateway.log 2>&1 & \
+	else \
+		cd backend && uv run uvicorn src.gateway.app:app --host 0.0.0.0 --port 8001 > ../logs/gateway.log 2>&1 & \
+	fi; \
 	sleep 2; \
 	echo "✓ Gateway API started on localhost:8001"; \
 	echo "Starting Frontend..."; \
@@ -206,6 +309,11 @@ dev:
 	echo "  🌐 Application: http://localhost:2026"; \
 	echo "  📡 API Gateway: http://localhost:2026/api/*"; \
 	echo "  🤖 LangGraph:   http://localhost:2026/api/langgraph/*"; \
+	if [ $$DB_AVAILABLE -eq 1 ]; then \
+		echo "  🗄  Database:    postgresql://localhost:5432/deerflow"; \
+	else \
+		echo "  📁 Storage:     file-based (.think-tank/)"; \
+	fi; \
 	echo ""; \
 	echo "  📋 Logs:"; \
 	echo "     - LangGraph: logs/langgraph.log"; \
@@ -229,6 +337,7 @@ stop:
 	@echo "Cleaning up sandbox containers..."
 	@-./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
 	@echo "✓ All services stopped"
+	@echo "  (PostgreSQL container is still running. Use 'make db-stop' to stop it.)"
 
 # Clean up
 clean: stop

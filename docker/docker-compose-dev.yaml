@@ -2,6 +2,7 @@
 # Usage: docker-compose -f docker-compose-dev.yaml up --build
 #
 # Services:
+#   - postgres: PostgreSQL database (port 5432)
 #   - nginx: Reverse proxy (port 2026)
 #   - frontend: Frontend Next.js dev server (port 3000)
 #   - gateway: Backend Gateway API (port 8001)
@@ -15,6 +16,27 @@
 # Access: http://localhost:2026
 
 services:
+  # ── PostgreSQL Database ──────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: deer-flow-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: deerflow
+      POSTGRES_PASSWORD: deerflow
+      POSTGRES_DB: deerflow
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - deer-flow-dev
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deerflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
   # ── Sandbox Provisioner ────────────────────────────────────────────────
   # Manages per-sandbox Pod + Service lifecycle in the host Kubernetes
   # cluster via the K8s API.
@@ -107,7 +129,7 @@ services:
       cache_from:
         - type=local,src=/tmp/docker-cache-gateway
     container_name: deer-flow-gateway
-    command: sh -c "cd backend && uv run uvicorn src.gateway.app:app --host 0.0.0.0 --port 8001 --reload --reload-include='*.yaml .env' > /app/logs/gateway.log 2>&1"
+    command: sh -c "cd backend && uv run alembic upgrade head && uv run uvicorn src.gateway.app:app --host 0.0.0.0 --port 8001 --reload --reload-include='*.yaml .env' > /app/logs/gateway.log 2>&1"
     volumes:
       - ../backend/src:/app/backend/src
       - ../backend/.env:/app/backend/.env
@@ -120,11 +142,15 @@ services:
     working_dir: /app
     environment:
       - CI=true
+      - DATABASE_URL=postgresql://deerflow:deerflow@postgres:5432/deerflow
     env_file:
       - ../.env
     extra_hosts:
       # For Linux: map host.docker.internal to host gateway
       - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - deer-flow-dev
     restart: unless-stopped
@@ -150,13 +176,18 @@ services:
     working_dir: /app
     environment:
       - CI=true
+      - DATABASE_URL=postgresql://deerflow:deerflow@postgres:5432/deerflow
     env_file:
       - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - deer-flow-dev
     restart: unless-stopped
 
-volumes: {}
+volumes:
+  pgdata:
 
 networks:
   deer-flow-dev:

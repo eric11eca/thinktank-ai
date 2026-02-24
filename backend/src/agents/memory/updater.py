@@ -1,10 +1,14 @@
-"""Memory updater for reading, writing, and updating memory data."""
+"""Memory updater for reading, writing, and updating memory data.
+
+Supports dual-mode storage: PostgreSQL (when DATABASE_URL is set)
+or file-based (local / Electron dev).
+"""
 
 import json
 import logging
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +25,9 @@ logger = logging.getLogger(__name__)
 DEFAULT_USER_ID = "local"
 
 
+# ---------------------------------------------------------------------------
+# File-based memory storage
+# ---------------------------------------------------------------------------
 def _get_memory_file_path(user_id: str = DEFAULT_USER_ID) -> Path:
     """Get the path to the user-specific memory file.
 
@@ -40,7 +47,7 @@ def _create_empty_memory() -> dict[str, Any]:
     """Create an empty memory structure."""
     return {
         "version": "1.0",
-        "lastUpdated": datetime.utcnow().isoformat() + "Z",
+        "lastUpdated": datetime.now(timezone.utc).isoformat(),
         "user": {
             "workContext": {"summary": "", "updatedAt": ""},
             "personalContext": {"summary": "", "updatedAt": ""},
@@ -59,53 +66,6 @@ def _create_empty_memory() -> dict[str, Any]:
 _memory_data: dict[str, dict[str, Any]] = {}
 # Per-user file modification time tracking: { user_id: mtime }
 _memory_file_mtime: dict[str, float | None] = {}
-
-
-def get_memory_data(user_id: str = DEFAULT_USER_ID) -> dict[str, Any]:
-    """Get the current memory data for a user (cached with file modification time check).
-
-    Args:
-        user_id: The user identifier.
-
-    Returns:
-        The memory data dictionary.
-    """
-    file_path = _get_memory_file_path(user_id)
-
-    # Get current file modification time
-    try:
-        current_mtime = file_path.stat().st_mtime if file_path.exists() else None
-    except OSError:
-        current_mtime = None
-
-    # Invalidate cache if file has been modified or doesn't exist
-    cached = _memory_data.get(user_id)
-    cached_mtime = _memory_file_mtime.get(user_id)
-    if cached is None or cached_mtime != current_mtime:
-        _memory_data[user_id] = _load_memory_from_file(user_id)
-        _memory_file_mtime[user_id] = current_mtime
-
-    return _memory_data[user_id]
-
-
-def reload_memory_data(user_id: str = DEFAULT_USER_ID) -> dict[str, Any]:
-    """Reload memory data from file, forcing cache invalidation.
-
-    Args:
-        user_id: The user identifier.
-
-    Returns:
-        The reloaded memory data dictionary.
-    """
-    file_path = _get_memory_file_path(user_id)
-    _memory_data[user_id] = _load_memory_from_file(user_id)
-
-    try:
-        _memory_file_mtime[user_id] = file_path.stat().st_mtime if file_path.exists() else None
-    except OSError:
-        _memory_file_mtime[user_id] = None
-
-    return _memory_data[user_id]
 
 
 def _load_memory_from_file(user_id: str = DEFAULT_USER_ID) -> dict[str, Any]:
@@ -148,7 +108,7 @@ def _save_memory_to_file(user_id: str, memory_data: dict[str, Any]) -> bool:
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Update lastUpdated timestamp
-        memory_data["lastUpdated"] = datetime.utcnow().isoformat() + "Z"
+        memory_data["lastUpdated"] = datetime.now(timezone.utc).isoformat()
 
         # Write atomically using temp file
         temp_path = file_path.with_suffix(".tmp")
@@ -170,6 +130,168 @@ def _save_memory_to_file(user_id: str, memory_data: dict[str, Any]) -> bool:
     except OSError as e:
         logger.error(f"Failed to save memory file for user {user_id}: {e}")
         return False
+
+
+def _file_get_memory_data(user_id: str) -> dict[str, Any]:
+    """Get memory data from file with caching."""
+    file_path = _get_memory_file_path(user_id)
+
+    # Get current file modification time
+    try:
+        current_mtime = file_path.stat().st_mtime if file_path.exists() else None
+    except OSError:
+        current_mtime = None
+
+    # Invalidate cache if file has been modified or doesn't exist
+    cached = _memory_data.get(user_id)
+    cached_mtime = _memory_file_mtime.get(user_id)
+    if cached is None or cached_mtime != current_mtime:
+        _memory_data[user_id] = _load_memory_from_file(user_id)
+        _memory_file_mtime[user_id] = current_mtime
+
+    return _memory_data[user_id]
+
+
+def _file_reload_memory_data(user_id: str) -> dict[str, Any]:
+    """Reload memory data from file, forcing cache invalidation."""
+    file_path = _get_memory_file_path(user_id)
+    _memory_data[user_id] = _load_memory_from_file(user_id)
+
+    try:
+        _memory_file_mtime[user_id] = (
+            file_path.stat().st_mtime if file_path.exists() else None
+        )
+    except OSError:
+        _memory_file_mtime[user_id] = None
+
+    return _memory_data[user_id]
+
+
+# ---------------------------------------------------------------------------
+# Database-backed memory storage
+# ---------------------------------------------------------------------------
+def _db_get_memory_data(user_id: str) -> dict[str, Any]:
+    """Get memory data from database with in-memory caching."""
+    # Check in-memory cache first
+    cached = _memory_data.get(user_id)
+    if cached is not None:
+        return cached
+
+    from src.db.engine import get_db_session
+    from src.db.models import UserMemoryModel
+
+    with get_db_session() as session:
+        record = (
+            session.query(UserMemoryModel)
+            .filter(UserMemoryModel.user_id == user_id)
+            .first()
+        )
+        if record and record.memory_json:
+            memory = record.memory_json
+        else:
+            memory = _create_empty_memory()
+
+    _memory_data[user_id] = memory
+    return memory
+
+
+def _db_reload_memory_data(user_id: str) -> dict[str, Any]:
+    """Reload memory data from database, forcing cache invalidation."""
+    # Clear cache to force re-read
+    _memory_data.pop(user_id, None)
+    return _db_get_memory_data(user_id)
+
+
+def _db_save_memory(user_id: str, memory_data: dict[str, Any]) -> bool:
+    """Save memory data to database.
+
+    Args:
+        user_id: The user identifier.
+        memory_data: The memory data to save.
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    from src.db.engine import get_db_session
+    from src.db.models import UserMemoryModel
+
+    try:
+        memory_data["lastUpdated"] = datetime.now(timezone.utc).isoformat()
+
+        with get_db_session() as session:
+            record = (
+                session.query(UserMemoryModel)
+                .filter(UserMemoryModel.user_id == user_id)
+                .first()
+            )
+            if record:
+                record.memory_json = memory_data
+            else:
+                record = UserMemoryModel(
+                    user_id=user_id,
+                    memory_json=memory_data,
+                )
+                session.add(record)
+
+        # Update cache
+        _memory_data[user_id] = memory_data
+        logger.info(f"Memory saved for user {user_id} to database")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to save memory to database for user {user_id}: {e}")
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Public API (delegates to DB or file based on configuration)
+# ---------------------------------------------------------------------------
+def get_memory_data(user_id: str = DEFAULT_USER_ID) -> dict[str, Any]:
+    """Get the current memory data for a user (cached).
+
+    Args:
+        user_id: The user identifier.
+
+    Returns:
+        The memory data dictionary.
+    """
+    from src.db.engine import is_db_enabled
+
+    if is_db_enabled():
+        return _db_get_memory_data(user_id)
+    return _file_get_memory_data(user_id)
+
+
+def reload_memory_data(user_id: str = DEFAULT_USER_ID) -> dict[str, Any]:
+    """Reload memory data from storage, forcing cache invalidation.
+
+    Args:
+        user_id: The user identifier.
+
+    Returns:
+        The reloaded memory data dictionary.
+    """
+    from src.db.engine import is_db_enabled
+
+    if is_db_enabled():
+        return _db_reload_memory_data(user_id)
+    return _file_reload_memory_data(user_id)
+
+
+def _save_memory(user_id: str, memory_data: dict[str, Any]) -> bool:
+    """Save memory data to the appropriate backend.
+
+    Args:
+        user_id: The user identifier.
+        memory_data: The memory data to save.
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    from src.db.engine import is_db_enabled
+
+    if is_db_enabled():
+        return _db_save_memory(user_id, memory_data)
+    return _save_memory_to_file(user_id, memory_data)
 
 
 class MemoryUpdater:
@@ -237,15 +359,19 @@ class MemoryUpdater:
             # Remove markdown code blocks if present
             if response_text.startswith("```"):
                 lines = response_text.split("\n")
-                response_text = "\n".join(lines[1:-1] if lines[-1] == "```" else lines[1:])
+                response_text = "\n".join(
+                    lines[1:-1] if lines[-1] == "```" else lines[1:]
+                )
 
             update_data = json.loads(response_text)
 
             # Apply updates
-            updated_memory = self._apply_updates(current_memory, update_data, thread_id)
+            updated_memory = self._apply_updates(
+                current_memory, update_data, thread_id
+            )
 
-            # Save for this user
-            return _save_memory_to_file(user_id, updated_memory)
+            # Save for this user (uses DB or file automatically)
+            return _save_memory(user_id, updated_memory)
 
         except json.JSONDecodeError as e:
             logger.warning(f"Failed to parse LLM response for memory update: {e}")
@@ -271,7 +397,7 @@ class MemoryUpdater:
             Updated memory data.
         """
         config = get_memory_config()
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).isoformat()
 
         # Update user sections
         user_updates = update_data.get("user", {})
@@ -296,7 +422,11 @@ class MemoryUpdater:
         # Remove facts
         facts_to_remove = set(update_data.get("factsToRemove", []))
         if facts_to_remove:
-            current_memory["facts"] = [f for f in current_memory.get("facts", []) if f.get("id") not in facts_to_remove]
+            current_memory["facts"] = [
+                f
+                for f in current_memory.get("facts", [])
+                if f.get("id") not in facts_to_remove
+            ]
 
         # Add new facts
         new_facts = update_data.get("newFacts", [])

@@ -152,10 +152,23 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
     async def health_check() -> dict:
         """Health check endpoint.
 
+        Returns service health status. When DATABASE_URL is configured,
+        also checks database connectivity.
+
         Returns:
-            Service health status information.
+            Service health status information with component checks.
         """
-        return {"status": "healthy", "service": "deer-flow-gateway"}
+        from src.db.engine import check_db_connection, is_db_enabled
+
+        checks: dict[str, str] = {"gateway": "healthy"}
+
+        if is_db_enabled():
+            checks["database"] = check_db_connection()
+
+        all_healthy = all(v == "healthy" for v in checks.values())
+        status = "healthy" if all_healthy else "degraded"
+
+        return {"status": status, "service": "deer-flow-gateway", "checks": checks}
 
     return app
 
