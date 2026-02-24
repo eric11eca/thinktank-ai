@@ -44,7 +44,13 @@ class SandboxBackend(ABC):
     """
 
     @abstractmethod
-    def create(self, thread_id: str, sandbox_id: str, extra_mounts: list[tuple[str, str, bool]] | None = None) -> SandboxInfo:
+    def create(
+        self,
+        thread_id: str,
+        sandbox_id: str,
+        extra_mounts: list[tuple[str, str, bool]] | None = None,
+        user_id: str | None = None,
+    ) -> SandboxInfo:
         """Create/provision a new sandbox.
 
         Args:
@@ -52,6 +58,7 @@ class SandboxBackend(ABC):
             sandbox_id: Deterministic sandbox identifier.
             extra_mounts: Additional volume mounts as (host_path, container_path, read_only) tuples.
                 Ignored by backends that don't manage containers (e.g., remote).
+            user_id: Optional user ID for labeling/observability.
 
         Returns:
             SandboxInfo with connection details.

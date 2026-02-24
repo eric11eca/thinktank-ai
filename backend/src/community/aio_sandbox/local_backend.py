@@ -89,7 +89,13 @@ class LocalContainerBackend(SandboxBackend):
 
     # ── SandboxBackend interface ──────────────────────────────────────────
 
-    def create(self, thread_id: str, sandbox_id: str, extra_mounts: list[tuple[str, str, bool]] | None = None) -> SandboxInfo:
+    def create(
+        self,
+        thread_id: str,
+        sandbox_id: str,
+        extra_mounts: list[tuple[str, str, bool]] | None = None,
+        user_id: str | None = None,
+    ) -> SandboxInfo:
         """Start a new container and return its connection info.
 
         Args:
@@ -192,9 +198,20 @@ class LocalContainerBackend(SandboxBackend):
         """
         cmd = [self._runtime, "run"]
 
-        # Docker-specific security options
+        # Docker-specific security and resource limits
         if self._runtime == "docker":
-            cmd.extend(["--security-opt", "seccomp=unconfined"])
+            cmd.extend([
+                "--security-opt", "seccomp=unconfined",
+                "--pids-limit", "256",
+                "--memory", "512m",
+                "--cpus", "1",
+                "--read-only",
+                "--tmpfs", "/tmp:size=100m",
+                "--tmpfs", "/run:size=10m",
+                "--cap-drop", "ALL",
+                "--cap-add", "NET_BIND_SERVICE",
+                "--no-new-privileges",
+            ])
 
         cmd.extend(
             [
