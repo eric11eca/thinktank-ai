@@ -29,8 +29,8 @@ import { MarkdownContent } from "./markdown-content";
 export function MessageListItem({
   className,
   message,
-  isLoading,
-  isRegenerating,
+  isLoading = false,
+  isRegenerating = false,
   onEdit,
   onRegenerate,
 }: {
@@ -44,6 +44,7 @@ export function MessageListItem({
   const isHuman = message.type === "human";
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState("");
+  const isBusy = isLoading ? true : isRegenerating;
 
   const handleStartEdit = useCallback(() => {
     const content = extractContentFromMessage(message) ?? "";
@@ -125,10 +126,10 @@ export function MessageListItem({
           {isHuman && onEdit && (
             <button
               onClick={handleStartEdit}
-              disabled={isLoading || isRegenerating}
+              disabled={isBusy}
               className="inline-flex items-center gap-1 rounded-md bg-background px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
               title={
-                isLoading || isRegenerating
+                isBusy
                   ? "Cannot edit while generating"
                   : "Edit message"
               }
@@ -139,10 +140,10 @@ export function MessageListItem({
           {isHuman && onRegenerate && (
             <button
               onClick={handleRegenerate}
-              disabled={isLoading || isRegenerating}
+              disabled={isBusy}
               className="inline-flex items-center gap-1 rounded-md bg-background px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
               title={
-                isLoading || isRegenerating
+                isBusy
                   ? "Cannot regenerate while generating"
                   : "Regenerate response"
               }
@@ -311,7 +312,7 @@ const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"];
 
 function getFileTypeLabel(filename: string): string {
   const ext = getFileExt(filename);
-  return FILE_TYPE_MAP[ext] ?? (ext.toUpperCase() || "FILE");
+  return FILE_TYPE_MAP[ext] ?? (ext ? ext.toUpperCase() : "FILE");
 }
 
 function isImageFile(filename: string): boolean {

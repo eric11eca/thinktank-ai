@@ -76,21 +76,26 @@ export function StreamingIndicator({
 }) {
   const dotSize = size === "sm" ? "w-1.5 h-1.5 mx-0.5" : "w-2 h-2 mx-1";
   const pickRandomVerb = () =>
-    ACTION_VERBS[Math.floor(Math.random() * ACTION_VERBS.length)];
+    ACTION_VERBS[Math.floor(Math.random() * ACTION_VERBS.length)] ??
+    ACTION_VERBS[0] ??
+    "Thinking";
   const pickNextVerb = (current?: (typeof ACTION_VERBS)[number]): (typeof ACTION_VERBS)[number] => {
     if (ACTION_VERBS.length <= 1) {
-      return ACTION_VERBS[0]!;
+      return ACTION_VERBS[0] ?? "Thinking";
     }
-    let next = pickRandomVerb()!;
+    let next = pickRandomVerb();
     if (current && next === current) {
       const currentIndex = ACTION_VERBS.indexOf(current);
       const offset = Math.floor(Math.random() * (ACTION_VERBS.length - 1)) + 1;
-      next = ACTION_VERBS[(currentIndex + offset) % ACTION_VERBS.length]!;
+      next =
+        ACTION_VERBS[(currentIndex + offset) % ACTION_VERBS.length] ??
+        ACTION_VERBS[0] ??
+        "Thinking";
     }
     return next;
   };
   const [verb, setVerb] = useState<(typeof ACTION_VERBS)[number]>(() =>
-    pickRandomVerb()!,
+    pickRandomVerb(),
   );
 
   useEffect(() => {
