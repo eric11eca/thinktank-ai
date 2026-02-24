@@ -1,5 +1,7 @@
-"""File-based thread ownership store.
+"""Thread ownership store with dual-mode support.
 
+When DATABASE_URL is set, uses PostgreSQL via SQLAlchemy.
+Otherwise, falls back to file-based JSON storage.
 Tracks which user owns which thread. Uses lazy claiming: the first
 authenticated request that touches a thread claims ownership.
 """
@@ -13,6 +15,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+# ---------------------------------------------------------------------------
+# File-based storage (local / Electron dev)
+# ---------------------------------------------------------------------------
 _LOCK = threading.Lock()
 _STORE_DIR = Path(os.getcwd()) / ".think-tank"
 _DATA_FILE = _STORE_DIR / "thread-ownership.json"
@@ -47,6 +52,111 @@ def _save_store(data: dict[str, Any]) -> None:
         pass
 
 
+# ---------------------------------------------------------------------------
+# File-based implementations
+# ---------------------------------------------------------------------------
+def _file_claim_thread(thread_id: str, user_id: str) -> bool:
+    now = datetime.now(timezone.utc).isoformat()
+    with _LOCK:
+        data = _load_store()
+        threads = data["threads"]
+        existing = threads.get(thread_id)
+        if existing is None:
+            threads[thread_id] = {"user_id": user_id, "created_at": now}
+            _save_store(data)
+            return True
+        return existing["user_id"] == user_id
+
+
+def _file_get_thread_owner(thread_id: str) -> str | None:
+    with _LOCK:
+        data = _load_store()
+        entry = data["threads"].get(thread_id)
+        return entry["user_id"] if entry else None
+
+
+def _file_get_user_threads(user_id: str) -> list[str]:
+    with _LOCK:
+        data = _load_store()
+        return [
+            tid
+            for tid, entry in data["threads"].items()
+            if entry["user_id"] == user_id
+        ]
+
+
+def _file_delete_thread(thread_id: str) -> None:
+    with _LOCK:
+        data = _load_store()
+        data["threads"].pop(thread_id, None)
+        _save_store(data)
+
+
+# ---------------------------------------------------------------------------
+# Database-backed implementations
+# ---------------------------------------------------------------------------
+def _db_claim_thread(thread_id: str, user_id: str) -> bool:
+    from src.db.engine import get_db_session
+    from src.db.models import ThreadModel
+
+    now = datetime.now(timezone.utc)
+    with get_db_session() as session:
+        existing = (
+            session.query(ThreadModel)
+            .filter(ThreadModel.thread_id == thread_id)
+            .first()
+        )
+        if existing is None:
+            thread = ThreadModel(
+                thread_id=thread_id,
+                user_id=user_id,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(thread)
+            return True
+        return existing.user_id == user_id
+
+
+def _db_get_thread_owner(thread_id: str) -> str | None:
+    from src.db.engine import get_db_session
+    from src.db.models import ThreadModel
+
+    with get_db_session() as session:
+        thread = (
+            session.query(ThreadModel)
+            .filter(ThreadModel.thread_id == thread_id)
+            .first()
+        )
+        return thread.user_id if thread else None
+
+
+def _db_get_user_threads(user_id: str) -> list[str]:
+    from src.db.engine import get_db_session
+    from src.db.models import ThreadModel
+
+    with get_db_session() as session:
+        threads = (
+            session.query(ThreadModel.thread_id)
+            .filter(ThreadModel.user_id == user_id)
+            .all()
+        )
+        return [t[0] for t in threads]
+
+
+def _db_delete_thread(thread_id: str) -> None:
+    from src.db.engine import get_db_session
+    from src.db.models import ThreadModel
+
+    with get_db_session() as session:
+        session.query(ThreadModel).filter(
+            ThreadModel.thread_id == thread_id
+        ).delete()
+
+
+# ---------------------------------------------------------------------------
+# Public API (delegates to DB or file based on configuration)
+# ---------------------------------------------------------------------------
 def claim_thread(thread_id: str, user_id: str) -> bool:
     """Claim ownership of a thread.
 
@@ -62,18 +172,11 @@ def claim_thread(thread_id: str, user_id: str) -> bool:
         True if the user owns the thread (either newly claimed or already owned).
         False if the thread belongs to a different user.
     """
-    now = datetime.now(timezone.utc).isoformat()
-    with _LOCK:
-        data = _load_store()
-        threads = data["threads"]
+    from src.db.engine import is_db_enabled
 
-        existing = threads.get(thread_id)
-        if existing is None:
-            threads[thread_id] = {"user_id": user_id, "created_at": now}
-            _save_store(data)
-            return True
-
-        return existing["user_id"] == user_id
+    if is_db_enabled():
+        return _db_claim_thread(thread_id, user_id)
+    return _file_claim_thread(thread_id, user_id)
 
 
 def get_thread_owner(thread_id: str) -> str | None:
@@ -85,10 +188,11 @@ def get_thread_owner(thread_id: str) -> str | None:
     Returns:
         The user_id of the owner, or None if the thread is unclaimed.
     """
-    with _LOCK:
-        data = _load_store()
-        entry = data["threads"].get(thread_id)
-        return entry["user_id"] if entry else None
+    from src.db.engine import is_db_enabled
+
+    if is_db_enabled():
+        return _db_get_thread_owner(thread_id)
+    return _file_get_thread_owner(thread_id)
 
 
 def is_thread_owner(thread_id: str, user_id: str) -> bool:
@@ -114,13 +218,11 @@ def get_user_threads(user_id: str) -> list[str]:
     Returns:
         List of thread IDs.
     """
-    with _LOCK:
-        data = _load_store()
-        return [
-            tid
-            for tid, entry in data["threads"].items()
-            if entry["user_id"] == user_id
-        ]
+    from src.db.engine import is_db_enabled
+
+    if is_db_enabled():
+        return _db_get_user_threads(user_id)
+    return _file_get_user_threads(user_id)
 
 
 def delete_thread(thread_id: str) -> None:
@@ -129,7 +231,8 @@ def delete_thread(thread_id: str) -> None:
     Args:
         thread_id: The thread identifier to remove.
     """
-    with _LOCK:
-        data = _load_store()
-        data["threads"].pop(thread_id, None)
-        _save_store(data)
+    from src.db.engine import is_db_enabled
+
+    if is_db_enabled():
+        return _db_delete_thread(thread_id)
+    return _file_delete_thread(thread_id)
