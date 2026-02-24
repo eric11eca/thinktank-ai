@@ -1,12 +1,23 @@
+"""API key store with dual-mode support.
+
+When DATABASE_URL is set, uses PostgreSQL via SQLAlchemy.
+Otherwise, falls back to file-based encrypted JSON storage.
+In both modes, API keys are encrypted with Fernet before storage.
+"""
+
 from __future__ import annotations
 
 import json
 import os
 import threading
+import uuid
 from pathlib import Path
 
 from cryptography.fernet import Fernet, InvalidToken
 
+# ---------------------------------------------------------------------------
+# File-based storage (local / Electron dev)
+# ---------------------------------------------------------------------------
 _LOCK = threading.Lock()
 _STORE_DIR = Path(os.getcwd()) / ".think-tank"
 _KEY_FILE = _STORE_DIR / "api-keys.key"
@@ -75,6 +86,141 @@ def _get_cipher() -> Fernet:
     return Fernet(key)
 
 
+# ---------------------------------------------------------------------------
+# File-based implementations
+# ---------------------------------------------------------------------------
+def _file_set_api_key(user_id: str, provider: str, api_key: str) -> None:
+    cipher = _get_cipher()
+    token = cipher.encrypt(api_key.encode("utf-8")).decode("utf-8")
+    with _LOCK:
+        data = _load_store()
+        users = data.setdefault("users", {})
+        user_entry = users.setdefault(user_id, {})
+        user_entry[provider] = token
+        _save_store(data)
+
+
+def _file_delete_api_key(user_id: str, provider: str) -> None:
+    with _LOCK:
+        data = _load_store()
+        users = data.get("users", {})
+        user_entry = users.get(user_id)
+        if not isinstance(user_entry, dict):
+            return
+        user_entry.pop(provider, None)
+        if not user_entry:
+            users.pop(user_id, None)
+        _save_store(data)
+
+
+def _file_has_api_key(user_id: str, provider: str) -> bool:
+    with _LOCK:
+        data = _load_store()
+        user_entry = data.get("users", {}).get(user_id, {})
+        return isinstance(user_entry, dict) and bool(user_entry.get(provider))
+
+
+def _file_get_api_key(user_id: str, provider: str) -> str | None:
+    cipher = _get_cipher()
+    with _LOCK:
+        data = _load_store()
+        user_entry = data.get("users", {}).get(user_id, {})
+        if not isinstance(user_entry, dict):
+            return None
+        token = user_entry.get(provider)
+        if not isinstance(token, str):
+            return None
+    try:
+        return cipher.decrypt(token.encode("utf-8")).decode("utf-8")
+    except InvalidToken:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Database-backed implementations
+# ---------------------------------------------------------------------------
+def _db_set_api_key(user_id: str, provider: str, api_key: str) -> None:
+    from src.db.engine import get_db_session
+    from src.db.models import UserApiKeyModel
+
+    cipher = _get_cipher()
+    encrypted = cipher.encrypt(api_key.encode("utf-8")).decode("utf-8")
+
+    with get_db_session() as session:
+        existing = (
+            session.query(UserApiKeyModel)
+            .filter(
+                UserApiKeyModel.user_id == user_id,
+                UserApiKeyModel.provider == provider,
+            )
+            .first()
+        )
+        if existing:
+            existing.encrypted_key = encrypted
+        else:
+            key_record = UserApiKeyModel(
+                id=uuid.uuid4().hex,
+                user_id=user_id,
+                provider=provider,
+                encrypted_key=encrypted,
+            )
+            session.add(key_record)
+
+
+def _db_delete_api_key(user_id: str, provider: str) -> None:
+    from src.db.engine import get_db_session
+    from src.db.models import UserApiKeyModel
+
+    with get_db_session() as session:
+        session.query(UserApiKeyModel).filter(
+            UserApiKeyModel.user_id == user_id,
+            UserApiKeyModel.provider == provider,
+        ).delete()
+
+
+def _db_has_api_key(user_id: str, provider: str) -> bool:
+    from src.db.engine import get_db_session
+    from src.db.models import UserApiKeyModel
+
+    with get_db_session() as session:
+        count = (
+            session.query(UserApiKeyModel)
+            .filter(
+                UserApiKeyModel.user_id == user_id,
+                UserApiKeyModel.provider == provider,
+            )
+            .count()
+        )
+        return count > 0
+
+
+def _db_get_api_key(user_id: str, provider: str) -> str | None:
+    from src.db.engine import get_db_session
+    from src.db.models import UserApiKeyModel
+
+    cipher = _get_cipher()
+    with get_db_session() as session:
+        record = (
+            session.query(UserApiKeyModel)
+            .filter(
+                UserApiKeyModel.user_id == user_id,
+                UserApiKeyModel.provider == provider,
+            )
+            .first()
+        )
+        if not record:
+            return None
+        token = record.encrypted_key
+
+    try:
+        return cipher.decrypt(token.encode("utf-8")).decode("utf-8")
+    except InvalidToken:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Public API (delegates to DB or file based on configuration)
+# ---------------------------------------------------------------------------
 def set_api_key(user_id: str, provider: str, api_key: str) -> None:
     """Store an encrypted API key for a user and provider.
 
@@ -91,14 +237,12 @@ def set_api_key(user_id: str, provider: str, api_key: str) -> None:
     api_key = api_key.strip()
     if not api_key:
         raise ValueError("api_key must be non-empty")
-    cipher = _get_cipher()
-    token = cipher.encrypt(api_key.encode("utf-8")).decode("utf-8")
-    with _LOCK:
-        data = _load_store()
-        users = data.setdefault("users", {})
-        user_entry = users.setdefault(user_id, {})
-        user_entry[provider] = token
-        _save_store(data)
+
+    from src.db.engine import is_db_enabled
+
+    if is_db_enabled():
+        return _db_set_api_key(user_id, provider, api_key)
+    return _file_set_api_key(user_id, provider, api_key)
 
 
 def delete_api_key(user_id: str, provider: str) -> None:
@@ -113,16 +257,12 @@ def delete_api_key(user_id: str, provider: str) -> None:
     """
     if not user_id or not provider:
         raise ValueError("user_id and provider are required")
-    with _LOCK:
-        data = _load_store()
-        users = data.get("users", {})
-        user_entry = users.get(user_id)
-        if not isinstance(user_entry, dict):
-            return
-        user_entry.pop(provider, None)
-        if not user_entry:
-            users.pop(user_id, None)
-        _save_store(data)
+
+    from src.db.engine import is_db_enabled
+
+    if is_db_enabled():
+        return _db_delete_api_key(user_id, provider)
+    return _file_delete_api_key(user_id, provider)
 
 
 def has_api_key(user_id: str, provider: str) -> bool:
@@ -137,10 +277,12 @@ def has_api_key(user_id: str, provider: str) -> bool:
     """
     if not user_id or not provider:
         return False
-    with _LOCK:
-        data = _load_store()
-        user_entry = data.get("users", {}).get(user_id, {})
-        return isinstance(user_entry, dict) and bool(user_entry.get(provider))
+
+    from src.db.engine import is_db_enabled
+
+    if is_db_enabled():
+        return _db_has_api_key(user_id, provider)
+    return _file_has_api_key(user_id, provider)
 
 
 def get_api_key(user_id: str, provider: str) -> str | None:
@@ -155,16 +297,9 @@ def get_api_key(user_id: str, provider: str) -> str | None:
     """
     if not user_id or not provider:
         return None
-    cipher = _get_cipher()
-    with _LOCK:
-        data = _load_store()
-        user_entry = data.get("users", {}).get(user_id, {})
-        if not isinstance(user_entry, dict):
-            return None
-        token = user_entry.get(provider)
-        if not isinstance(token, str):
-            return None
-    try:
-        return cipher.decrypt(token.encode("utf-8")).decode("utf-8")
-    except InvalidToken:
-        return None
+
+    from src.db.engine import is_db_enabled
+
+    if is_db_enabled():
+        return _db_get_api_key(user_id, provider)
+    return _file_get_api_key(user_id, provider)

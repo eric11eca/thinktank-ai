@@ -1,0 +1,151 @@
+"""SQLAlchemy ORM models for all database tables.
+
+Defines the schema for users, threads, user_memory, user_api_keys,
+uploads, and usage_log tables.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+
+from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import JSON
+
+from src.db.engine import Base
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+# Use JSON type that works with both PostgreSQL and SQLite
+# In PostgreSQL this will use JSONB; in SQLite it uses JSON
+_JSONType = JSON().with_variant(JSONB, "postgresql")
+
+
+class UserModel(Base):
+    """User account model."""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    display_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+    def to_dict(self, include_password: bool = False) -> dict:
+        """Convert to dictionary representation."""
+        result = {
+            "id": self.id,
+            "email": self.email,
+            "display_name": self.display_name,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+        if include_password:
+            result["password_hash"] = self.password_hash
+        return result
+
+
+class ThreadModel(Base):
+    """Thread ownership model."""
+
+    __tablename__ = "threads"
+
+    thread_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (Index("idx_threads_user_id", "user_id"),)
+
+
+class UserMemoryModel(Base):
+    """Per-user memory storage model."""
+
+    __tablename__ = "user_memory"
+
+    user_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    memory_json: Mapped[dict] = mapped_column(_JSONType, nullable=False, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+
+class UserApiKeyModel(Base):
+    """Encrypted API key storage model."""
+
+    __tablename__ = "user_api_keys"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    provider: Mapped[str] = mapped_column(String(64), nullable=False)
+    encrypted_key: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "provider", name="uq_user_api_keys_user_provider"),
+        Index("idx_user_api_keys_user_id", "user_id"),
+    )
+
+
+class UploadModel(Base):
+    """File upload metadata model."""
+
+    __tablename__ = "uploads"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    thread_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    filename: Mapped[str] = mapped_column(String(512), nullable=False)
+    content_type: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    storage_path: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+
+    __table_args__ = (Index("idx_uploads_thread_id", "thread_id"),)
+
+
+class UsageLogModel(Base):
+    """Usage tracking / rate limiting model."""
+
+    __tablename__ = "usage_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    thread_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    model_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+
+    __table_args__ = (
+        Index("idx_usage_log_user_id", "user_id"),
+        Index("idx_usage_log_created_at", "created_at"),
+    )
