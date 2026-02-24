@@ -403,6 +403,7 @@ For models with `supports_vision: true`:
 - Python 3.12+ with type hints
 - Double quotes, space indentation
 - Frontend linting uses `frontend/eslint.config.js` with `eslint-plugin-import` (no Next.js presets)
+- Frontend lint rules enforce async handling and nullish coalescing defaults
 
 ## Documentation
 
