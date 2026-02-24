@@ -236,7 +236,6 @@ function ChatInner() {
 
   const [todoListCollapsed, setTodoListCollapsed] = useState(true);
   const { open: todoPanelOpen, setOpen: setTodoPanelOpen } = useRightPanel();
-  const hasTodos = (thread.values.todos?.length ?? 0) > 0;
   const showTodoPanel = todoPanelOpen;
   const contextModelName =
     typeof settings.context.model_name === "string"
