@@ -123,6 +123,7 @@ If you prefer running services locally:
    ```
 
 4. **Access**: http://localhost:3000
+   - Nginx forwards `/api/langgraph/*` to LangGraph and all other `/api/*` routes (including auth) to the gateway.
 
 ## Thinktank.ai as Super Agent Harness for the Public Sector
 

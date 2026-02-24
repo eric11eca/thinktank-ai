@@ -324,7 +324,7 @@ This starts all services and makes the application available at `http://localhos
 
 **Nginx routing**:
 - `/api/langgraph/*` → LangGraph Server (2024)
-- `/api/*` (other) → Gateway API (8001)
+- `/api/*` (all non-LangGraph routes, including auth/providers/threads) → Gateway API (8001)
 - `/` (non-API) → Frontend (3000)
 
 ### Running Backend Services Separately

@@ -19,6 +19,12 @@ __pycache__/
 .venv
 venv/
 
+# pytest cache
+.pytest_cache/
+
+# test files
+tests/
+
 # Environment variables
 .env
 
