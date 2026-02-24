@@ -163,6 +163,7 @@ export const enUS: Translations = {
     reportIssue: "Report a issue",
     contactUs: "Contact us",
     about: "About Thinktank.ai",
+    signOut: "Sign out",
   },
 
   // Conversation

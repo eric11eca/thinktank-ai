@@ -159,6 +159,7 @@ export const zhCN: Translations = {
     reportIssue: "报告问题",
     contactUs: "联系我们",
     about: "关于 Thinktank.ai",
+    signOut: "退出登录",
   },
 
   // Conversation
