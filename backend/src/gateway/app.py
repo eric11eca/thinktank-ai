@@ -105,7 +105,7 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
             },
             {
                 "name": "threads",
-                "description": "Thread-level operations including message truncation",
+                "description": "Thread CRUD: list, delete, rename, claim, and message truncation",
             },
             {
                 "name": "health",
@@ -145,7 +145,8 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
     # Uploads API is mounted at /api/threads/{thread_id}/uploads
     app.include_router(uploads.router)
 
-    # Threads API is mounted at /api/threads/{thread_id}
+    # Threads API: collection-level at /api/threads, item-level at /api/threads/{thread_id}
+    app.include_router(threads.router_list)
     app.include_router(threads.router)
 
     @app.get("/health", tags=["health"])

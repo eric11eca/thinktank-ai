@@ -1,4 +1,9 @@
-"""Thread router for thread-level operations."""
+"""Thread router for thread-level operations.
+
+Provides user-scoped thread CRUD: list, delete, rename, claim,
+and message truncation. All endpoints require JWT authentication
+and enforce per-user ownership via the thread store.
+"""
 
 import logging
 from typing import Annotated, Any
@@ -10,10 +15,24 @@ from pydantic import BaseModel
 
 from src.gateway.auth.middleware import get_current_user
 from src.gateway.auth.ownership import verify_thread_ownership
+from src.gateway.auth.thread_store import (
+    claim_thread,
+    delete_thread as delete_thread_ownership,
+    get_user_threads,
+)
 
 logger = logging.getLogger(__name__)
 
+# Router for /api/threads (collection-level, no thread_id in path)
+router_list = APIRouter(prefix="/api/threads", tags=["threads"])
+
+# Router for /api/threads/{thread_id} (item-level operations)
 router = APIRouter(prefix="/api/threads/{thread_id}", tags=["threads"])
+
+LANGGRAPH_URL = "http://localhost:2024"
+
+
+# ── Pydantic Models ──────────────────────────────────────────────────────────
 
 
 class TruncateMessagesRequest(BaseModel):
@@ -30,6 +49,176 @@ class TruncateMessagesResponse(BaseModel):
     messages_removed: int
     checkpoint_id: str | None = None
     checkpoint_ns: str | None = None
+
+
+class ThreadRenameRequest(BaseModel):
+    """Request model for renaming a thread."""
+
+    title: str
+
+
+class ThreadClaimResponse(BaseModel):
+    """Response model for claiming thread ownership."""
+
+    success: bool
+    thread_id: str
+
+
+# ── Collection Endpoints (/api/threads) ──────────────────────────────────────
+
+
+@router_list.get("")
+async def list_threads(
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> list[dict[str, Any]]:
+    """List all threads owned by the authenticated user.
+
+    Returns thread objects with metadata (title, timestamps, etc.)
+    fetched from LangGraph, filtered to only those owned by the user.
+
+    Args:
+        current_user: The authenticated user (injected by dependency).
+
+    Returns:
+        List of thread objects belonging to the user, sorted by updated_at desc.
+    """
+    user_id = current_user["id"]
+
+    try:
+        # Get thread IDs owned by this user from the ownership store
+        owned_thread_ids = get_user_threads(user_id)
+
+        if not owned_thread_ids:
+            return []
+
+        # Fetch thread details from LangGraph
+        client = get_client(url=LANGGRAPH_URL)
+
+        # LangGraph threads.search() returns all threads; we filter by owned IDs.
+        # Fetch in batches if needed, but typically manageable.
+        all_threads = await client.threads.search(
+            limit=100,
+            sort_by="updated_at",
+            sort_order="desc",
+        )
+
+        # Filter to only threads owned by this user
+        owned_set = set(owned_thread_ids)
+        user_threads = [t for t in all_threads if t["thread_id"] in owned_set]
+
+        return user_threads
+
+    except Exception as e:
+        logger.error(f"Error listing threads for user {user_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to list threads: {str(e)}")
+
+
+# ── Item Endpoints (/api/threads/{thread_id}) ────────────────────────────────
+
+
+@router.delete("")
+async def delete_thread(
+    thread_id: str,
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, bool]:
+    """Delete a thread.
+
+    Verifies ownership, deletes the thread from LangGraph, and removes
+    the ownership record.
+
+    Args:
+        thread_id: The thread ID.
+        current_user: The authenticated user (injected by dependency).
+
+    Returns:
+        Success status.
+
+    Raises:
+        HTTPException: If the user doesn't own the thread or deletion fails.
+    """
+    verify_thread_ownership(thread_id, current_user["id"])
+
+    try:
+        client = get_client(url=LANGGRAPH_URL)
+        await client.threads.delete(thread_id)
+    except Exception as e:
+        logger.error(f"Error deleting thread {thread_id} from LangGraph: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to delete thread: {str(e)}")
+
+    # Remove ownership record (best-effort; thread is already deleted)
+    try:
+        delete_thread_ownership(thread_id)
+    except Exception as e:
+        logger.warning(f"Failed to remove ownership record for {thread_id}: {e}")
+
+    logger.info(f"Deleted thread {thread_id} for user {current_user['id']}")
+    return {"success": True}
+
+
+@router.patch("")
+async def rename_thread(
+    thread_id: str,
+    request: ThreadRenameRequest,
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, bool]:
+    """Rename a thread by updating its title in LangGraph state.
+
+    Args:
+        thread_id: The thread ID.
+        request: Request containing the new title.
+        current_user: The authenticated user (injected by dependency).
+
+    Returns:
+        Success status.
+
+    Raises:
+        HTTPException: If the user doesn't own the thread or rename fails.
+    """
+    verify_thread_ownership(thread_id, current_user["id"])
+
+    try:
+        client = get_client(url=LANGGRAPH_URL)
+        await client.threads.update_state(
+            thread_id,
+            {"values": {"title": request.title}},
+        )
+    except Exception as e:
+        logger.error(f"Error renaming thread {thread_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to rename thread: {str(e)}")
+
+    logger.info(f"Renamed thread {thread_id} to '{request.title}'")
+    return {"success": True}
+
+
+@router.post("/claim", response_model=ThreadClaimResponse)
+async def claim_thread_ownership(
+    thread_id: str,
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> ThreadClaimResponse:
+    """Claim ownership of a thread.
+
+    If the thread is unclaimed, assigns it to the authenticated user.
+    If already owned by this user, returns success.
+    If owned by a different user, returns failure.
+
+    Args:
+        thread_id: The thread ID to claim.
+        current_user: The authenticated user (injected by dependency).
+
+    Returns:
+        Claim result with success status.
+    """
+    user_id = current_user["id"]
+    success = claim_thread(thread_id, user_id)
+
+    if not success:
+        raise HTTPException(
+            status_code=403,
+            detail="Thread is owned by another user",
+        )
+
+    logger.info(f"Thread {thread_id} claimed by user {user_id}")
+    return ThreadClaimResponse(success=True, thread_id=thread_id)
 
 
 @router.post("/truncate-messages", response_model=TruncateMessagesResponse)
@@ -58,7 +247,7 @@ async def truncate_messages(
 
     try:
         # Get LangGraph client
-        client = get_client(url="http://localhost:2024")
+        client = get_client(url=LANGGRAPH_URL)
 
         # Get current thread state
         state = await client.threads.get_state(thread_id)
