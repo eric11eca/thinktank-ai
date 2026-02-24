@@ -1,11 +1,15 @@
 """Thread router for thread-level operations."""
 
 import logging
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from langchain_core.messages import RemoveMessage
 from langgraph_sdk import get_client
 from pydantic import BaseModel
+
+from src.gateway.auth.middleware import get_current_user
+from src.gateway.auth.ownership import verify_thread_ownership
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +33,11 @@ class TruncateMessagesResponse(BaseModel):
 
 
 @router.post("/truncate-messages", response_model=TruncateMessagesResponse)
-async def truncate_messages(thread_id: str, request: TruncateMessagesRequest) -> TruncateMessagesResponse:
+async def truncate_messages(
+    thread_id: str,
+    request: TruncateMessagesRequest,
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> TruncateMessagesResponse:
     """Truncate thread messages up to a specific index.
 
     This endpoint removes all messages after the specified index and prepares
@@ -38,6 +46,7 @@ async def truncate_messages(thread_id: str, request: TruncateMessagesRequest) ->
     Args:
         thread_id: The thread ID
         request: Request containing the message_index to truncate from
+        current_user: The authenticated user (injected by dependency).
 
     Returns:
         Response with truncation results
@@ -45,6 +54,8 @@ async def truncate_messages(thread_id: str, request: TruncateMessagesRequest) ->
     Raises:
         HTTPException: If truncation fails
     """
+    verify_thread_ownership(thread_id, current_user["id"])
+
     try:
         # Get LangGraph client
         client = get_client(url="http://localhost:2024")

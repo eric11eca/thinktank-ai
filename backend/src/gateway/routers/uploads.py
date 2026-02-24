@@ -3,11 +3,14 @@
 import logging
 import os
 from pathlib import Path
+from typing import Annotated, Any
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from src.agents.middlewares.thread_data_middleware import THREAD_DATA_BASE_DIR
+from src.gateway.auth.middleware import get_current_user
+from src.gateway.auth.ownership import verify_thread_ownership
 from src.sandbox.sandbox_provider import get_sandbox_provider
 
 logger = logging.getLogger(__name__)
@@ -77,6 +80,7 @@ async def convert_file_to_markdown(file_path: Path) -> Path | None:
 @router.post("", response_model=UploadResponse)
 async def upload_files(
     thread_id: str,
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
     files: list[UploadFile] = File(...),
 ) -> UploadResponse:
     """Upload multiple files to a thread's uploads directory.
@@ -86,11 +90,14 @@ async def upload_files(
 
     Args:
         thread_id: The thread ID to upload files to.
+        current_user: The authenticated user (injected by dependency).
         files: List of files to upload.
 
     Returns:
         Upload response with success status and file information.
     """
+    verify_thread_ownership(thread_id, current_user["id"])
+
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")
 
@@ -118,9 +125,9 @@ async def upload_files(
             file_info = {
                 "filename": file.filename,
                 "size": str(len(content)),
-                "path": relative_path,  # Actual filesystem path (relative to backend/)
-                "virtual_path": virtual_path,  # Path for Agent in sandbox
-                "artifact_url": f"/api/threads/{thread_id}/artifacts/mnt/user-data/uploads/{file.filename}",  # HTTP URL
+                "path": relative_path,
+                "virtual_path": virtual_path,
+                "artifact_url": f"/api/threads/{thread_id}/artifacts/mnt/user-data/uploads/{file.filename}",
             }
 
             logger.info(f"Saved file: {file.filename} ({len(content)} bytes) to {relative_path}")
@@ -150,15 +157,21 @@ async def upload_files(
 
 
 @router.get("/list", response_model=dict)
-async def list_uploaded_files(thread_id: str) -> dict:
+async def list_uploaded_files(
+    thread_id: str,
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict:
     """List all files in a thread's uploads directory.
 
     Args:
         thread_id: The thread ID to list files for.
+        current_user: The authenticated user (injected by dependency).
 
     Returns:
         Dictionary containing list of files with their metadata.
     """
+    verify_thread_ownership(thread_id, current_user["id"])
+
     uploads_dir = get_uploads_dir(thread_id)
 
     if not uploads_dir.exists():
@@ -173,9 +186,9 @@ async def list_uploaded_files(thread_id: str) -> dict:
                 {
                     "filename": file_path.name,
                     "size": stat.st_size,
-                    "path": relative_path,  # Actual filesystem path (relative to backend/)
-                    "virtual_path": f"/mnt/user-data/uploads/{file_path.name}",  # Path for Agent in sandbox
-                    "artifact_url": f"/api/threads/{thread_id}/artifacts/mnt/user-data/uploads/{file_path.name}",  # HTTP URL
+                    "path": relative_path,
+                    "virtual_path": f"/mnt/user-data/uploads/{file_path.name}",
+                    "artifact_url": f"/api/threads/{thread_id}/artifacts/mnt/user-data/uploads/{file_path.name}",
                     "extension": file_path.suffix,
                     "modified": stat.st_mtime,
                 }
@@ -185,16 +198,23 @@ async def list_uploaded_files(thread_id: str) -> dict:
 
 
 @router.delete("/{filename}")
-async def delete_uploaded_file(thread_id: str, filename: str) -> dict:
+async def delete_uploaded_file(
+    thread_id: str,
+    filename: str,
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict:
     """Delete a file from a thread's uploads directory.
 
     Args:
         thread_id: The thread ID.
         filename: The filename to delete.
+        current_user: The authenticated user (injected by dependency).
 
     Returns:
         Success message.
     """
+    verify_thread_ownership(thread_id, current_user["id"])
+
     uploads_dir = get_uploads_dir(thread_id)
     file_path = uploads_dir / filename
 

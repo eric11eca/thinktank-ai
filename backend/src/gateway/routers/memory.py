@@ -1,10 +1,13 @@
-"""Memory API router for retrieving and managing global memory data."""
+"""Memory API router for retrieving and managing per-user memory data."""
 
-from fastapi import APIRouter
+from typing import Annotated, Any
+
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from src.agents.memory.updater import get_memory_data, reload_memory_data
 from src.config.memory_config import get_memory_config
+from src.gateway.auth.middleware import get_current_user
 
 router = APIRouter(prefix="/api", tags=["memory"])
 
@@ -76,43 +79,17 @@ class MemoryStatusResponse(BaseModel):
     "/memory",
     response_model=MemoryResponse,
     summary="Get Memory Data",
-    description="Retrieve the current global memory data including user context, history, and facts.",
+    description="Retrieve the current user's memory data including context, history, and facts.",
 )
-async def get_memory() -> MemoryResponse:
-    """Get the current global memory data.
+async def get_memory(
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> MemoryResponse:
+    """Get the current user's memory data.
 
     Returns:
         The current memory data with user context, history, and facts.
-
-    Example Response:
-        ```json
-        {
-            "version": "1.0",
-            "lastUpdated": "2024-01-15T10:30:00Z",
-            "user": {
-                "workContext": {"summary": "Working on DeerFlow project", "updatedAt": "..."},
-                "personalContext": {"summary": "Prefers concise responses", "updatedAt": "..."},
-                "topOfMind": {"summary": "Building memory API", "updatedAt": "..."}
-            },
-            "history": {
-                "recentMonths": {"summary": "Recent development activities", "updatedAt": "..."},
-                "earlierContext": {"summary": "", "updatedAt": ""},
-                "longTermBackground": {"summary": "", "updatedAt": ""}
-            },
-            "facts": [
-                {
-                    "id": "fact_abc123",
-                    "content": "User prefers TypeScript over JavaScript",
-                    "category": "preference",
-                    "confidence": 0.9,
-                    "createdAt": "2024-01-15T10:30:00Z",
-                    "source": "thread_xyz"
-                }
-            ]
-        }
-        ```
     """
-    memory_data = get_memory_data()
+    memory_data = get_memory_data(user_id=current_user["id"])
     return MemoryResponse(**memory_data)
 
 
@@ -120,18 +97,17 @@ async def get_memory() -> MemoryResponse:
     "/memory/reload",
     response_model=MemoryResponse,
     summary="Reload Memory Data",
-    description="Reload memory data from the storage file, refreshing the in-memory cache.",
+    description="Reload memory data from storage, refreshing the in-memory cache.",
 )
-async def reload_memory() -> MemoryResponse:
-    """Reload memory data from file.
-
-    This forces a reload of the memory data from the storage file,
-    useful when the file has been modified externally.
+async def reload_memory(
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> MemoryResponse:
+    """Reload memory data from file for the current user.
 
     Returns:
         The reloaded memory data.
     """
-    memory_data = reload_memory_data()
+    memory_data = reload_memory_data(user_id=current_user["id"])
     return MemoryResponse(**memory_data)
 
 
@@ -146,19 +122,6 @@ async def get_memory_config_endpoint() -> MemoryConfigResponse:
 
     Returns:
         The current memory configuration settings.
-
-    Example Response:
-        ```json
-        {
-            "enabled": true,
-            "storage_path": ".think-tank/memory.json",
-            "debounce_seconds": 30,
-            "max_facts": 100,
-            "fact_confidence_threshold": 0.7,
-            "injection_enabled": true,
-            "max_injection_tokens": 2000
-        }
-        ```
     """
     config = get_memory_config()
     return MemoryConfigResponse(
@@ -178,14 +141,16 @@ async def get_memory_config_endpoint() -> MemoryConfigResponse:
     summary="Get Memory Status",
     description="Retrieve both memory configuration and current data in a single request.",
 )
-async def get_memory_status() -> MemoryStatusResponse:
+async def get_memory_status(
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> MemoryStatusResponse:
     """Get the memory system status including configuration and data.
 
     Returns:
         Combined memory configuration and current data.
     """
     config = get_memory_config()
-    memory_data = get_memory_data()
+    memory_data = get_memory_data(user_id=current_user["id"])
 
     return MemoryStatusResponse(
         config=MemoryConfigResponse(

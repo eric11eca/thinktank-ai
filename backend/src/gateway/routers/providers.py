@@ -1,6 +1,9 @@
-from fastapi import APIRouter, Header, HTTPException
+from typing import Annotated, Any
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from src.gateway.auth.middleware import get_optional_user
 from src.models.provider_catalog import ProviderCatalogError, ProviderModelInfo, list_provider_models, validate_provider_key
 from src.security.api_key_store import get_api_key
 
@@ -10,7 +13,6 @@ router = APIRouter(prefix="/api", tags=["providers"])
 class ProviderModelsRequest(BaseModel):
     api_key: str | None = Field(default=None, description="API key for the provider")
     base_url: str | None = Field(default=None, description="Override base URL for provider calls")
-    device_id: str | None = Field(default=None, description="Device identifier for stored keys")
 
 
 class ProviderModelsResponse(BaseModel):
@@ -33,14 +35,13 @@ class ProviderValidationResponse(BaseModel):
 async def get_provider_models(
     provider: str,
     request: ProviderModelsRequest,
-    device_id: str | None = Header(default=None, alias="x-device-id"),
+    current_user: Annotated[dict[str, Any] | None, Depends(get_optional_user)] = None,
 ) -> ProviderModelsResponse:
     try:
         normalized = provider.lower()
-        resolved_device_id = request.device_id or device_id
         api_key = request.api_key
-        if not api_key and resolved_device_id:
-            api_key = get_api_key(resolved_device_id, normalized)
+        if not api_key and current_user:
+            api_key = get_api_key(current_user["id"], normalized)
         models = await list_provider_models(normalized, api_key, request.base_url)
         return ProviderModelsResponse(provider=normalized, models=models)
     except ProviderCatalogError as exc:
@@ -58,12 +59,11 @@ async def get_provider_models(
 async def validate_provider(
     provider: str,
     request: ProviderModelsRequest,
-    device_id: str | None = Header(default=None, alias="x-device-id"),
+    current_user: Annotated[dict[str, Any] | None, Depends(get_optional_user)] = None,
 ) -> ProviderValidationResponse:
     normalized = provider.lower()
-    resolved_device_id = request.device_id or device_id
     api_key = request.api_key
-    if not api_key and resolved_device_id:
-        api_key = get_api_key(resolved_device_id, normalized)
+    if not api_key and current_user:
+        api_key = get_api_key(current_user["id"], normalized)
     valid, message = await validate_provider_key(normalized, api_key, request.base_url)
     return ProviderValidationResponse(provider=normalized, valid=valid, message=message)
