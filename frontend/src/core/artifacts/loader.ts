@@ -1,5 +1,7 @@
 import type { UseStream } from "@langchain/langgraph-sdk/react";
 
+import { authFetch } from "@/core/auth/fetch";
+
 import type { AgentThreadState } from "../threads";
 
 import { urlOfArtifact } from "./utils";
@@ -16,7 +18,7 @@ export async function loadArtifactContent({
     enhancedFilepath = filepath + "/SKILL.md";
   }
   const url = urlOfArtifact({ filepath: enhancedFilepath, threadId });
-  const response = await fetch(url);
+  const response = await authFetch(url);
   const text = await response.text();
   return text;
 }

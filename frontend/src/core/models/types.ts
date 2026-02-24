@@ -24,6 +24,6 @@ export interface RuntimeModelSpec {
   model_id: string;
   tier?: string | null;
   api_key?: string;
-  device_id?: string;
+
   supports_vision?: boolean;
 }

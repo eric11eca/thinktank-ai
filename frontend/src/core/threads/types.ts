@@ -23,7 +23,7 @@ export interface AgentThreadContext extends Record<string, unknown> {
   thread_id: string;
   model_name: string | undefined;
   model_spec?: RuntimeModelSpec;
-  device_id?: string;
+  user_id?: string;
   thinking_enabled: boolean;
   is_plan_mode: boolean;
   subagent_enabled: boolean;

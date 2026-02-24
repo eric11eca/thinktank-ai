@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 
-import { getDeviceId } from "@/core/settings/device";
 import { useLocalSettings } from "../settings";
 import { getLocalSettings } from "../settings/local";
 
@@ -13,7 +12,6 @@ export function useProviderModels(
   hasKey: boolean,
   enabled: boolean,
 ) {
-  const deviceId = getDeviceId();
   const queryOptions = {
     staleTime: Infinity,
     gcTime: Infinity,
@@ -23,43 +21,41 @@ export function useProviderModels(
     refetchOnMount: false,
   } as const;
   return useQuery({
-    queryKey: ["provider-models", provider, deviceId],
-    queryFn: () => loadProviderModels(provider, deviceId),
-    enabled: enabled && hasKey && !!deviceId,
+    queryKey: ["provider-models", provider],
+    queryFn: () => loadProviderModels(provider),
+    enabled: enabled && hasKey,
     ...queryOptions,
   });
 }
 
 export function useValidateProviderKey() {
-  const deviceId = getDeviceId();
   return useMutation({
     mutationFn: async ({
       provider,
     }: {
       provider: ProviderId;
     }) => {
-      return validateProviderKey(provider, deviceId);
+      return validateProviderKey(provider);
     },
   });
 }
 
 export function useModels({ enabled = true }: { enabled?: boolean } = {}) {
   const [settings, setSettings] = useLocalSettings();
-  const deviceId = getDeviceId();
-  const syncedDeviceIdRef = useRef<string | undefined>(undefined);
+  const syncedRef = useRef(false);
   const providerEntries = Object.entries(settings.models.providers) as Array<
     [ProviderId, (typeof settings.models.providers)[ProviderId]]
   >;
 
   useEffect(() => {
-    if (!deviceId || syncedDeviceIdRef.current === deviceId) {
+    if (syncedRef.current) {
       return;
     }
-    syncedDeviceIdRef.current = deviceId;
+    syncedRef.current = true;
     Promise.all(
       providerEntries.map(async ([providerId]) => {
         try {
-          const status = await getProviderKeyStatus(providerId, deviceId);
+          const status = await getProviderKeyStatus(providerId);
           return [providerId, status.has_key] as const;
         } catch {
           return [providerId, undefined] as const;
@@ -87,13 +83,13 @@ export function useModels({ enabled = true }: { enabled?: boolean } = {}) {
         });
       }
     });
-  }, [deviceId, providerEntries, setSettings, settings.models.providers]);
+  }, [providerEntries, setSettings, settings.models.providers]);
 
   const providerQueries = useQueries({
     queries: providerEntries.map(([providerId, config]) => ({
-      queryKey: ["provider-models", providerId, deviceId],
-      queryFn: () => loadProviderModels(providerId, deviceId),
-      enabled: enabled && config.enabled && config.has_key && !!deviceId,
+      queryKey: ["provider-models", providerId],
+      queryFn: () => loadProviderModels(providerId),
+      enabled: enabled && config.enabled && config.has_key,
       staleTime: Infinity,
       gcTime: Infinity,
       retry: false,
@@ -124,7 +120,6 @@ export function useModels({ enabled = true }: { enabled?: boolean } = {}) {
 
 export function getRuntimeModelSpec(
   model: ProviderModel | undefined,
-  deviceId: string | undefined,
 ): RuntimeModelSpec | undefined {
   if (!model) {
     return undefined;
@@ -133,7 +128,6 @@ export function getRuntimeModelSpec(
     provider: model.provider,
     model_id: model.model_id,
     tier: model.tier ?? undefined,
-    device_id: deviceId,
     supports_vision: model.supports_vision,
   };
 }
