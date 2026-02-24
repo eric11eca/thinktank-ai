@@ -286,8 +286,11 @@ Recent breakthroughs in language models have also accelerated progress
 """
 
 
-def _get_memory_context() -> str:
+def _get_memory_context(user_id: str | None = None) -> str:
     """Get memory context for injection into system prompt.
+
+    Args:
+        user_id: The user identifier for per-user memory. Falls back to default if None.
 
     Returns:
         Formatted memory context string wrapped in XML tags, or empty string if disabled.
@@ -300,7 +303,7 @@ def _get_memory_context() -> str:
         if not config.enabled or not config.injection_enabled:
             return ""
 
-        memory_data = get_memory_data()
+        memory_data = get_memory_data(user_id=user_id or "local")
         memory_content = format_memory_for_injection(memory_data, max_tokens=config.max_injection_tokens)
 
         if not memory_content.strip():
@@ -311,7 +314,8 @@ def _get_memory_context() -> str:
 </memory>
 """
     except Exception as e:
-        print(f"Failed to load memory context: {e}")
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to load memory context: {e}")
         return ""
 
 

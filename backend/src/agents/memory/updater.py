@@ -1,6 +1,7 @@
 """Memory updater for reading, writing, and updating memory data."""
 
 import json
+import logging
 import os
 import uuid
 from datetime import datetime
@@ -14,12 +15,25 @@ from src.agents.memory.prompt import (
 from src.config.memory_config import get_memory_config
 from src.models import create_chat_model
 
+logger = logging.getLogger(__name__)
 
-def _get_memory_file_path() -> Path:
-    """Get the path to the memory file."""
+# Default user ID for backward compatibility (Electron single-user mode)
+DEFAULT_USER_ID = "local"
+
+
+def _get_memory_file_path(user_id: str = DEFAULT_USER_ID) -> Path:
+    """Get the path to the user-specific memory file.
+
+    Args:
+        user_id: The user identifier. Defaults to "local" for backward compat.
+
+    Returns:
+        Path to the user's memory JSON file.
+    """
     config = get_memory_config()
-    # Resolve relative to current working directory (backend/)
-    return Path(os.getcwd()) / config.storage_path
+    base_dir = Path(os.getcwd()) / Path(config.storage_path).parent / "memory"
+    base_dir.mkdir(parents=True, exist_ok=True)
+    return base_dir / f"{user_id}.json"
 
 
 def _create_empty_memory() -> dict[str, Any]:
@@ -41,24 +55,22 @@ def _create_empty_memory() -> dict[str, Any]:
     }
 
 
-# Global memory data cache
-_memory_data: dict[str, Any] | None = None
-# Track file modification time for cache invalidation
-_memory_file_mtime: float | None = None
+# Per-user memory data cache: { user_id: memory_dict }
+_memory_data: dict[str, dict[str, Any]] = {}
+# Per-user file modification time tracking: { user_id: mtime }
+_memory_file_mtime: dict[str, float | None] = {}
 
 
-def get_memory_data() -> dict[str, Any]:
-    """Get the current memory data (cached with file modification time check).
+def get_memory_data(user_id: str = DEFAULT_USER_ID) -> dict[str, Any]:
+    """Get the current memory data for a user (cached with file modification time check).
 
-    The cache is automatically invalidated if the memory file has been modified
-    since the last load, ensuring fresh data is always returned.
+    Args:
+        user_id: The user identifier.
 
     Returns:
         The memory data dictionary.
     """
-    global _memory_data, _memory_file_mtime
-
-    file_path = _get_memory_file_path()
+    file_path = _get_memory_file_path(user_id)
 
     # Get current file modification time
     try:
@@ -67,40 +79,45 @@ def get_memory_data() -> dict[str, Any]:
         current_mtime = None
 
     # Invalidate cache if file has been modified or doesn't exist
-    if _memory_data is None or _memory_file_mtime != current_mtime:
-        _memory_data = _load_memory_from_file()
-        _memory_file_mtime = current_mtime
+    cached = _memory_data.get(user_id)
+    cached_mtime = _memory_file_mtime.get(user_id)
+    if cached is None or cached_mtime != current_mtime:
+        _memory_data[user_id] = _load_memory_from_file(user_id)
+        _memory_file_mtime[user_id] = current_mtime
 
-    return _memory_data
+    return _memory_data[user_id]
 
 
-def reload_memory_data() -> dict[str, Any]:
+def reload_memory_data(user_id: str = DEFAULT_USER_ID) -> dict[str, Any]:
     """Reload memory data from file, forcing cache invalidation.
+
+    Args:
+        user_id: The user identifier.
 
     Returns:
         The reloaded memory data dictionary.
     """
-    global _memory_data, _memory_file_mtime
+    file_path = _get_memory_file_path(user_id)
+    _memory_data[user_id] = _load_memory_from_file(user_id)
 
-    file_path = _get_memory_file_path()
-    _memory_data = _load_memory_from_file()
-
-    # Update file modification time after reload
     try:
-        _memory_file_mtime = file_path.stat().st_mtime if file_path.exists() else None
+        _memory_file_mtime[user_id] = file_path.stat().st_mtime if file_path.exists() else None
     except OSError:
-        _memory_file_mtime = None
+        _memory_file_mtime[user_id] = None
 
-    return _memory_data
+    return _memory_data[user_id]
 
 
-def _load_memory_from_file() -> dict[str, Any]:
+def _load_memory_from_file(user_id: str = DEFAULT_USER_ID) -> dict[str, Any]:
     """Load memory data from file.
+
+    Args:
+        user_id: The user identifier.
 
     Returns:
         The memory data dictionary.
     """
-    file_path = _get_memory_file_path()
+    file_path = _get_memory_file_path(user_id)
 
     if not file_path.exists():
         return _create_empty_memory()
@@ -110,21 +127,21 @@ def _load_memory_from_file() -> dict[str, Any]:
             data = json.load(f)
         return data
     except (json.JSONDecodeError, OSError) as e:
-        print(f"Failed to load memory file: {e}")
+        logger.warning(f"Failed to load memory file for user {user_id}: {e}")
         return _create_empty_memory()
 
 
-def _save_memory_to_file(memory_data: dict[str, Any]) -> bool:
+def _save_memory_to_file(user_id: str, memory_data: dict[str, Any]) -> bool:
     """Save memory data to file and update cache.
 
     Args:
+        user_id: The user identifier.
         memory_data: The memory data to save.
 
     Returns:
         True if successful, False otherwise.
     """
-    global _memory_data, _memory_file_mtime
-    file_path = _get_memory_file_path()
+    file_path = _get_memory_file_path(user_id)
 
     try:
         # Ensure directory exists
@@ -142,16 +159,16 @@ def _save_memory_to_file(memory_data: dict[str, Any]) -> bool:
         temp_path.replace(file_path)
 
         # Update cache and file modification time
-        _memory_data = memory_data
+        _memory_data[user_id] = memory_data
         try:
-            _memory_file_mtime = file_path.stat().st_mtime
+            _memory_file_mtime[user_id] = file_path.stat().st_mtime
         except OSError:
-            _memory_file_mtime = None
+            _memory_file_mtime[user_id] = None
 
-        print(f"Memory saved to {file_path}")
+        logger.info(f"Memory saved for user {user_id} to {file_path}")
         return True
     except OSError as e:
-        print(f"Failed to save memory file: {e}")
+        logger.error(f"Failed to save memory file for user {user_id}: {e}")
         return False
 
 
@@ -172,12 +189,18 @@ class MemoryUpdater:
         model_name = self._model_name or config.model_name
         return create_chat_model(name=model_name, thinking_enabled=False)
 
-    def update_memory(self, messages: list[Any], thread_id: str | None = None) -> bool:
+    def update_memory(
+        self,
+        messages: list[Any],
+        thread_id: str | None = None,
+        user_id: str = DEFAULT_USER_ID,
+    ) -> bool:
         """Update memory based on conversation messages.
 
         Args:
             messages: List of conversation messages.
             thread_id: Optional thread ID for tracking source.
+            user_id: The user whose memory to update.
 
         Returns:
             True if update was successful, False otherwise.
@@ -190,8 +213,8 @@ class MemoryUpdater:
             return False
 
         try:
-            # Get current memory
-            current_memory = get_memory_data()
+            # Get current memory for this user
+            current_memory = get_memory_data(user_id)
 
             # Format conversation for prompt
             conversation_text = format_conversation_for_update(messages)
@@ -221,14 +244,14 @@ class MemoryUpdater:
             # Apply updates
             updated_memory = self._apply_updates(current_memory, update_data, thread_id)
 
-            # Save
-            return _save_memory_to_file(updated_memory)
+            # Save for this user
+            return _save_memory_to_file(user_id, updated_memory)
 
         except json.JSONDecodeError as e:
-            print(f"Failed to parse LLM response for memory update: {e}")
+            logger.warning(f"Failed to parse LLM response for memory update: {e}")
             return False
         except Exception as e:
-            print(f"Memory update failed: {e}")
+            logger.error(f"Memory update failed for user {user_id}: {e}")
             return False
 
     def _apply_updates(
@@ -302,15 +325,20 @@ class MemoryUpdater:
         return current_memory
 
 
-def update_memory_from_conversation(messages: list[Any], thread_id: str | None = None) -> bool:
+def update_memory_from_conversation(
+    messages: list[Any],
+    thread_id: str | None = None,
+    user_id: str = DEFAULT_USER_ID,
+) -> bool:
     """Convenience function to update memory from a conversation.
 
     Args:
         messages: List of conversation messages.
         thread_id: Optional thread ID.
+        user_id: The user whose memory to update.
 
     Returns:
         True if successful, False otherwise.
     """
     updater = MemoryUpdater()
-    return updater.update_memory(messages, thread_id)
+    return updater.update_memory(messages, thread_id, user_id)

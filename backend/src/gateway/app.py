@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from src.gateway.auth.routes import router as auth_router
 from src.gateway.config import get_gateway_config
 from src.gateway.routers import agent, artifacts, keys, mcp, memory, models, providers, skills, threads, uploads
 
@@ -67,6 +68,10 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
         openapi_url="/openapi.json",
         openapi_tags=[
             {
+                "name": "auth",
+                "description": "User authentication: register, login, token refresh, and logout",
+            },
+            {
                 "name": "models",
                 "description": "Operations for querying available AI models and their configurations",
             },
@@ -112,6 +117,9 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
     # CORS is handled by nginx - no need for FastAPI middleware
 
     # Include routers
+    # Auth API is mounted at /api/auth (must be first for public access)
+    app.include_router(auth_router)
+
     # Models API is mounted at /api/models
     app.include_router(models.router)
 
