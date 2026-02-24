@@ -1,10 +1,14 @@
 import { createBrowserRouter, createHashRouter, Navigate, useParams } from "react-router";
 
+import { ProtectedRoute } from "@/core/auth";
+
 import { App } from "./App";
 import { env } from "./env";
 import { Chat } from "./pages/Chat";
 import { ChatList } from "./pages/ChatList";
 import { Landing } from "./pages/Landing";
+import { Login } from "./pages/Login";
+import { Register } from "./pages/Register";
 import { WorkspaceLayout } from "./pages/WorkspaceLayout";
 
 /**
@@ -33,8 +37,20 @@ export const router = createRouter([
         element: <Landing />,
       },
       {
+        path: "login",
+        element: <Login />,
+      },
+      {
+        path: "register",
+        element: <Register />,
+      },
+      {
         path: "workspace",
-        element: <WorkspaceLayout />,
+        element: (
+          <ProtectedRoute>
+            <WorkspaceLayout />
+          </ProtectedRoute>
+        ),
         children: [
           {
             index: true,
