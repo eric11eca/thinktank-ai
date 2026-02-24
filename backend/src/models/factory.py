@@ -17,7 +17,7 @@ class RuntimeModelSpec(BaseModel):
     provider: str = Field(..., description="Provider identifier")
     model_id: str = Field(..., description="Provider model identifier")
     api_key: str | None = Field(default=None, description="API key for provider")
-    device_id: str | None = Field(default=None, description="Device identifier for stored keys")
+    user_id: str | None = Field(default=None, description="User identifier for stored keys")
     tier: str | None = Field(default=None, description="Optional tier identifier")
     base_url: str | None = Field(default=None, description="Optional base URL override")
     supports_vision: bool | None = Field(default=None, description="Whether the model supports vision")
@@ -60,10 +60,10 @@ def _create_runtime_model(spec: RuntimeModelSpec, thinking_enabled: bool, **kwar
         raise ValueError(f"Unsupported provider: {spec.provider}") from None
     api_key = (spec.api_key or "").strip()
     if not api_key:
-        if spec.device_id:
+        if spec.user_id:
             from src.security.api_key_store import get_api_key
 
-            stored = get_api_key(spec.device_id, provider)
+            stored = get_api_key(spec.user_id, provider)
             api_key = stored.strip() if stored else ""
     if not api_key:
         raise ValueError(f"Model {spec.model_id} requires a non-empty api_key.") from None

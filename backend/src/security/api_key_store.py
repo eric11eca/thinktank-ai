@@ -48,15 +48,20 @@ def _load_store() -> dict:
     _ensure_store_dir()
     raw = _read_file(_DATA_FILE)
     if not raw:
-        return {"schema_version": 1, "devices": {}}
+        return {"schema_version": 2, "users": {}}
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
-        return {"schema_version": 1, "devices": {}}
-    if not isinstance(data, dict) or "devices" not in data:
-        return {"schema_version": 1, "devices": {}}
-    if not isinstance(data.get("devices"), dict):
-        data["devices"] = {}
+        return {"schema_version": 2, "users": {}}
+    if not isinstance(data, dict):
+        return {"schema_version": 2, "users": {}}
+
+    # Migrate legacy "devices" key to "users" for backward compatibility
+    if "devices" in data and "users" not in data:
+        data["users"] = data.pop("devices")
+        data["schema_version"] = 2
+
+    data.setdefault("users", {})
     return data
 
 
@@ -70,9 +75,19 @@ def _get_cipher() -> Fernet:
     return Fernet(key)
 
 
-def set_api_key(device_id: str, provider: str, api_key: str) -> None:
-    if not device_id or not provider:
-        raise ValueError("device_id and provider are required")
+def set_api_key(user_id: str, provider: str, api_key: str) -> None:
+    """Store an encrypted API key for a user and provider.
+
+    Args:
+        user_id: The user identifier (was device_id in v1).
+        provider: The provider name (e.g., "openai", "anthropic").
+        api_key: The plaintext API key to encrypt and store.
+
+    Raises:
+        ValueError: If user_id, provider, or api_key is empty.
+    """
+    if not user_id or not provider:
+        raise ValueError("user_id and provider are required")
     api_key = api_key.strip()
     if not api_key:
         raise ValueError("api_key must be non-empty")
@@ -80,46 +95,73 @@ def set_api_key(device_id: str, provider: str, api_key: str) -> None:
     token = cipher.encrypt(api_key.encode("utf-8")).decode("utf-8")
     with _LOCK:
         data = _load_store()
-        devices = data.setdefault("devices", {})
-        device_entry = devices.setdefault(device_id, {})
-        device_entry[provider] = token
+        users = data.setdefault("users", {})
+        user_entry = users.setdefault(user_id, {})
+        user_entry[provider] = token
         _save_store(data)
 
 
-def delete_api_key(device_id: str, provider: str) -> None:
-    if not device_id or not provider:
-        raise ValueError("device_id and provider are required")
+def delete_api_key(user_id: str, provider: str) -> None:
+    """Delete an API key for a user and provider.
+
+    Args:
+        user_id: The user identifier.
+        provider: The provider name.
+
+    Raises:
+        ValueError: If user_id or provider is empty.
+    """
+    if not user_id or not provider:
+        raise ValueError("user_id and provider are required")
     with _LOCK:
         data = _load_store()
-        devices = data.get("devices", {})
-        device_entry = devices.get(device_id)
-        if not isinstance(device_entry, dict):
+        users = data.get("users", {})
+        user_entry = users.get(user_id)
+        if not isinstance(user_entry, dict):
             return
-        device_entry.pop(provider, None)
-        if not device_entry:
-            devices.pop(device_id, None)
+        user_entry.pop(provider, None)
+        if not user_entry:
+            users.pop(user_id, None)
         _save_store(data)
 
 
-def has_api_key(device_id: str, provider: str) -> bool:
-    if not device_id or not provider:
+def has_api_key(user_id: str, provider: str) -> bool:
+    """Check if an API key exists for a user and provider.
+
+    Args:
+        user_id: The user identifier.
+        provider: The provider name.
+
+    Returns:
+        True if a key is stored, False otherwise.
+    """
+    if not user_id or not provider:
         return False
     with _LOCK:
         data = _load_store()
-        device_entry = data.get("devices", {}).get(device_id, {})
-        return isinstance(device_entry, dict) and bool(device_entry.get(provider))
+        user_entry = data.get("users", {}).get(user_id, {})
+        return isinstance(user_entry, dict) and bool(user_entry.get(provider))
 
 
-def get_api_key(device_id: str, provider: str) -> str | None:
-    if not device_id or not provider:
+def get_api_key(user_id: str, provider: str) -> str | None:
+    """Retrieve and decrypt an API key for a user and provider.
+
+    Args:
+        user_id: The user identifier.
+        provider: The provider name.
+
+    Returns:
+        The decrypted API key string, or None if not found or decryption fails.
+    """
+    if not user_id or not provider:
         return None
     cipher = _get_cipher()
     with _LOCK:
         data = _load_store()
-        device_entry = data.get("devices", {}).get(device_id, {})
-        if not isinstance(device_entry, dict):
+        user_entry = data.get("users", {}).get(user_id, {})
+        if not isinstance(user_entry, dict):
             return None
-        token = device_entry.get(provider)
+        token = user_entry.get(provider)
         if not isinstance(token, str):
             return None
     try:
