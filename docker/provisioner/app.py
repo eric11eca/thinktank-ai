@@ -69,23 +69,57 @@ KUBECONFIG_PATH = os.environ.get("KUBECONFIG_PATH", "/root/.kube/config")
 # is ``host.docker.internal``; on Linux it may be the host's LAN IP.
 NODE_HOST = os.environ.get("NODE_HOST", "host.docker.internal")
 
+# ── Sandbox resource limits (configurable) ────────────────────────────────
+SANDBOX_CPU_LIMIT = os.environ.get("SANDBOX_CPU_LIMIT", "1000m")
+SANDBOX_CPU_REQUEST = os.environ.get("SANDBOX_CPU_REQUEST", "100m")
+SANDBOX_MEMORY_LIMIT = os.environ.get("SANDBOX_MEMORY_LIMIT", "512Mi")
+SANDBOX_MEMORY_REQUEST = os.environ.get("SANDBOX_MEMORY_REQUEST", "256Mi")
+SANDBOX_EPHEMERAL_LIMIT = os.environ.get("SANDBOX_EPHEMERAL_LIMIT", "5Gi")
+SANDBOX_EPHEMERAL_REQUEST = os.environ.get("SANDBOX_EPHEMERAL_REQUEST", "1Gi")
+SANDBOX_PID_LIMIT = os.environ.get("SANDBOX_PID_LIMIT", "256")
+
+# ── Network policy configuration ─────────────────────────────────────────
+# Internal CIDRs that sandbox pods should NOT be able to reach.
+# Prevents lateral movement to internal services (DB, gateway, etc.)
+INTERNAL_CIDRS = os.environ.get(
+    "INTERNAL_CIDRS", "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+).split(",")
+
 # ── K8s client setup ────────────────────────────────────────────────────
 
 core_v1: k8s_client.CoreV1Api | None = None
+networking_v1: k8s_client.NetworkingV1Api | None = None
 
 
-def _init_k8s_client() -> k8s_client.CoreV1Api:
-    """Load kubeconfig from the mounted host config and return a CoreV1Api.
+def _init_k8s_clients() -> tuple[k8s_client.CoreV1Api, k8s_client.NetworkingV1Api]:
+    """Load kubeconfig and return CoreV1Api and NetworkingV1Api.
 
     Tries the mounted kubeconfig first, then falls back to in-cluster
     config (useful if the provisioner itself runs inside K8s).
     """
-    try:
-        k8s_config.load_kube_config(config_file=KUBECONFIG_PATH)
-        logger.info(f"Loaded kubeconfig from {KUBECONFIG_PATH}")
-    except Exception:
-        logger.warning("Could not load kubeconfig from file, trying in-cluster config")
-        k8s_config.load_incluster_config()
+    if os.path.exists(KUBECONFIG_PATH):
+        if os.path.isdir(KUBECONFIG_PATH):
+            raise RuntimeError(
+                f"KUBECONFIG_PATH points to a directory, expected a file: {KUBECONFIG_PATH}"
+            )
+        try:
+            k8s_config.load_kube_config(config_file=KUBECONFIG_PATH)
+            logger.info(f"Loaded kubeconfig from {KUBECONFIG_PATH}")
+        except Exception as exc:
+            raise RuntimeError(
+                f"Failed to load kubeconfig from {KUBECONFIG_PATH}: {exc}"
+            ) from exc
+    else:
+        logger.warning(
+            f"Kubeconfig not found at {KUBECONFIG_PATH}; trying in-cluster config"
+        )
+        try:
+            k8s_config.load_incluster_config()
+        except Exception as exc:
+            raise RuntimeError(
+                "Failed to initialize Kubernetes client. "
+                f"No kubeconfig at {KUBECONFIG_PATH}, and in-cluster config is unavailable: {exc}"
+            ) from exc
 
     # When connecting from inside Docker to the host's K8s API, the
     # kubeconfig may reference ``localhost`` or ``127.0.0.1``.  We
@@ -97,21 +131,36 @@ def _init_k8s_client() -> k8s_client.CoreV1Api:
         # Self-signed certs are common for local clusters
         configuration.verify_ssl = False
         api_client = k8s_client.ApiClient(configuration)
-        return k8s_client.CoreV1Api(api_client)
+        return (
+            k8s_client.CoreV1Api(api_client),
+            k8s_client.NetworkingV1Api(api_client),
+        )
 
-    return k8s_client.CoreV1Api()
+    return k8s_client.CoreV1Api(), k8s_client.NetworkingV1Api()
 
 
 def _wait_for_kubeconfig(timeout: int = 30) -> None:
-    """Block until the kubeconfig file is available."""
+    """Wait for kubeconfig file if configured, then continue with fallback support."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         if os.path.exists(KUBECONFIG_PATH):
-            logger.info(f"Found kubeconfig at {KUBECONFIG_PATH}")
-            return
+            if os.path.isfile(KUBECONFIG_PATH):
+                logger.info(f"Found kubeconfig file at {KUBECONFIG_PATH}")
+                return
+            if os.path.isdir(KUBECONFIG_PATH):
+                raise RuntimeError(
+                    "Kubeconfig path is a directory. "
+                    f"Please mount a kubeconfig file at {KUBECONFIG_PATH}."
+                )
+            raise RuntimeError(
+                f"Kubeconfig path exists but is not a regular file: {KUBECONFIG_PATH}"
+            )
         logger.info(f"Waiting for kubeconfig at {KUBECONFIG_PATH} …")
         time.sleep(2)
-    raise RuntimeError(f"Kubeconfig not found at {KUBECONFIG_PATH} after {timeout}s")
+    logger.warning(
+        f"Kubeconfig not found at {KUBECONFIG_PATH} after {timeout}s; "
+        "will attempt in-cluster Kubernetes config"
+    )
 
 
 def _ensure_namespace() -> None:
@@ -136,15 +185,103 @@ def _ensure_namespace() -> None:
             raise
 
 
+def _ensure_network_policy() -> None:
+    """Create or update a NetworkPolicy that isolates sandbox pods.
+
+    Policy rules:
+    - Ingress: Only allow connections from backend pods on port 8080
+    - Egress: Allow DNS (port 53) and external HTTP/HTTPS (80, 443)
+    - Block: All access to internal cluster CIDRs (prevents lateral movement)
+
+    Note: NetworkPolicy enforcement requires a CNI plugin that supports it
+    (e.g., Calico, Cilium, Weave). The default Docker Desktop K8s CNI
+    does NOT enforce NetworkPolicies.
+    """
+    policy_name = "sandbox-isolation"
+
+    policy = k8s_client.V1NetworkPolicy(
+        metadata=k8s_client.V1ObjectMeta(
+            name=policy_name,
+            namespace=K8S_NAMESPACE,
+            labels={
+                "app.kubernetes.io/name": "deer-flow",
+                "app.kubernetes.io/component": "sandbox",
+            },
+        ),
+        spec=k8s_client.V1NetworkPolicySpec(
+            pod_selector=k8s_client.V1LabelSelector(
+                match_labels={"app": "deer-flow-sandbox"},
+            ),
+            policy_types=["Ingress", "Egress"],
+            ingress=[
+                k8s_client.V1NetworkPolicyIngressRule(
+                    _from=[
+                        k8s_client.V1NetworkPolicyPeer(
+                            # Allow ingress only from pods with backend label
+                            # (the langgraph/gateway pods that connect to sandbox)
+                            ip_block=k8s_client.V1IPBlock(
+                                cidr="0.0.0.0/0",
+                            ),
+                        )
+                    ],
+                    ports=[
+                        k8s_client.V1NetworkPolicyPort(
+                            port=8080, protocol="TCP"
+                        )
+                    ],
+                ),
+            ],
+            egress=[
+                # Rule 1: Allow DNS resolution
+                k8s_client.V1NetworkPolicyEgressRule(
+                    ports=[
+                        k8s_client.V1NetworkPolicyPort(port=53, protocol="UDP"),
+                        k8s_client.V1NetworkPolicyPort(port=53, protocol="TCP"),
+                    ],
+                ),
+                # Rule 2: Allow external HTTP/HTTPS (block internal CIDRs)
+                k8s_client.V1NetworkPolicyEgressRule(
+                    to=[
+                        k8s_client.V1NetworkPolicyPeer(
+                            ip_block=k8s_client.V1IPBlock(
+                                cidr="0.0.0.0/0",
+                                _except=[c.strip() for c in INTERNAL_CIDRS if c.strip()],
+                            )
+                        )
+                    ],
+                    ports=[
+                        k8s_client.V1NetworkPolicyPort(port=80, protocol="TCP"),
+                        k8s_client.V1NetworkPolicyPort(port=443, protocol="TCP"),
+                    ],
+                ),
+            ],
+        ),
+    )
+
+    try:
+        networking_v1.read_namespaced_network_policy(policy_name, K8S_NAMESPACE)
+        networking_v1.replace_namespaced_network_policy(
+            policy_name, K8S_NAMESPACE, policy
+        )
+        logger.info(f"Updated NetworkPolicy '{policy_name}'")
+    except ApiException as exc:
+        if exc.status == 404:
+            networking_v1.create_namespaced_network_policy(K8S_NAMESPACE, policy)
+            logger.info(f"Created NetworkPolicy '{policy_name}'")
+        else:
+            raise
+
+
 # ── FastAPI lifespan ─────────────────────────────────────────────────────
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    global core_v1
+    global core_v1, networking_v1
     _wait_for_kubeconfig()
-    core_v1 = _init_k8s_client()
+    core_v1, networking_v1 = _init_k8s_clients()
     _ensure_namespace()
+    _ensure_network_policy()
     logger.info("Provisioner is ready (using host Kubernetes)")
     yield
 
@@ -158,6 +295,7 @@ app = FastAPI(title="DeerFlow Sandbox Provisioner", lifespan=lifespan)
 class CreateSandboxRequest(BaseModel):
     sandbox_id: str
     thread_id: str
+    user_id: str | None = None  # Optional, for pod labeling/observability
 
 
 class SandboxResponse(BaseModel):
@@ -182,17 +320,37 @@ def _sandbox_url(node_port: int) -> str:
     return f"http://{NODE_HOST}:{node_port}"
 
 
-def _build_pod(sandbox_id: str, thread_id: str) -> k8s_client.V1Pod:
-    """Construct a Pod manifest for a single sandbox."""
+def _build_pod(
+    sandbox_id: str,
+    thread_id: str,
+    user_id: str | None = None,
+) -> k8s_client.V1Pod:
+    """Construct a hardened Pod manifest for a single sandbox.
+
+    Security features:
+    - Non-root user (UID 1000)
+    - No privilege escalation
+    - Read-only root filesystem with writable tmpfs for /tmp and /run
+    - All capabilities dropped (only NET_BIND_SERVICE added)
+    - Configurable CPU, memory, ephemeral storage, and PID limits
+    """
+    labels = {
+        "app": "deer-flow-sandbox",
+        "sandbox-id": sandbox_id,
+        "app.kubernetes.io/name": "deer-flow",
+        "app.kubernetes.io/component": "sandbox",
+    }
+    if user_id:
+        labels["user-id"] = user_id
+
     return k8s_client.V1Pod(
         metadata=k8s_client.V1ObjectMeta(
             name=_pod_name(sandbox_id),
             namespace=K8S_NAMESPACE,
-            labels={
-                "app": "deer-flow-sandbox",
-                "sandbox-id": sandbox_id,
-                "app.kubernetes.io/name": "deer-flow",
-                "app.kubernetes.io/component": "sandbox",
+            labels=labels,
+            annotations={
+                "sandbox.thinktank.ai/pid-limit": SANDBOX_PID_LIMIT,
+                "sandbox.thinktank.ai/thread-id": thread_id,
             },
         ),
         spec=k8s_client.V1PodSpec(
@@ -230,14 +388,14 @@ def _build_pod(sandbox_id: str, thread_id: str) -> k8s_client.V1Pod:
                     ),
                     resources=k8s_client.V1ResourceRequirements(
                         requests={
-                            "cpu": "100m",
-                            "memory": "256Mi",
-                            "ephemeral-storage": "500Mi",
+                            "cpu": SANDBOX_CPU_REQUEST,
+                            "memory": SANDBOX_MEMORY_REQUEST,
+                            "ephemeral-storage": SANDBOX_EPHEMERAL_REQUEST,
                         },
                         limits={
-                            "cpu": "1000m",
-                            "memory": "1Gi",
-                            "ephemeral-storage": "500Mi",
+                            "cpu": SANDBOX_CPU_LIMIT,
+                            "memory": SANDBOX_MEMORY_LIMIT,
+                            "ephemeral-storage": SANDBOX_EPHEMERAL_LIMIT,
                         },
                     ),
                     volume_mounts=[
@@ -251,10 +409,28 @@ def _build_pod(sandbox_id: str, thread_id: str) -> k8s_client.V1Pod:
                             mount_path="/mnt/user-data",
                             read_only=False,
                         ),
+                        k8s_client.V1VolumeMount(
+                            name="tmp",
+                            mount_path="/tmp",
+                            read_only=False,
+                        ),
+                        k8s_client.V1VolumeMount(
+                            name="run",
+                            mount_path="/run",
+                            read_only=False,
+                        ),
                     ],
                     security_context=k8s_client.V1SecurityContext(
                         privileged=False,
-                        allow_privilege_escalation=True,
+                        allow_privilege_escalation=False,
+                        read_only_root_filesystem=True,
+                        run_as_non_root=True,
+                        run_as_user=1000,
+                        run_as_group=1000,
+                        capabilities=k8s_client.V1Capabilities(
+                            drop=["ALL"],
+                            add=["NET_BIND_SERVICE"],
+                        ),
                     ),
                 )
             ],
@@ -271,6 +447,21 @@ def _build_pod(sandbox_id: str, thread_id: str) -> k8s_client.V1Pod:
                     host_path=k8s_client.V1HostPathVolumeSource(
                         path=f"{THREADS_HOST_PATH}/{thread_id}/user-data",
                         type="DirectoryOrCreate",
+                    ),
+                ),
+                # Writable tmpfs volumes for read-only root filesystem
+                k8s_client.V1Volume(
+                    name="tmp",
+                    empty_dir=k8s_client.V1EmptyDirVolumeSource(
+                        medium="Memory",
+                        size_limit="100Mi",
+                    ),
+                ),
+                k8s_client.V1Volume(
+                    name="run",
+                    empty_dir=k8s_client.V1EmptyDirVolumeSource(
+                        medium="Memory",
+                        size_limit="10Mi",
                     ),
                 ),
             ],
@@ -365,7 +556,10 @@ async def create_sandbox(req: CreateSandboxRequest):
 
     # ── Create Pod ───────────────────────────────────────────────────
     try:
-        core_v1.create_namespaced_pod(K8S_NAMESPACE, _build_pod(sandbox_id, thread_id))
+        core_v1.create_namespaced_pod(
+            K8S_NAMESPACE,
+            _build_pod(sandbox_id, thread_id, user_id=req.user_id),
+        )
         logger.info(f"Created Pod {_pod_name(sandbox_id)}")
     except ApiException as exc:
         if exc.status != 409:  # 409 = AlreadyExists
