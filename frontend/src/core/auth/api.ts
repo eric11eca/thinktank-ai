@@ -17,7 +17,7 @@ export async function registerUser(
     body: JSON.stringify({
       email,
       password,
-      display_name: displayName || null,
+      display_name: displayName ?? null,
     }),
   });
 

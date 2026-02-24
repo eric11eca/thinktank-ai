@@ -41,7 +41,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
  */
 export function isTokenExpired(
   token: string,
-  marginSeconds: number = 120,
+  marginSeconds = 120,
 ): boolean {
   const payload = decodeJwtPayload(token);
   if (!payload || typeof payload.exp !== "number") return true;

@@ -21,5 +21,5 @@ export interface AuthState {
     password: string,
     displayName?: string,
   ) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
