@@ -53,14 +53,14 @@ start() {
     echo "  Starting DeerFlow Docker Development"
     echo "=========================================="
     echo ""
-    
+
     # Set DEER_FLOW_ROOT for provisioner if not already set
     if [ -z "$DEER_FLOW_ROOT" ]; then
         export DEER_FLOW_ROOT="$PROJECT_ROOT"
         echo -e "${BLUE}Setting DEER_FLOW_ROOT=$DEER_FLOW_ROOT${NC}"
         echo ""
     fi
-    
+
     echo "Building and starting containers..."
     cd "$DOCKER_DIR" && $COMPOSE_CMD up --build -d --remove-orphans
     echo ""
@@ -80,7 +80,7 @@ start() {
 # View Docker development logs
 logs() {
     local service=""
-    
+
     case "$1" in
         --frontend)
             service="frontend"
@@ -103,7 +103,7 @@ logs() {
             exit 1
             ;;
     esac
-    
+
     cd "$DOCKER_DIR" && $COMPOSE_CMD logs -f $service
 }
 
