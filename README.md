@@ -95,8 +95,10 @@ The fastest way to get started with a consistent environment:
 1. **Initialize and start**:
    ```bash
    make docker-init    # Pull sandbox image (Only once or when image updates)
-   make docker-start   # Start all services and watch for code changes
+   make docker-start   # Start services (auto-detects sandbox mode from config.yaml)
    ```
+
+   `make docker-start` now starts `provisioner` only when `config.yaml` uses provisioner mode (`sandbox.use: src.community.aio_sandbox:AioSandboxProvider` with `provisioner_url`).
 
 2. **Access**: http://localhost:2026
 

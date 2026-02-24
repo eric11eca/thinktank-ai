@@ -177,9 +177,10 @@ def ensure_sandbox_initialized(runtime: ToolRuntime[ContextT, ThreadState] | Non
     if thread_id is None:
         raise SandboxRuntimeError("Thread ID not available in runtime context")
 
+    user_id = runtime.context.get("user_id")
     provider = get_sandbox_provider()
     print(f"Lazy acquiring sandbox for thread {thread_id}")
-    sandbox_id = provider.acquire(thread_id)
+    sandbox_id = provider.acquire(thread_id, user_id=user_id)
 
     # Update runtime state - this persists across tool calls
     runtime.state["sandbox"] = {"sandbox_id": sandbox_id}

@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_IMAGE = "enterprise-public-cn-beijing.cr.volces.com/vefaas-public/all-in-one-sandbox:latest"
 DEFAULT_PORT = 8080
 DEFAULT_CONTAINER_PREFIX = "deer-flow-sandbox"
-DEFAULT_IDLE_TIMEOUT = 600  # 10 minutes in seconds
+DEFAULT_IDLE_TIMEOUT = 900  # 15 minutes in seconds
 IDLE_CHECK_INTERVAL = 60  # Check every 60 seconds
 
 
@@ -79,11 +79,13 @@ class AioSandboxProvider(SandboxProvider):
         self._thread_sandboxes: dict[str, str] = {}  # thread_id -> sandbox_id
         self._thread_locks: dict[str, threading.Lock] = {}  # thread_id -> in-process lock
         self._last_activity: dict[str, float] = {}  # sandbox_id -> last activity timestamp
+        self._user_sandboxes: dict[str, set[str]] = {}  # user_id -> set of sandbox_ids
         self._shutdown_called = False
         self._idle_checker_stop = threading.Event()
         self._idle_checker_thread: threading.Thread | None = None
 
         self._config = self._load_config()
+        self._max_per_user: int = self._config.get("max_sandboxes_per_user", 3)
         self._backend: SandboxBackend = self._create_backend()
         self._state_store: SandboxStateStore = self._create_state_store()
 
@@ -155,6 +157,8 @@ class AioSandboxProvider(SandboxProvider):
             "environment": self._resolve_env_vars(sandbox_config.environment or {}),
             # provisioner URL for dynamic pod management (e.g. http://provisioner:8002)
             "provisioner_url": getattr(sandbox_config, "provisioner_url", None) or "",
+            # per-user sandbox quota (0 to disable)
+            "max_sandboxes_per_user": getattr(sandbox_config, "max_sandboxes_per_user", 3),
         }
 
     @staticmethod
@@ -302,7 +306,7 @@ class AioSandboxProvider(SandboxProvider):
 
     # ── Core: acquire / get / release / shutdown ─────────────────────────
 
-    def acquire(self, thread_id: str | None = None) -> str:
+    def acquire(self, thread_id: str | None = None, user_id: str | None = None) -> str:
         """Acquire a sandbox environment and return its ID.
 
         For the same thread_id, this method will return the same sandbox_id
@@ -313,18 +317,22 @@ class AioSandboxProvider(SandboxProvider):
 
         Args:
             thread_id: Optional thread ID for thread-specific configurations.
+            user_id: Optional user ID for per-user quota enforcement.
 
         Returns:
             The ID of the acquired sandbox environment.
+
+        Raises:
+            RuntimeError: If the user has reached their sandbox quota.
         """
         if thread_id:
             thread_lock = self._get_thread_lock(thread_id)
             with thread_lock:
-                return self._acquire_internal(thread_id)
+                return self._acquire_internal(thread_id, user_id)
         else:
-            return self._acquire_internal(thread_id)
+            return self._acquire_internal(thread_id, user_id)
 
-    def _acquire_internal(self, thread_id: str | None) -> str:
+    def _acquire_internal(self, thread_id: str | None, user_id: str | None = None) -> str:
         """Internal sandbox acquisition with three-layer consistency.
 
         Layer 1: In-process cache (fastest, covers same-process repeated access)
@@ -343,6 +351,16 @@ class AioSandboxProvider(SandboxProvider):
                     else:
                         del self._thread_sandboxes[thread_id]
 
+        # ── Per-user quota check (before creating new sandbox) ──
+        if user_id and self._max_per_user > 0:
+            with self._lock:
+                current_count = len(self._user_sandboxes.get(user_id, set()))
+            if current_count >= self._max_per_user:
+                raise RuntimeError(
+                    f"User {user_id} has reached the maximum of {self._max_per_user} "
+                    f"concurrent sandboxes. Release an existing sandbox first."
+                )
+
         # Deterministic ID for thread-specific, random for anonymous
         sandbox_id = self._deterministic_sandbox_id(thread_id) if thread_id else str(uuid.uuid4())[:8]
 
@@ -350,21 +368,22 @@ class AioSandboxProvider(SandboxProvider):
         if thread_id:
             with self._state_store.lock(thread_id):
                 # Try to recover from persisted state or discover existing container
-                recovered_id = self._try_recover(thread_id)
+                recovered_id = self._try_recover(thread_id, user_id)
                 if recovered_id is not None:
                     return recovered_id
                 # Nothing to recover — create new sandbox (still under cross-process lock)
-                return self._create_sandbox(thread_id, sandbox_id)
+                return self._create_sandbox(thread_id, sandbox_id, user_id)
         else:
-            return self._create_sandbox(thread_id, sandbox_id)
+            return self._create_sandbox(thread_id, sandbox_id, user_id)
 
-    def _try_recover(self, thread_id: str) -> str | None:
+    def _try_recover(self, thread_id: str, user_id: str | None = None) -> str | None:
         """Try to recover a sandbox from persisted state or backend discovery.
 
         Called under cross-process lock for the given thread_id.
 
         Args:
             thread_id: The thread ID.
+            user_id: Optional user ID for quota tracking.
 
         Returns:
             The sandbox_id if recovery succeeded, None otherwise.
@@ -388,6 +407,11 @@ class AioSandboxProvider(SandboxProvider):
             self._sandbox_infos[discovered.sandbox_id] = discovered
             self._last_activity[discovered.sandbox_id] = time.time()
             self._thread_sandboxes[thread_id] = discovered.sandbox_id
+            # Track user ownership for quota enforcement
+            if user_id:
+                if user_id not in self._user_sandboxes:
+                    self._user_sandboxes[user_id] = set()
+                self._user_sandboxes[user_id].add(discovered.sandbox_id)
 
         # Update state if connection info changed
         if discovered.sandbox_url != info.sandbox_url:
@@ -396,12 +420,18 @@ class AioSandboxProvider(SandboxProvider):
         logger.info(f"Recovered sandbox {discovered.sandbox_id} for thread {thread_id} at {discovered.sandbox_url}")
         return discovered.sandbox_id
 
-    def _create_sandbox(self, thread_id: str | None, sandbox_id: str) -> str:
+    def _create_sandbox(
+        self,
+        thread_id: str | None,
+        sandbox_id: str,
+        user_id: str | None = None,
+    ) -> str:
         """Create a new sandbox via the backend.
 
         Args:
             thread_id: Optional thread ID.
             sandbox_id: The sandbox ID to use.
+            user_id: Optional user ID for quota tracking and pod labeling.
 
         Returns:
             The sandbox_id.
@@ -411,7 +441,9 @@ class AioSandboxProvider(SandboxProvider):
         """
         extra_mounts = self._get_extra_mounts(thread_id)
 
-        info = self._backend.create(thread_id, sandbox_id, extra_mounts=extra_mounts or None)
+        info = self._backend.create(
+            thread_id, sandbox_id, extra_mounts=extra_mounts or None, user_id=user_id
+        )
 
         # Wait for sandbox to be ready
         if not wait_for_sandbox_ready(info.sandbox_url, timeout=60):
@@ -425,6 +457,11 @@ class AioSandboxProvider(SandboxProvider):
             self._last_activity[sandbox_id] = time.time()
             if thread_id:
                 self._thread_sandboxes[thread_id] = sandbox_id
+            # Track user ownership for quota enforcement
+            if user_id:
+                if user_id not in self._user_sandboxes:
+                    self._user_sandboxes[user_id] = set()
+                self._user_sandboxes[user_id].add(sandbox_id)
 
         # Persist for cross-process discovery
         if thread_id:
@@ -464,6 +501,11 @@ class AioSandboxProvider(SandboxProvider):
             for tid in thread_ids_to_remove:
                 del self._thread_sandboxes[tid]
             self._last_activity.pop(sandbox_id, None)
+            # Remove from user quota tracking
+            for uid, sids in list(self._user_sandboxes.items()):
+                sids.discard(sandbox_id)
+                if not sids:
+                    del self._user_sandboxes[uid]
 
         # Clean up persisted state (outside lock, involves file I/O)
         for tid in thread_ids_to_remove:
