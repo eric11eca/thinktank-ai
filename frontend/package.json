@@ -18,7 +18,9 @@
     "check": "eslint . && tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@codemirror/lang-css": "^6.3.1",
@@ -47,6 +49,7 @@
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
+    "@streamdown/math": "^1.0.2",
     "@tanstack/react-query": "^5.90.17",
     "@types/hast": "^3.0.4",
     "@uiw/codemirror-theme-basic": "^4.25.4",
@@ -64,7 +67,6 @@
     "dotenv": "^17.2.3",
     "embla-carousel-react": "^8.6.0",
     "gsap": "^3.13.0",
-    "@streamdown/math": "^1.0.2",
     "katex": "^0.16.28",
     "lucide-react": "^0.574.0",
     "motion": "^12.26.2",
@@ -90,6 +92,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.0.15",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
