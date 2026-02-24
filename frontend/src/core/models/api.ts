@@ -1,22 +1,13 @@
+import { authFetch } from "@/core/auth/fetch";
+
 import { getBackendBaseURL } from "../config";
 
 import type { ProviderId, ProviderModel } from "./types";
 
-function withDeviceHeaders(deviceId: string | undefined): Record<string, string> {
-  const headers: Record<string, string> = {};
-  if (deviceId) {
-    headers["x-device-id"] = deviceId;
-  }
-  return headers;
-}
-
-export async function loadProviderModels(
-  provider: ProviderId,
-  deviceId: string | undefined,
-) {
-  const res = await fetch(`${getBackendBaseURL()}/api/providers/${provider}/models`, {
+export async function loadProviderModels(provider: ProviderId) {
+  const res = await authFetch(`${getBackendBaseURL()}/api/providers/${provider}/models`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...withDeviceHeaders(deviceId) },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),
   });
   if (!res.ok) {
@@ -26,13 +17,10 @@ export async function loadProviderModels(
   return data;
 }
 
-export async function validateProviderKey(
-  provider: ProviderId,
-  deviceId: string | undefined,
-) {
-  const res = await fetch(`${getBackendBaseURL()}/api/providers/${provider}/validate`, {
+export async function validateProviderKey(provider: ProviderId) {
+  const res = await authFetch(`${getBackendBaseURL()}/api/providers/${provider}/validate`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...withDeviceHeaders(deviceId) },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),
   });
   if (!res.ok) {
@@ -45,27 +33,18 @@ export async function validateProviderKey(
   };
 }
 
-export async function getProviderKeyStatus(
-  provider: ProviderId,
-  deviceId: string | undefined,
-) {
-  const res = await fetch(`${getBackendBaseURL()}/api/providers/${provider}/key`, {
-    headers: withDeviceHeaders(deviceId),
-  });
+export async function getProviderKeyStatus(provider: ProviderId) {
+  const res = await authFetch(`${getBackendBaseURL()}/api/providers/${provider}/key`);
   if (!res.ok) {
     throw new Error(`Failed to load ${provider} key status (${res.status})`);
   }
   return (await res.json()) as { provider: ProviderId; has_key: boolean };
 }
 
-export async function setProviderKey(
-  provider: ProviderId,
-  apiKey: string,
-  deviceId: string | undefined,
-) {
-  const res = await fetch(`${getBackendBaseURL()}/api/providers/${provider}/key`, {
+export async function setProviderKey(provider: ProviderId, apiKey: string) {
+  const res = await authFetch(`${getBackendBaseURL()}/api/providers/${provider}/key`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", ...withDeviceHeaders(deviceId) },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ api_key: apiKey }),
   });
   if (!res.ok) {
@@ -74,13 +53,9 @@ export async function setProviderKey(
   return (await res.json()) as { provider: ProviderId; has_key: boolean };
 }
 
-export async function deleteProviderKey(
-  provider: ProviderId,
-  deviceId: string | undefined,
-) {
-  const res = await fetch(`${getBackendBaseURL()}/api/providers/${provider}/key`, {
+export async function deleteProviderKey(provider: ProviderId) {
+  const res = await authFetch(`${getBackendBaseURL()}/api/providers/${provider}/key`, {
     method: "DELETE",
-    headers: withDeviceHeaders(deviceId),
   });
   if (!res.ok) {
     throw new Error(`Failed to remove ${provider} API key (${res.status})`);

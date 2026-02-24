@@ -1,3 +1,4 @@
+import { authFetch } from "@/core/auth/fetch";
 import { getBackendBaseURL } from "@/core/config";
 
 export type AgentToolSummary = {
@@ -34,7 +35,7 @@ export async function loadAgentContext({
     searchParams.set("subagent_enabled", String(subagentEnabled));
   }
   const query = searchParams.toString();
-  const response = await fetch(
+  const response = await authFetch(
     `${getBackendBaseURL()}/api/agent/context${query ? `?${query}` : ""}`,
   );
   if (!response.ok) {
