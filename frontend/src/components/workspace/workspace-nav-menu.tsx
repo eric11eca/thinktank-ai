@@ -5,11 +5,13 @@ import {
   ChevronsUpDown,
   GlobeIcon,
   InfoIcon,
+  LogOutIcon,
   MailIcon,
   Settings2Icon,
   SettingsIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 
 import {
   DropdownMenu,
@@ -25,6 +27,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/core/auth";
 import { useI18n } from "@/core/i18n/hooks";
 
 import { GithubIcon } from "./github-icon";
@@ -58,6 +61,8 @@ export function WorkspaceNavMenu() {
   const [mounted, setMounted] = useState(false);
   const { open: isSidebarOpen } = useSidebar();
   const { t } = useI18n();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     setMounted(true);
@@ -145,6 +150,16 @@ export function WorkspaceNavMenu() {
                 >
                   <InfoIcon />
                   {t.workspace.about}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={async () => {
+                    await logout();
+                    navigate("/login");
+                  }}
+                >
+                  <LogOutIcon />
+                  {t.workspace.signOut}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

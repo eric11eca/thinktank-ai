@@ -21,7 +21,6 @@ import { useProviderModels, useValidateProviderKey } from "@/core/models/hooks";
 import type { ProviderId, ProviderModel } from "@/core/models/types";
 import { useLocalSettings } from "@/core/settings";
 import { getLocalSettings } from "@/core/settings/local";
-import { getDeviceId } from "@/core/settings/device";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
 
@@ -112,7 +111,6 @@ function ProviderSection({
 }) {
   const { t } = useI18n();
   const providerMeta = PROVIDER_LABELS[providerId];
-  const deviceId = getDeviceId();
   const legacyKeyUploadedRef = useRef(false);
   const [pendingKey, setPendingKey] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -151,13 +149,10 @@ function ProviderSection({
   );
 
   const handleValidate = useCallback(async () => {
-    if (!deviceId) {
-      return;
-    }
     setIsSaving(true);
     try {
       if (pendingKey.trim()) {
-        await setProviderKey(providerId, pendingKey.trim(), deviceId);
+        await setProviderKey(providerId, pendingKey.trim());
         setPendingKey("");
         updateProvider({ has_key: true });
       }
@@ -175,13 +170,12 @@ function ProviderSection({
     } finally {
       setIsSaving(false);
     }
-  }, [deviceId, modelsQuery, pendingKey, providerId, updateProvider, validationMutation]);
+  }, [modelsQuery, pendingKey, providerId, updateProvider, validationMutation]);
 
   const handleRemoveKey = useCallback(async () => {
-    if (!deviceId) return;
     setIsSaving(true);
     try {
-      await deleteProviderKey(providerId, deviceId);
+      await deleteProviderKey(providerId);
       updateProvider({
         has_key: false,
         last_validated_at: undefined,
@@ -191,12 +185,9 @@ function ProviderSection({
     } finally {
       setIsSaving(false);
     }
-  }, [deviceId, modelsQuery, providerId, updateProvider]);
+  }, [modelsQuery, providerId, updateProvider]);
 
   useEffect(() => {
-    if (!deviceId) {
-      return;
-    }
     if (legacyKeyUploadedRef.current) {
       return;
     }
@@ -205,7 +196,7 @@ function ProviderSection({
       return;
     }
     legacyKeyUploadedRef.current = true;
-    setProviderKey(providerId, legacyKey, deviceId)
+    setProviderKey(providerId, legacyKey)
       .then(() => {
         updateProvider({
           api_key: undefined,
@@ -215,20 +206,20 @@ function ProviderSection({
       .catch(() => {
         legacyKeyUploadedRef.current = false;
       });
-  }, [deviceId, providerConfig.api_key, providerConfig.enabled, providerId, updateProvider]);
+  }, [providerConfig.api_key, providerConfig.enabled, providerId, updateProvider]);
 
   useEffect(() => {
-    if (!deviceId || !providerConfig.enabled) {
+    if (!providerConfig.enabled) {
       return;
     }
-    getProviderKeyStatus(providerId, deviceId)
+    getProviderKeyStatus(providerId)
       .then((status) => {
         updateProvider({ has_key: status.has_key });
       })
       .catch(() => {
         // Ignore status errors; keep last known state.
       });
-  }, [deviceId, providerConfig.enabled, providerId, updateProvider]);
+  }, [providerConfig.enabled, providerId, updateProvider]);
 
   return (
     <Item className="w-full" variant="outline">
@@ -261,7 +252,6 @@ function ProviderSection({
                     validationMutation.isPending ||
                     isSaving ||
                     (!pendingKey.trim() && !providerConfig.has_key) ||
-                    !deviceId ||
                     env.VITE_STATIC_WEBSITE_ONLY === "true"
                   }
                   onClick={handleValidate}
@@ -273,7 +263,7 @@ function ProviderSection({
                     type="button"
                     variant="ghost"
                     className="md:w-32"
-                    disabled={isSaving || !deviceId || env.VITE_STATIC_WEBSITE_ONLY === "true"}
+                    disabled={isSaving || env.VITE_STATIC_WEBSITE_ONLY === "true"}
                     onClick={handleRemoveKey}
                   >
                     {t.common.remove}
