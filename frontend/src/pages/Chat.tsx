@@ -35,12 +35,13 @@ import { ThreadTitle } from "@/components/workspace/thread-title";
 import { TodoList } from "@/components/workspace/todo-list";
 import { Tooltip } from "@/components/workspace/tooltip";
 import { Welcome } from "@/components/workspace/welcome";
+import { useAuth } from "@/core/auth";
+import { authFetch } from "@/core/auth/fetch";
 import { getBackendBaseURL } from "@/core/config";
 import { useI18n } from "@/core/i18n/hooks";
 import { getRuntimeModelSpec, useModels } from "@/core/models/hooks";
 import { useNotification } from "@/core/notification/hooks";
 import { useLocalSettings } from "@/core/settings";
-import { getDeviceId } from "@/core/settings/device";
 import { type AgentThread, type AgentThreadState } from "@/core/threads";
 import {
   type ThreadResubmitOptions,
@@ -242,14 +243,14 @@ function ChatInner() {
       ? settings.context.model_name
       : undefined;
   const { models } = useModels();
-  const deviceId = getDeviceId();
+  const { user } = useAuth();
   const selectedModel = useMemo(
     () => models.find((model) => model.id === contextModelName),
     [models, contextModelName],
   );
   const runtimeModelSpec = useMemo(
-    () => getRuntimeModelSpec(selectedModel, deviceId),
-    [selectedModel, deviceId],
+    () => getRuntimeModelSpec(selectedModel),
+    [selectedModel],
   );
 
   const handleSubmit = useSubmitThread({
@@ -259,7 +260,7 @@ function ChatInner() {
     threadContext: {
       ...settings.context,
       model_spec: runtimeModelSpec,
-      device_id: deviceId,
+      user_id: user?.id,
       thinking_enabled: settings.context.mode !== "flash",
       is_plan_mode:
         settings.context.mode === "pro" || settings.context.mode === "ultra",
@@ -409,7 +410,7 @@ function ChatInner() {
       const messageIndex = messages.findIndex((m) => m.id === messageId);
       if (messageIndex === -1) throw new Error("Message not found");
 
-      const response = await fetch(
+      const response = await authFetch(
         `${getBackendBaseURL()}/api/threads/${threadId}/truncate-messages`,
         {
           method: "POST",
