@@ -43,6 +43,7 @@ extensions_config.json
 coverage.xml
 coverage/
 .think-tank/
+.deer-flow/
 .claude/
 skills/custom/*
 logs/
@@ -70,6 +71,11 @@ cowork_plugins/
 
 # MCP and testing tools
 .playwright-mcp/
+
+# Playwright test files and results
+frontend/test-results/
+frontend/e2e/
+frontend/playwright.config.ts
 
 # Temporary files
 test-*.md
