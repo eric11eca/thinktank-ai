@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 
 import {
-  DEFAULT_LOCAL_SETTINGS,
   getLocalSettings,
   saveLocalSettings,
   type LocalSettings,
