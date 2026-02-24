@@ -1,4 +1,5 @@
 import { FlatCompat } from "@eslint/eslintrc";
+import importPlugin from "eslint-plugin-import";
 import tseslint from "typescript-eslint";
 
 const compat = new FlatCompat({
@@ -21,6 +22,9 @@ export default tseslint.config(
       ...tseslint.configs.recommendedTypeChecked,
       ...tseslint.configs.stylisticTypeChecked,
     ],
+    plugins: {
+      import: importPlugin,
+    },
     rules: {
       "@next/next/no-img-element": "off",
       "@typescript-eslint/array-type": "off",
