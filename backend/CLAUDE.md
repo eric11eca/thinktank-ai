@@ -402,6 +402,7 @@ For models with `supports_vision: true`:
 - Line length: 240 characters
 - Python 3.12+ with type hints
 - Double quotes, space indentation
+- Frontend linting uses `frontend/eslint.config.js` without Next.js presets
 
 ## Documentation
 
