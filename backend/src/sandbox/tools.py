@@ -1,3 +1,4 @@
+import logging
 import re
 
 from langchain.tools import ToolRuntime, tool
@@ -12,6 +13,8 @@ from src.sandbox.exceptions import (
 )
 from src.sandbox.sandbox import Sandbox
 from src.sandbox.sandbox_provider import get_sandbox_provider
+
+logger = logging.getLogger(__name__)
 
 
 def replace_virtual_path(path: str, thread_data: ThreadDataState | None) -> str:
@@ -179,7 +182,7 @@ def ensure_sandbox_initialized(runtime: ToolRuntime[ContextT, ThreadState] | Non
 
     user_id = runtime.context.get("user_id")
     provider = get_sandbox_provider()
-    print(f"Lazy acquiring sandbox for thread {thread_id}")
+    logger.info("Lazy acquiring sandbox for thread %s", thread_id)
     sandbox_id = provider.acquire(thread_id, user_id=user_id)
 
     # Update runtime state - this persists across tool calls
