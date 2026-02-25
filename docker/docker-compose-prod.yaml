@@ -8,6 +8,7 @@
 #   - langgraph: LangGraph agent server (scalable, sticky sessions)
 #   - worker: Background memory update worker (scalable)
 #   - nginx: Reverse proxy / load balancer (ports 80, 443)
+#   - backup: Automated PostgreSQL backups (pg_dump + optional S3)
 #
 # Scaling:
 #   docker compose -f docker-compose-prod.yaml up --build \
@@ -184,9 +185,49 @@ services:
     networks:
       - thinktank
 
+  # ── Automated Database Backups ──────────────────────────────────────
+  # Runs pg_dump on a cron schedule with optional S3 upload.
+  # Includes retention policy: 7 daily, 4 weekly, 3 monthly.
+  backup:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    container_name: thinktank-backup
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: thinktank
+      PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD required}
+      PGDATABASE: thinktank
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 2 * * *}
+      BACKUP_DIR: /backups
+      S3_BUCKET: ${S3_BACKUP_BUCKET:-}
+      S3_PREFIX: ${S3_BACKUP_PREFIX:-backups/}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      RETENTION_DAILY: ${RETENTION_DAILY:-7}
+      RETENTION_WEEKLY: ${RETENTION_WEEKLY:-4}
+      RETENTION_MONTHLY: ${RETENTION_MONTHLY:-3}
+    volumes:
+      - backupdata:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    restart: always
+    networks:
+      - thinktank
+
 volumes:
   pgdata:
   redisdata:
+  backupdata:
 
 networks:
   thinktank:

@@ -1,0 +1,259 @@
+# Thinktank.ai Staging Environment
+# Usage: docker compose -f docker-compose-staging.yaml up --build
+#
+# Mirrors production with adjustments for staging/testing:
+#   - Single replicas (lower resource usage)
+#   - Debug logging enabled
+#   - Exposed ports for direct service access
+#   - MinIO for S3-compatible storage testing
+#   - Relaxed resource limits
+#
+# Services:
+#   - postgres: PostgreSQL database (port 5432, exposed)
+#   - redis: Redis cache/queue (port 6379, exposed)
+#   - gateway: Backend Gateway API (single replica)
+#   - langgraph: LangGraph agent server (single replica)
+#   - worker: Background memory update worker (single replica)
+#   - nginx: Reverse proxy / load balancer (ports 80, 443)
+#   - backup: Automated database backups
+#   - minio: S3-compatible object storage for testing
+#
+# Environment:
+#   Copy docker/.env.staging.example to docker/.env.staging and customize.
+
+services:
+  # ── Database ────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: thinktank-staging-postgres
+    ports:
+      - "${STAGING_PG_PORT:-15432}:5432"
+    volumes:
+      - staging-pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: thinktank
+      POSTGRES_USER: thinktank
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-staging-password}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U thinktank"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - thinktank-staging
+
+  # ── Cache / Queue ───────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: thinktank-staging-redis
+    ports:
+      - "${STAGING_REDIS_PORT:-16379}:6379"
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - staging-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - thinktank-staging
+
+  # ── Gateway API ────────────────────────────────────────────────────
+  gateway:
+    build:
+      context: ../
+      dockerfile: backend/Dockerfile.prod
+    container_name: thinktank-staging-gateway
+    command: >
+      sh -c "mkdir -p /tmp/prometheus_multiproc &&
+      cd backend && uv run alembic upgrade head &&
+      uv run gunicorn src.gateway.app:app -c gunicorn.conf.py"
+    ports:
+      - "${STAGING_GATEWAY_PORT:-18001}:8001"
+    environment:
+      DATABASE_URL: postgresql://thinktank:${DB_PASSWORD:-staging-password}@postgres:5432/thinktank
+      REDIS_URL: redis://redis:6379/0
+      REQUIRE_ENV_SECRETS: ${REQUIRE_ENV_SECRETS:-false}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-staging-jwt-secret-not-for-production}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-staging-encryption-key-not-for-prod}
+      LANGGRAPH_URL: http://langgraph:2024
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc
+      LOG_FORMAT: ${LOG_FORMAT:-text}
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+    restart: unless-stopped
+    networks:
+      - thinktank-staging
+
+  # ── LangGraph Server ──────────────────────────────────────────────
+  langgraph:
+    build:
+      context: ../
+      dockerfile: backend/Dockerfile.prod
+    container_name: thinktank-staging-langgraph
+    command: >
+      sh -c "cd backend && uv run langgraph up
+      --host 0.0.0.0 --port 2024
+      --postgres-uri postgresql://thinktank:${DB_PASSWORD:-staging-password}@postgres:5432/thinktank"
+    ports:
+      - "${STAGING_LANGGRAPH_PORT:-12024}:2024"
+    environment:
+      DATABASE_URL: postgresql://thinktank:${DB_PASSWORD:-staging-password}@postgres:5432/thinktank
+      REDIS_URL: redis://redis:6379/0
+      LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-false}
+      LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-}
+      LANGCHAIN_PROJECT: ${LANGCHAIN_PROJECT:-thinktank-ai-staging}
+      LOG_FORMAT: ${LOG_FORMAT:-text}
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
+    restart: unless-stopped
+    networks:
+      - thinktank-staging
+
+  # ── Background Workers ────────────────────────────────────────────
+  worker:
+    build:
+      context: ../
+      dockerfile: backend/Dockerfile.prod
+    container_name: thinktank-staging-worker
+    command: sh -c "cd backend && uv run python worker.py"
+    environment:
+      DATABASE_URL: postgresql://thinktank:${DB_PASSWORD:-staging-password}@postgres:5432/thinktank
+      REDIS_URL: redis://redis:6379/0
+      LOG_FORMAT: ${LOG_FORMAT:-text}
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2G
+    restart: unless-stopped
+    networks:
+      - thinktank-staging
+
+  # ── Reverse Proxy / Load Balancer + Frontend ──────────────────────
+  nginx:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.nginx
+      args:
+        VITE_BACKEND_BASE_URL: ${VITE_BACKEND_BASE_URL:-}
+        VITE_LANGGRAPH_BASE_URL: ${VITE_LANGGRAPH_BASE_URL:-}
+        VITE_STATIC_WEBSITE_ONLY: ${VITE_STATIC_WEBSITE_ONLY:-false}
+    container_name: thinktank-staging-nginx
+    ports:
+      - "${NGINX_HTTP_PORT:-8080}:80"
+      - "${NGINX_HTTPS_PORT:-8443}:443"
+    environment:
+      SERVER_NAME: ${SERVER_NAME:-localhost}
+      CORS_ALLOWED_ORIGIN: ${CORS_ALLOWED_ORIGIN:-*}
+    volumes:
+      - ${TLS_CERTS_DIR:-./certs}:/etc/nginx/certs:ro
+    depends_on:
+      - gateway
+      - langgraph
+    restart: unless-stopped
+    networks:
+      - thinktank-staging
+
+  # ── Automated Database Backups ────────────────────────────────────
+  backup:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    container_name: thinktank-staging-backup
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: thinktank
+      PGPASSWORD: ${DB_PASSWORD:-staging-password}
+      PGDATABASE: thinktank
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 */6 * * *}
+      BACKUP_DIR: /backups
+      S3_BUCKET: ${S3_BACKUP_BUCKET:-thinktank-staging-backups}
+      S3_PREFIX: ${S3_BACKUP_PREFIX:-backups/}
+      S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      RETENTION_DAILY: "3"
+      RETENTION_WEEKLY: "2"
+      RETENTION_MONTHLY: "1"
+    volumes:
+      - staging-backupdata:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+    restart: unless-stopped
+    networks:
+      - thinktank-staging
+
+  # ── MinIO (S3-compatible storage for staging) ─────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: thinktank-staging-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "${STAGING_MINIO_API_PORT:-9000}:9000"
+      - "${STAGING_MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - staging-miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - thinktank-staging
+
+volumes:
+  staging-pgdata:
+  staging-redisdata:
+  staging-backupdata:
+  staging-miniodata:
+
+networks:
+  thinktank-staging:
+    driver: bridge
