@@ -381,11 +381,25 @@ class SubagentExecutor:
             result.status = SubagentStatus.COMPLETED
             result.completed_at = datetime.now()
 
+            # ── Prometheus metrics ─────────────────────────────────────
+            try:
+                from src.gateway.metrics import subagent_tasks_total
+                subagent_tasks_total.labels(status="completed").inc()
+            except Exception:
+                pass
+
         except Exception as e:
             logger.exception(f"[trace={self.trace_id}] Subagent {self.config.name} execution failed")
             result.status = SubagentStatus.FAILED
             result.error = str(e)
             result.completed_at = datetime.now()
+
+            # ── Prometheus metrics ─────────────────────────────────────
+            try:
+                from src.gateway.metrics import subagent_tasks_total
+                subagent_tasks_total.labels(status="failed").inc()
+            except Exception:
+                pass
 
         return result
 
@@ -466,6 +480,12 @@ class SubagentExecutor:
                         _background_tasks[task_id].completed_at = datetime.now()
                     # Cancel the future (best effort - may not stop the actual execution)
                     execution_future.cancel()
+
+                    try:
+                        from src.gateway.metrics import subagent_tasks_total
+                        subagent_tasks_total.labels(status="timed_out").inc()
+                    except Exception:
+                        pass
             except Exception as e:
                 logger.exception(f"[trace={self.trace_id}] Subagent {self.config.name} async execution failed")
                 with _background_tasks_lock:
