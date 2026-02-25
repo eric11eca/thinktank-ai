@@ -1,0 +1,72 @@
+groups:
+  - name: thinktank_alerts
+    rules:
+      # ── High Error Rate ──────────────────────────────────────────────
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx error rate (> 5%)"
+          description: "More than 5% of HTTP requests are returning 5xx errors over the last 5 minutes."
+
+      # ── High Latency P99 ────────────────────────────────────────────
+      - alert: HighLatencyP99
+        expr: |
+          histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+          > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P99 latency exceeds 30s"
+          description: "The 99th percentile of HTTP request latency is above 30 seconds over the last 5 minutes."
+
+      # ── Database Connection Failure ──────────────────────────────────
+      - alert: DatabaseConnectionFailure
+        expr: |
+          up{job="gateway"} == 1
+          unless
+          (http_requests_total{handler="/health", status="200"} > 0)
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Health check indicates database connectivity issues"
+          description: "The /health endpoint is not returning 200, which may indicate database connection problems."
+
+      # ── LLM API Errors ──────────────────────────────────────────────
+      - alert: LLMAPIErrors
+        expr: rate(llm_calls_total{status="error"}[5m]) * 60 > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High LLM API error rate (> 10/min)"
+          description: "More than 10 LLM API call failures per minute over the last 5 minutes."
+
+      # ── High Memory Usage ───────────────────────────────────────────
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes > 1.5e9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage (> 1.5 GB)"
+          description: "Process resident memory exceeds 1.5 GB for more than 5 minutes."
+
+      # ── Too Many SSE Connections ────────────────────────────────────
+      - alert: TooManySSEConnections
+        expr: active_sse_connections > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Too many active SSE connections (> 100)"
+          description: "More than 100 active SSE streaming connections for over 5 minutes."

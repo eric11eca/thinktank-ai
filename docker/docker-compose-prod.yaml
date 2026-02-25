@@ -67,7 +67,8 @@ services:
       context: ../
       dockerfile: backend/Dockerfile.prod
     command: >
-      sh -c "cd backend && uv run alembic upgrade head &&
+      sh -c "mkdir -p /tmp/prometheus_multiproc &&
+      cd backend && uv run alembic upgrade head &&
       uv run gunicorn src.gateway.app:app -c gunicorn.conf.py"
     environment:
       DATABASE_URL: postgresql://thinktank:${DB_PASSWORD}@postgres:5432/thinktank
@@ -75,6 +76,10 @@ services:
       REQUIRE_ENV_SECRETS: ${REQUIRE_ENV_SECRETS:-true}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY required}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY required}
+      LANGGRAPH_URL: http://langgraph:2024
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc
+      LOG_FORMAT: json
+      LOG_LEVEL: INFO
     env_file:
       - ../.env
     depends_on:
@@ -104,6 +109,11 @@ services:
     environment:
       DATABASE_URL: postgresql://thinktank:${DB_PASSWORD}@postgres:5432/thinktank
       REDIS_URL: redis://redis:6379/0
+      LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-false}
+      LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-}
+      LANGCHAIN_PROJECT: ${LANGCHAIN_PROJECT:-thinktank-ai}
+      LOG_FORMAT: json
+      LOG_LEVEL: INFO
     env_file:
       - ../.env
     depends_on:
@@ -128,6 +138,8 @@ services:
     environment:
       DATABASE_URL: postgresql://thinktank:${DB_PASSWORD}@postgres:5432/thinktank
       REDIS_URL: redis://redis:6379/0
+      LOG_FORMAT: json
+      LOG_LEVEL: INFO
     env_file:
       - ../.env
     depends_on:
