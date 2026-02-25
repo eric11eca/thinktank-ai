@@ -7,13 +7,10 @@ from fastapi import FastAPI
 from src.gateway.auth.routes import router as auth_router
 from src.gateway.config import get_gateway_config
 from src.gateway.routers import agent, artifacts, keys, mcp, memory, models, providers, skills, threads, uploads
+from src.logging_config import configure_logging
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+configure_logging()
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +20,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler."""
     config = get_gateway_config()
     logger.info(f"Starting API Gateway on {config.host}:{config.port}")
+
+    # Log tracing status
+    try:
+        from src.config.tracing_config import get_tracing_config
+
+        tracing = get_tracing_config()
+        if tracing.is_configured:
+            logger.info("LangSmith tracing enabled (project=%s)", tracing.project)
+        else:
+            logger.info("LangSmith tracing disabled")
+    except Exception:
+        logger.debug("Could not load tracing config")
 
     # NOTE: MCP tools initialization is NOT done here because:
     # 1. Gateway doesn't use MCP tools - they are used by Agents in the LangGraph Server
@@ -149,13 +158,32 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
     app.include_router(threads.router_list)
     app.include_router(threads.router)
 
+    # ── Prometheus metrics instrumentation ──────────────────────────────────
+    from src.gateway.metrics import setup_metrics
+    setup_metrics(app)
+
+    # ── Health check ─────────────────────────────────────────────────────────
+
+    async def _check_langgraph_health() -> str:
+        """Check if the LangGraph server is reachable."""
+        import httpx
+
+        url = get_gateway_config().langgraph_url
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(f"{url}/ok")
+                if response.status_code == 200:
+                    return "healthy"
+                return f"unhealthy: status {response.status_code}"
+        except Exception as e:
+            return f"unhealthy: {e}"
+
     @app.get("/health", tags=["health"])
     async def health_check() -> dict:
         """Health check endpoint.
 
-        Returns service health status. When DATABASE_URL is configured,
-        also checks database connectivity. When REDIS_URL is configured,
-        also checks Redis connectivity.
+        Returns service health status including gateway, database,
+        Redis, and LangGraph server connectivity.
 
         Returns:
             Service health status information with component checks.
@@ -170,6 +198,8 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
 
         if is_redis_available():
             checks["redis"] = check_redis_health()
+
+        checks["langgraph"] = await _check_langgraph_health()
 
         all_healthy = all(v == "healthy" for v in checks.values())
         status = "healthy" if all_healthy else "degraded"

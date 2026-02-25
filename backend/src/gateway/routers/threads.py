@@ -20,6 +20,7 @@ from src.gateway.auth.thread_store import (
     delete_thread as delete_thread_ownership,
     get_user_threads,
 )
+from src.gateway.config import get_gateway_config
 from src.gateway.rate_limiter import check_user_api_rate
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,10 @@ router_list = APIRouter(prefix="/api/threads", tags=["threads"])
 # Router for /api/threads/{thread_id} (item-level operations)
 router = APIRouter(prefix="/api/threads/{thread_id}", tags=["threads"])
 
-LANGGRAPH_URL = "http://localhost:2024"
+
+def _langgraph_url() -> str:
+    """Get the LangGraph server URL from configuration."""
+    return get_gateway_config().langgraph_url
 
 
 # ── Pydantic Models ──────────────────────────────────────────────────────────
@@ -94,7 +98,7 @@ async def list_threads(
             return []
 
         # Fetch thread details from LangGraph
-        client = get_client(url=LANGGRAPH_URL)
+        client = get_client(url=_langgraph_url())
 
         # LangGraph threads.search() returns all threads; we filter by owned IDs.
         # Fetch in batches if needed, but typically manageable.
@@ -141,7 +145,7 @@ async def delete_thread(
     verify_thread_ownership(thread_id, current_user["id"])
 
     try:
-        client = get_client(url=LANGGRAPH_URL)
+        client = get_client(url=_langgraph_url())
         await client.threads.delete(thread_id)
     except Exception as e:
         logger.error(f"Error deleting thread {thread_id} from LangGraph: {e}", exc_info=True)
@@ -179,7 +183,7 @@ async def rename_thread(
     verify_thread_ownership(thread_id, current_user["id"])
 
     try:
-        client = get_client(url=LANGGRAPH_URL)
+        client = get_client(url=_langgraph_url())
         await client.threads.update_state(
             thread_id,
             {"values": {"title": request.title}},
@@ -249,7 +253,7 @@ async def truncate_messages(
 
     try:
         # Get LangGraph client
-        client = get_client(url=LANGGRAPH_URL)
+        client = get_client(url=_langgraph_url())
 
         # Get current thread state
         state = await client.threads.get_state(thread_id)
