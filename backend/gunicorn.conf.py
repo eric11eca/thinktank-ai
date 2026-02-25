@@ -42,3 +42,16 @@ preload_app = True
 
 # Worker tmp dir on tmpfs for better heartbeat performance
 worker_tmp_dir = "/dev/shm"
+
+
+# ── Prometheus multiprocess cleanup ────────────────────────────────────
+# When PROMETHEUS_MULTIPROC_DIR is set, each worker writes to its own
+# metrics DB file. This hook removes the file when a worker exits so
+# stale gauges don't persist.
+def child_exit(server, worker):  # noqa: ARG001
+    try:
+        from prometheus_client import multiprocess
+
+        multiprocess.mark_process_dead(worker.pid)
+    except ImportError:
+        pass
