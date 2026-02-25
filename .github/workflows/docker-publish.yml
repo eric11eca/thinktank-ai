@@ -1,0 +1,90 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Thinktank.ai — Docker Image Build & Publish
+# ─────────────────────────────────────────────────────────────────────────────
+# Builds and pushes Docker images to GitHub Container Registry (GHCR).
+#
+# Triggers:
+#   - Push to main (auto-publish latest)
+#   - Tag push (v*.*.* — publish versioned release)
+#   - Manual dispatch
+#
+# Images published:
+#   ghcr.io/<owner>/thinktank-gateway:<tag>
+#   ghcr.io/<owner>/thinktank-nginx:<tag>
+#   ghcr.io/<owner>/thinktank-backup:<tag>
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Docker Publish
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/thinktank
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        include:
+          - image: gateway
+            file: backend/Dockerfile.prod
+            context: .
+          - image: nginx
+            file: docker/Dockerfile.nginx
+            context: .
+          - image: backup
+            file: docker/backup/Dockerfile
+            context: docker/backup
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
