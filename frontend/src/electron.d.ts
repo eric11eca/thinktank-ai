@@ -19,8 +19,8 @@ export interface ElectronAPI {
   /** Save application configuration */
   saveConfig: (config: Partial<AppConfig>) => Promise<void>;
 
-  /** Open file dialog and return selected path */
-  openFile: (options?: OpenFileOptions) => Promise<string | null>;
+  /** Open file dialog and return selected path(s) */
+  openFile: (options?: OpenFileOptions) => Promise<string | string[] | null>;
 
   /** Save file dialog */
   saveFile: (
