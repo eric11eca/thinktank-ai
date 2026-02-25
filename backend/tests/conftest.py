@@ -17,12 +17,19 @@ def tmp_store_dir(tmp_path: Path) -> Generator[Path, None, None]:
     """Provide a temporary directory for file-based stores.
 
     Patches all store modules to use the temporary directory instead of
-    the real .think-tank directory. This ensures tests are fully isolated.
+    the real .think-tank directory. Also forces file-based mode by
+    disabling the database path (in case DATABASE_URL is set via .env).
+    This ensures tests are fully isolated.
     """
     store_dir = tmp_path / ".think-tank"
     store_dir.mkdir()
 
+    # Save and remove DATABASE_URL so is_db_enabled() returns False
+    saved_db_url = os.environ.pop("DATABASE_URL", None)
+
     patches = [
+        # Force file-based mode regardless of environment
+        patch("src.db.engine.is_db_enabled", return_value=False),
         patch("src.gateway.auth.user_store._STORE_DIR", store_dir),
         patch("src.gateway.auth.user_store._DATA_FILE", store_dir / "users.json"),
         patch("src.gateway.auth.thread_store._STORE_DIR", store_dir),
@@ -41,6 +48,10 @@ def tmp_store_dir(tmp_path: Path) -> Generator[Path, None, None]:
 
     for p in patches:
         p.stop()
+
+    # Restore DATABASE_URL if it was previously set
+    if saved_db_url is not None:
+        os.environ["DATABASE_URL"] = saved_db_url
 
 
 @pytest.fixture()
