@@ -1,7 +1,7 @@
 """SQLAlchemy ORM models for all database tables.
 
 Defines the schema for users, threads, user_memory, user_api_keys,
-uploads, and usage_log tables.
+uploads, timeline_events, and usage_log tables.
 """
 
 from __future__ import annotations
@@ -128,6 +128,33 @@ class UploadModel(Base):
     )
 
     __table_args__ = (Index("idx_uploads_thread_id", "thread_id"),)
+
+
+class TimelineEventModel(Base):
+    """Append-only agent timeline event log per thread.
+
+    Records every message (human/ai/tool) and history truncation event
+    as an ordered timeline for observability and debugging.
+    """
+
+    __tablename__ = "timeline_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    thread_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    stage: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    message_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    role: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    message_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    message_data: Mapped[dict | None] = mapped_column(_JSONType, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+
+    __table_args__ = (
+        Index("idx_timeline_thread_id", "thread_id"),
+        Index("idx_timeline_created_at", "created_at"),
+    )
 
 
 class UsageLogModel(Base):

@@ -1,8 +1,16 @@
-"""Middleware for logging a chronological timeline of thread messages."""
+"""Middleware for logging a chronological timeline of thread messages.
+
+Supports two storage backends:
+- **Database mode** (when DATABASE_URL is set): append-only INSERTs into
+  the ``timeline_events`` table — no locking required.
+- **File mode** (fallback): atomic JSON file writes under the thread's
+  outputs directory, guarded by a module-level threading lock.
+"""
 
 from __future__ import annotations
 
 import json
+import logging
 import os
 import threading
 from datetime import datetime, timezone
@@ -14,6 +22,12 @@ from langchain.agents.middleware import AgentMiddleware
 from langgraph.runtime import Runtime
 
 from src.sandbox.consts import THREAD_DATA_BASE_DIR
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# File-mode helpers (kept for backward-compatibility when no DB is configured)
+# ---------------------------------------------------------------------------
 
 _WRITE_LOCK = threading.Lock()
 
@@ -71,8 +85,169 @@ def _write_timeline(file_path: str, data: dict) -> None:
     os.replace(temp_path, file_path)
 
 
+# ---------------------------------------------------------------------------
+# Database-mode helpers
+# ---------------------------------------------------------------------------
+
+# Per-thread in-memory cache so we don't query the DB on every middleware call.
+# Initialised lazily from the latest DB row on first access per thread.
+_db_last_index: dict[str, int] = {}
+_db_last_index_lock = threading.Lock()
+
+
+def _db_get_last_message_index(session: Any, thread_id: str) -> int:
+    """Return the effective ``last_message_index`` for *thread_id*.
+
+    The value is cached in-memory after the first DB query.  On process
+    restart the cache is cold so we derive the value from the most recent
+    ``timeline_events`` row for the thread.
+    """
+    with _db_last_index_lock:
+        cached = _db_last_index.get(thread_id)
+    if cached is not None:
+        return cached
+
+    from src.db.models import TimelineEventModel
+
+    latest = (
+        session.query(TimelineEventModel)
+        .filter(TimelineEventModel.thread_id == thread_id)
+        .order_by(TimelineEventModel.id.desc())
+        .first()
+    )
+
+    if latest is None:
+        idx = 0
+    elif latest.event_type == "history_truncated":
+        # After truncation the effective index resets to current_length.
+        data = latest.message_data or {}
+        idx = data.get("current_length", 0)
+    else:
+        # For message events, last_message_index == message_index + 1.
+        idx = (latest.message_index or 0) + 1
+
+    with _db_last_index_lock:
+        _db_last_index[thread_id] = idx
+    return idx
+
+
+def _db_set_last_message_index(thread_id: str, value: int) -> None:
+    with _db_last_index_lock:
+        _db_last_index[thread_id] = value
+
+
+def _db_record_messages(
+    thread_id: str,
+    messages: list,
+    stage: str,
+) -> None:
+    """Persist new timeline events to the database via append-only INSERTs."""
+    from src.db.engine import get_db_session
+    from src.db.models import TimelineEventModel
+
+    with get_db_session() as session:
+        last_index = _db_get_last_message_index(session, thread_id)
+        current_len = len(messages)
+
+        if current_len < last_index:
+            # History was truncated — record the event.
+            session.add(
+                TimelineEventModel(
+                    thread_id=thread_id,
+                    event_type="history_truncated",
+                    stage=stage,
+                    message_data={
+                        "previous_last_index": last_index,
+                        "current_length": current_len,
+                    },
+                )
+            )
+            _db_set_last_message_index(thread_id, current_len)
+            last_index = current_len
+
+        if current_len > last_index:
+            for idx in range(last_index, current_len):
+                msg = messages[idx]
+                session.add(
+                    TimelineEventModel(
+                        thread_id=thread_id,
+                        event_type="message",
+                        stage=stage,
+                        message_index=idx,
+                        role=getattr(msg, "type", None),
+                        message_id=getattr(msg, "id", None),
+                        message_data=_serialize_message(msg),
+                    )
+                )
+            _db_set_last_message_index(thread_id, current_len)
+
+        # session.commit() is handled by the get_db_session context manager.
+
+
+# ---------------------------------------------------------------------------
+# File-mode recording (original implementation)
+# ---------------------------------------------------------------------------
+
+
+def _file_record_messages(
+    state: AgentState,
+    thread_id: str,
+    messages: list,
+    stage: str,
+) -> None:
+    """Persist new timeline events to a JSON file (legacy file-based mode)."""
+    outputs_path = _resolve_outputs_path(state, thread_id)
+    timeline_path = os.path.join(outputs_path, "agent_timeline.json")
+
+    with _WRITE_LOCK:
+        timeline = _load_timeline(timeline_path, thread_id)
+        last_index = int(timeline.get("last_message_index", 0) or 0)
+        current_len = len(messages)
+
+        if current_len < last_index:
+            timeline["events"].append(
+                {
+                    "event": "history_truncated",
+                    "timestamp": _utc_now(),
+                    "stage": stage,
+                    "previous_last_index": last_index,
+                    "current_length": current_len,
+                }
+            )
+            last_index = current_len
+
+        if current_len > last_index:
+            for idx in range(last_index, current_len):
+                msg = messages[idx]
+                timeline["events"].append(
+                    {
+                        "event": "message",
+                        "timestamp": _utc_now(),
+                        "stage": stage,
+                        "message_index": idx,
+                        "role": getattr(msg, "type", None),
+                        "message_id": getattr(msg, "id", None),
+                        "message": _serialize_message(msg),
+                    }
+                )
+            timeline["last_message_index"] = current_len
+            timeline["updated_at"] = _utc_now()
+
+        _write_timeline(timeline_path, timeline)
+
+
+# ---------------------------------------------------------------------------
+# Middleware class
+# ---------------------------------------------------------------------------
+
+
 class TimelineLoggingMiddleware(AgentMiddleware[AgentState]):
-    """Logs thread messages (human/ai/tool) as an ordered JSON timeline."""
+    """Logs thread messages (human/ai/tool) as an ordered timeline.
+
+    When ``DATABASE_URL`` is configured, events are persisted as
+    append-only rows in the ``timeline_events`` table (no locking).
+    Otherwise falls back to atomic JSON file writes.
+    """
 
     def _record_messages(self, state: AgentState, runtime: Runtime, stage: str) -> None:
         thread_id = runtime.context.get("thread_id")
@@ -83,44 +258,16 @@ class TimelineLoggingMiddleware(AgentMiddleware[AgentState]):
         if not isinstance(messages, list):
             return
 
-        outputs_path = _resolve_outputs_path(state, thread_id)
-        timeline_path = os.path.join(outputs_path, "agent_timeline.json")
+        try:
+            from src.db.engine import is_db_enabled
 
-        with _WRITE_LOCK:
-            timeline = _load_timeline(timeline_path, thread_id)
-            last_index = int(timeline.get("last_message_index", 0) or 0)
-            current_len = len(messages)
-
-            if current_len < last_index:
-                timeline["events"].append(
-                    {
-                        "event": "history_truncated",
-                        "timestamp": _utc_now(),
-                        "stage": stage,
-                        "previous_last_index": last_index,
-                        "current_length": current_len,
-                    }
-                )
-                last_index = current_len
-
-            if current_len > last_index:
-                for idx in range(last_index, current_len):
-                    msg = messages[idx]
-                    timeline["events"].append(
-                        {
-                            "event": "message",
-                            "timestamp": _utc_now(),
-                            "stage": stage,
-                            "message_index": idx,
-                            "role": getattr(msg, "type", None),
-                            "message_id": getattr(msg, "id", None),
-                            "message": _serialize_message(msg),
-                        }
-                    )
-                timeline["last_message_index"] = current_len
-                timeline["updated_at"] = _utc_now()
-
-            _write_timeline(timeline_path, timeline)
+            if is_db_enabled():
+                _db_record_messages(thread_id, messages, stage)
+            else:
+                _file_record_messages(state, thread_id, messages, stage)
+        except Exception:
+            # Timeline logging should never break the agent loop.
+            logger.exception("Timeline recording failed for thread %s", thread_id)
 
     @override
     def before_model(self, state: AgentState, runtime: Runtime) -> dict | None:
