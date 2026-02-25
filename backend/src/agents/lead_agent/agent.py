@@ -1,6 +1,10 @@
+import logging
+
 from langchain.agents import create_agent
 from langchain.agents.middleware import SummarizationMiddleware, TodoListMiddleware
 from langchain_core.runnables import RunnableConfig
+
+logger = logging.getLogger(__name__)
 
 from src.agents.lead_agent.prompt import apply_prompt_template
 from src.agents.middlewares.clarification_middleware import ClarificationMiddleware
@@ -268,7 +272,7 @@ def make_lead_agent(config: RunnableConfig):
     is_plan_mode = configurable.get("is_plan_mode", False)
     subagent_enabled = configurable.get("subagent_enabled", False)
     max_concurrent_subagents = configurable.get("max_concurrent_subagents", 3)
-    print(f"thinking_enabled: {thinking_enabled}, model_name: {model_name}, is_plan_mode: {is_plan_mode}, subagent_enabled: {subagent_enabled}, max_concurrent_subagents: {max_concurrent_subagents}")
+    logger.info("Agent config: thinking_enabled=%s, model_name=%s, is_plan_mode=%s, subagent_enabled=%s, max_concurrent_subagents=%s", thinking_enabled, model_name, is_plan_mode, subagent_enabled, max_concurrent_subagents)
 
     # Inject run metadata for LangSmith trace tagging
     if "metadata" not in config:

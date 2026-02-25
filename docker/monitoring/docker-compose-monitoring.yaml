@@ -1,0 +1,94 @@
+# Monitoring Stack for Thinktank.ai
+# Usage: docker compose -f docker/monitoring/docker-compose-monitoring.yaml up -d
+#
+# Prerequisites: The main application stack must be running
+# (docker-compose-prod.yaml or docker-compose-dev.yaml).
+#
+# Services:
+#   - prometheus: Metrics collection (port 9090)
+#   - grafana: Dashboards and alerting (port 3001)
+#   - loki: Log aggregation (port 3100)
+#   - promtail: Log shipping agent
+#
+# Access:
+#   Grafana: http://localhost:3001 (admin / admin)
+#   Prometheus: http://localhost:9090
+
+services:
+  # ── Prometheus ──────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: thinktank-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    networks:
+      - thinktank
+
+  # ── Grafana ─────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: thinktank-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+      - loki
+    restart: unless-stopped
+    networks:
+      - thinktank
+
+  # ── Loki (log aggregation) ──────────────────────────────────────────
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: thinktank-loki
+    volumes:
+      - ./loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    restart: unless-stopped
+    networks:
+      - thinktank
+
+  # ── Promtail (log shipping) ─────────────────────────────────────────
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: thinktank-promtail
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    restart: unless-stopped
+    networks:
+      - thinktank
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+
+networks:
+  thinktank:
+    external: true
+    name: thinktank-ai_thinktank

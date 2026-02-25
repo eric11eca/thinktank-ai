@@ -1695,14 +1695,14 @@ http {
 
 ### Phase 7: Monitoring & Observability [P2 - Medium]
 
-- [ ] **7.1** Replace all `print()` calls with structured `logging` in backend
-- [ ] **7.2** Add `prometheus-fastapi-instrumentator` to Gateway
-- [ ] **7.3** Create custom Prometheus metrics for LLM calls, tokens, sandboxes, subagents
-- [ ] **7.4** Set up Grafana dashboards for key metrics
-- [ ] **7.5** Enable LangSmith tracing for production
-- [ ] **7.6** Enhance `/health` endpoint with database, Redis, and LangGraph checks
-- [ ] **7.7** Configure alerting rules (error rate, latency, disk, memory)
-- [ ] **7.8** Set up centralized log aggregation (ELK, Loki, or CloudWatch)
+- [x] **7.1** Replace all `print()` calls with structured `logging` in backend
+- [x] **7.2** Add `prometheus-fastapi-instrumentator` to Gateway
+- [x] **7.3** Create custom Prometheus metrics for LLM calls, tokens, sandboxes, subagents
+- [x] **7.4** Set up Grafana dashboards for key metrics
+- [x] **7.5** Enable LangSmith tracing for production
+- [x] **7.6** Enhance `/health` endpoint with database, Redis, and LangGraph checks
+- [x] **7.7** Configure alerting rules (error rate, latency, disk, memory)
+- [x] **7.8** Set up centralized log aggregation (ELK, Loki, or CloudWatch)
 
 ### Phase 8: S3 Object Storage Migration [P2 - Medium]
 

@@ -40,6 +40,9 @@ dependencies = [
     "gunicorn>=22.0.0",
     "redis>=5.0.0",
     "rq>=1.16.0",
+    "python-json-logger>=2.0.0",
+    "prometheus-client>=0.20.0",
+    "prometheus-fastapi-instrumentator>=7.0.0",
 ]
 
 [dependency-groups]

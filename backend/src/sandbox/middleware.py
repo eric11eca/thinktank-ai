@@ -1,3 +1,4 @@
+import logging
 from typing import NotRequired, override
 
 from langchain.agents import AgentState
@@ -6,6 +7,8 @@ from langgraph.runtime import Runtime
 
 from src.agents.thread_state import SandboxState, ThreadDataState
 from src.sandbox import get_sandbox_provider
+
+logger = logging.getLogger(__name__)
 
 
 class SandboxMiddlewareState(AgentState):
@@ -42,7 +45,14 @@ class SandboxMiddleware(AgentMiddleware[SandboxMiddlewareState]):
     def _acquire_sandbox(self, thread_id: str, user_id: str | None = None) -> str:
         provider = get_sandbox_provider()
         sandbox_id = provider.acquire(thread_id, user_id=user_id)
-        print(f"Acquiring sandbox {sandbox_id}")
+        logger.info("Acquiring sandbox %s", sandbox_id)
+
+        try:
+            from src.gateway.metrics import active_sandboxes
+            active_sandboxes.inc()
+        except Exception:
+            pass
+
         return sandbox_id
 
     @override
@@ -55,7 +65,7 @@ class SandboxMiddleware(AgentMiddleware[SandboxMiddlewareState]):
         if "sandbox" not in state or state["sandbox"] is None:
             thread_id = runtime.context["thread_id"]
             user_id = runtime.context.get("user_id")
-            print(f"Thread ID: {thread_id}")
+            logger.info("Thread ID: %s", thread_id)
             sandbox_id = self._acquire_sandbox(thread_id, user_id=user_id)
             return {"sandbox": {"sandbox_id": sandbox_id}}
         return super().before_agent(state, runtime)
