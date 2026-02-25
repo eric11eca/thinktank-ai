@@ -7,10 +7,10 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.config import get_app_config, get_tracing_config, is_tracing_enabled
+from src.models.patched_deepseek import PatchedChatDeepSeek
 from src.reflection import resolve_class
 
 logger = logging.getLogger(__name__)
-from src.models.patched_deepseek import PatchedChatDeepSeek
 
 
 class RuntimeModelSpec(BaseModel):
@@ -136,20 +136,14 @@ def create_chat_model(
     if isinstance(api_key, str):
         if api_key.startswith("$"):
             env_name = api_key[1:]
-            raise ValueError(
-                f"Model {name} requires environment variable {env_name} to be set. Add it to `.env` or export it before starting the server."
-            ) from None
+            raise ValueError(f"Model {name} requires environment variable {env_name} to be set. Add it to `.env` or export it before starting the server.") from None
         if not api_key.strip():
-            raise ValueError(
-                f"Model {name} has an empty api_key. Add it to `.env` or export it before starting the server."
-            ) from None
+            raise ValueError(f"Model {name} has an empty api_key. Add it to `.env` or export it before starting the server.") from None
     for field in ("base_url", "api_base"):
         value = model_settings_from_config.get(field)
         if isinstance(value, str) and value.startswith("$"):
             env_name = value[1:]
-            raise ValueError(
-                f"Model {name} requires environment variable {env_name} to be set. Add it to `.env` or export it before starting the server."
-            ) from None
+            raise ValueError(f"Model {name} requires environment variable {env_name} to be set. Add it to `.env` or export it before starting the server.") from None
     if thinking_enabled and model_config.when_thinking_enabled is not None:
         if not model_config.supports_thinking:
             raise ValueError(f"Model {name} does not support thinking. Set `supports_thinking` to true in the `config.yaml` to enable thinking.") from None
@@ -167,9 +161,7 @@ def create_chat_model(
             )
             existing_callbacks = model_instance.callbacks or []
             model_instance.callbacks = [*existing_callbacks, tracer]
-            logger.debug(
-                f"LangSmith tracing attached to model '{name}' (project='{tracing_config.project}')"
-            )
+            logger.debug(f"LangSmith tracing attached to model '{name}' (project='{tracing_config.project}')")
         except Exception as e:
             logger.warning(f"Failed to attach LangSmith tracing to model '{name}': {e}")
 

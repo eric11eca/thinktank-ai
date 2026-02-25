@@ -74,9 +74,7 @@ async def get_agent_context(
             tool_items.append(ToolSummary(name=name, description=description))
 
         skills = load_skills(enabled_only=True)
-        skill_items = [
-            SkillSummary(name=skill.name, description=skill.description) for skill in skills
-        ]
+        skill_items = [SkillSummary(name=skill.name, description=skill.description) for skill in skills]
 
         return AgentContextResponse(
             tools=tool_items,

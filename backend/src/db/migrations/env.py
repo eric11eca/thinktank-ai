@@ -10,9 +10,10 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import create_engine, pool
 
+import src.db.models  # noqa: F401
+
 # Import Base and all models so Alembic can detect them
 from src.db.engine import Base
-import src.db.models  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

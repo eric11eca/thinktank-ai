@@ -10,7 +10,7 @@ import json
 import os
 import threading
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -71,7 +71,7 @@ def _file_create_user(
     display_name: str | None = None,
 ) -> dict[str, Any]:
     user_id = uuid.uuid4().hex
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     normalized_email = email.lower().strip()
 
     with _LOCK:
@@ -126,13 +126,11 @@ def _db_create_user(
     from src.db.models import UserModel
 
     user_id = uuid.uuid4().hex
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     normalized_email = email.lower().strip()
 
     with get_db_session() as session:
-        existing = (
-            session.query(UserModel).filter(UserModel.email == normalized_email).first()
-        )
+        existing = session.query(UserModel).filter(UserModel.email == normalized_email).first()
         if existing:
             raise ValueError("Email already registered")
 
@@ -160,9 +158,7 @@ def _db_get_user_by_email(email: str) -> dict[str, Any] | None:
 
     normalized_email = email.lower().strip()
     with get_db_session() as session:
-        user = (
-            session.query(UserModel).filter(UserModel.email == normalized_email).first()
-        )
+        user = session.query(UserModel).filter(UserModel.email == normalized_email).first()
         if not user:
             return None
         return user.to_dict(include_password=True)

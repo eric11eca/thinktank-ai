@@ -72,19 +72,13 @@ class MemoryUpdateQueue:
 
         with self._lock:
             # Deduplicate by (user_id, thread_id): replace existing entry
-            self._queue = [
-                c for c in self._queue
-                if not (c.user_id == user_id and c.thread_id == thread_id)
-            ]
+            self._queue = [c for c in self._queue if not (c.user_id == user_id and c.thread_id == thread_id)]
             self._queue.append(context)
 
             # Reset or start the debounce timer
             self._reset_timer()
 
-        logger.info(
-            f"Memory update queued for user {user_id}, thread {thread_id}, "
-            f"queue size: {len(self._queue)}"
-        )
+        logger.info(f"Memory update queued for user {user_id}, thread {thread_id}, queue size: {len(self._queue)}")
 
     def _reset_timer(self) -> None:
         """Reset the debounce timer."""
@@ -130,30 +124,18 @@ class MemoryUpdateQueue:
 
             for context in contexts_to_process:
                 try:
-                    logger.info(
-                        f"Updating memory for user {context.user_id}, "
-                        f"thread {context.thread_id}"
-                    )
+                    logger.info(f"Updating memory for user {context.user_id}, thread {context.thread_id}")
                     success = updater.update_memory(
                         messages=context.messages,
                         thread_id=context.thread_id,
                         user_id=context.user_id,
                     )
                     if success:
-                        logger.info(
-                            f"Memory updated successfully for user {context.user_id}, "
-                            f"thread {context.thread_id}"
-                        )
+                        logger.info(f"Memory updated successfully for user {context.user_id}, thread {context.thread_id}")
                     else:
-                        logger.info(
-                            f"Memory update skipped/failed for user {context.user_id}, "
-                            f"thread {context.thread_id}"
-                        )
+                        logger.info(f"Memory update skipped/failed for user {context.user_id}, thread {context.thread_id}")
                 except Exception as e:
-                    logger.error(
-                        f"Error updating memory for user {context.user_id}, "
-                        f"thread {context.thread_id}: {e}"
-                    )
+                    logger.error(f"Error updating memory for user {context.user_id}, thread {context.thread_id}: {e}")
 
                 # Small delay between updates to avoid rate limiting
                 if len(contexts_to_process) > 1:
@@ -254,10 +236,7 @@ class RedisMemoryUpdateQueue:
                     job = Job.fetch(existing_job_id, connection=self._redis)
                     if job.get_status() in ("queued", "deferred", "scheduled"):
                         job.cancel()
-                        logger.debug(
-                            f"Cancelled pending memory update job {existing_job_id} "
-                            f"for user {user_id}, thread {thread_id}"
-                        )
+                        logger.debug(f"Cancelled pending memory update job {existing_job_id} for user {user_id}, thread {thread_id}")
                 except Exception:
                     pass  # Job already processed or expired
 
@@ -272,9 +251,7 @@ class RedisMemoryUpdateQueue:
             )
             self._pending_jobs[key] = job.id
 
-        logger.info(
-            f"Memory update queued (Redis) for user {user_id}, thread {thread_id}"
-        )
+        logger.info(f"Memory update queued (Redis) for user {user_id}, thread {thread_id}")
 
     @staticmethod
     def _serialize_messages(messages: list[Any]) -> list[dict[str, Any]]:

@@ -73,9 +73,7 @@ async def get_current_user(
 
 
 async def get_optional_user(
-    credentials: Annotated[
-        HTTPAuthorizationCredentials | None, Depends(_bearer_scheme_optional)
-    ],
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme_optional)],
 ) -> dict[str, Any] | None:
     """FastAPI dependency that optionally extracts a JWT access token.
 

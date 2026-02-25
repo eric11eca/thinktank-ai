@@ -166,11 +166,13 @@ def task_tool(
             if result.token_usage and thread_id:
                 add_subagent_usage(thread_id, result.token_usage)
                 # Also emit immediately for real-time frontend display
-                writer({
-                    "type": "usage_update",
-                    "input_tokens": result.token_usage.get("input_tokens", 0),
-                    "output_tokens": result.token_usage.get("output_tokens", 0),
-                })
+                writer(
+                    {
+                        "type": "usage_update",
+                        "input_tokens": result.token_usage.get("input_tokens", 0),
+                        "output_tokens": result.token_usage.get("output_tokens", 0),
+                    }
+                )
 
             if result.status == SubagentStatus.COMPLETED:
                 writer({"type": "task_completed", "task_id": task_id, "result": result.result})

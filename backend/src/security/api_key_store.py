@@ -59,11 +59,7 @@ def _get_or_create_master_key() -> bytes:
 
     # 2. Production mode requires env var
     if os.environ.get("REQUIRE_ENV_SECRETS"):
-        raise RuntimeError(
-            "ENCRYPTION_KEY environment variable is required when "
-            "REQUIRE_ENV_SECRETS is set. Generate one with: "
-            "python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
-        )
+        raise RuntimeError("ENCRYPTION_KEY environment variable is required when REQUIRE_ENV_SECRETS is set. Generate one with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'")
 
     # 3. File-based fallback (development only)
     _ensure_store_dir()

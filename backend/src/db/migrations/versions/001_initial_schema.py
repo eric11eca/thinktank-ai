@@ -5,15 +5,15 @@ Revises: None
 Create Date: 2026-02-24
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
 
 revision: str = "001"
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -61,9 +61,7 @@ def upgrade() -> None:
         sa.Column("user_id", sa.String(32), primary_key=True),
         sa.Column(
             "memory_json",
-            sa.JSON().with_variant(
-                sa.dialects.postgresql.JSONB, "postgresql"
-            ),
+            sa.JSON().with_variant(sa.dialects.postgresql.JSONB, "postgresql"),
             nullable=False,
             server_default=sa.text("'{}'::jsonb"),
         ),
@@ -86,9 +84,7 @@ def upgrade() -> None:
             sa.DateTime(timezone=True),
             server_default=sa.text("now()"),
         ),
-        sa.UniqueConstraint(
-            "user_id", "provider", name="uq_user_api_keys_user_provider"
-        ),
+        sa.UniqueConstraint("user_id", "provider", name="uq_user_api_keys_user_provider"),
     )
     op.create_index("idx_user_api_keys_user_id", "user_api_keys", ["user_id"])
 

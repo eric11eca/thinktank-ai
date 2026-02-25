@@ -35,15 +35,52 @@ CONVERTIBLE_EXTENSIONS = {
 # ---------------------------------------------------------------------------
 ALLOWED_EXTENSIONS = {
     # Documents
-    ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
-    ".txt", ".md", ".csv", ".json", ".yaml", ".yml", ".xml",
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".ppt",
+    ".pptx",
+    ".xls",
+    ".xlsx",
+    ".txt",
+    ".md",
+    ".csv",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".xml",
     # Images
-    ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".bmp",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".svg",
+    ".webp",
+    ".bmp",
     # Code
-    ".py", ".js", ".ts", ".jsx", ".tsx", ".html", ".css", ".sh",
-    ".java", ".c", ".cpp", ".h", ".go", ".rs", ".rb", ".php",
+    ".py",
+    ".js",
+    ".ts",
+    ".jsx",
+    ".tsx",
+    ".html",
+    ".css",
+    ".sh",
+    ".java",
+    ".c",
+    ".cpp",
+    ".h",
+    ".go",
+    ".rs",
+    ".rb",
+    ".php",
     # Data
-    ".sql", ".log", ".ini", ".cfg", ".toml", ".env",
+    ".sql",
+    ".log",
+    ".ini",
+    ".cfg",
+    ".toml",
+    ".env",
     # Archives (for skill installation)
     ".zip",
 }
@@ -58,15 +95,29 @@ ALLOWED_MIME_TYPES = {
     "application/vnd.ms-excel",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     # Text
-    "text/plain", "text/markdown", "text/csv", "text/html", "text/css",
-    "text/xml", "text/x-python", "text/javascript", "text/x-sh",
+    "text/plain",
+    "text/markdown",
+    "text/csv",
+    "text/html",
+    "text/css",
+    "text/xml",
+    "text/x-python",
+    "text/javascript",
+    "text/x-sh",
     # Structured data
-    "application/json", "application/xml", "application/x-yaml",
+    "application/json",
+    "application/xml",
+    "application/x-yaml",
     # Images
-    "image/png", "image/jpeg", "image/gif", "image/svg+xml", "image/webp",
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/svg+xml",
+    "image/webp",
     "image/bmp",
     # Archives
-    "application/zip", "application/x-zip-compressed",
+    "application/zip",
+    "application/x-zip-compressed",
     # Fallback for unknown but extension-validated files
     "application/octet-stream",
 }
@@ -139,11 +190,7 @@ def _get_user_total_upload_bytes(user_id: str) -> int:
         from src.db.models import UploadModel
 
         with get_db_session() as session:
-            total = (
-                session.query(func.coalesce(func.sum(UploadModel.size_bytes), 0))
-                .filter(UploadModel.user_id == user_id)
-                .scalar()
-            )
+            total = session.query(func.coalesce(func.sum(UploadModel.size_bytes), 0)).filter(UploadModel.user_id == user_id).scalar()
             return int(total)
 
     # File-based fallback: walk all thread upload directories
@@ -173,9 +220,7 @@ def _check_upload_quota(user_id: str, new_bytes: int) -> None:
         )
 
 
-def _record_upload(
-    user_id: str, thread_id: str, filename: str, content_type: str | None, size_bytes: int, storage_path: str
-) -> None:
+def _record_upload(user_id: str, thread_id: str, filename: str, content_type: str | None, size_bytes: int, storage_path: str) -> None:
     """Record upload metadata in the database (if enabled)."""
     from src.db.engine import is_db_enabled
 

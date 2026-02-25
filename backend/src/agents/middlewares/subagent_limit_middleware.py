@@ -1,21 +1,18 @@
 """Middleware to enforce maximum concurrent subagent tool calls per model response."""
 
 import logging
+import os
 from typing import override
 
 from langchain.agents import AgentState
 from langchain.agents.middleware import AgentMiddleware
 from langgraph.runtime import Runtime
 
-import os
-
 logger = logging.getLogger(__name__)
 
 # Per-user concurrency limit (mirrors executor.MAX_CONCURRENT_SUBAGENTS_PER_USER).
 # Defined here to avoid circular imports between agents and subagents packages.
-MAX_CONCURRENT_SUBAGENTS_PER_USER = int(
-    os.environ.get("MAX_CONCURRENT_SUBAGENTS_PER_USER", 3)
-)
+MAX_CONCURRENT_SUBAGENTS_PER_USER = int(os.environ.get("MAX_CONCURRENT_SUBAGENTS_PER_USER", 3))
 
 # Valid range for max_concurrent_subagents
 MIN_SUBAGENT_LIMIT = 2

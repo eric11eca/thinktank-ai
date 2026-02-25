@@ -2,8 +2,8 @@ import re
 from pathlib import Path
 from urllib.parse import urljoin
 
-from markdownify import markdownify as md
 import readabilipy
+from markdownify import markdownify as md
 from readabilipy import simple_json_from_html_string
 from readabilipy.utils import run_npm_install
 
@@ -73,16 +73,12 @@ class ReadabilityExtractor:
             return
 
         if not package_json.exists():
-            raise RuntimeError(
-                "ReadabiliPy JS assets are missing. Install Node.js 14+ and reinstall readabilipy so the JavaScript dependencies are bundled."
-            ) from None
+            raise RuntimeError("ReadabiliPy JS assets are missing. Install Node.js 14+ and reinstall readabilipy so the JavaScript dependencies are bundled.") from None
 
         run_npm_install()
 
         if not lru_cache_file.exists():
-            raise RuntimeError(
-                "ReadabiliPy JS dependencies are incomplete. Run `npm install` in the readabilipy javascript directory or reinstall readabilipy with Node.js available."
-            ) from None
+            raise RuntimeError("ReadabiliPy JS dependencies are incomplete. Run `npm install` in the readabilipy javascript directory or reinstall readabilipy with Node.js available.") from None
 
         _READABILITY_DEPS_READY = True
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import jwt
@@ -31,11 +31,7 @@ def _get_secret_key() -> str:
         return env_secret
 
     if os.environ.get("REQUIRE_ENV_SECRETS"):
-        raise RuntimeError(
-            "JWT_SECRET_KEY environment variable is required when "
-            "REQUIRE_ENV_SECRETS is set. Set JWT_SECRET_KEY in your "
-            "environment or .env file for production deployments."
-        )
+        raise RuntimeError("JWT_SECRET_KEY environment variable is required when REQUIRE_ENV_SECRETS is set. Set JWT_SECRET_KEY in your environment or .env file for production deployments.")
 
     _STORE_DIR.mkdir(parents=True, exist_ok=True)
     if _SECRET_FILE.exists():
@@ -62,7 +58,7 @@ def create_access_token(user_id: str, email: str) -> str:
     Returns:
         Encoded JWT string.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": user_id,
         "email": email,
@@ -82,7 +78,7 @@ def create_refresh_token(user_id: str) -> str:
     Returns:
         Encoded JWT string.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": user_id,
         "type": "refresh",

@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import os
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -56,7 +56,7 @@ def _save_store(data: dict[str, Any]) -> None:
 # File-based implementations
 # ---------------------------------------------------------------------------
 def _file_claim_thread(thread_id: str, user_id: str) -> bool:
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     with _LOCK:
         data = _load_store()
         threads = data["threads"]
@@ -78,11 +78,7 @@ def _file_get_thread_owner(thread_id: str) -> str | None:
 def _file_get_user_threads(user_id: str) -> list[str]:
     with _LOCK:
         data = _load_store()
-        return [
-            tid
-            for tid, entry in data["threads"].items()
-            if entry["user_id"] == user_id
-        ]
+        return [tid for tid, entry in data["threads"].items() if entry["user_id"] == user_id]
 
 
 def _file_delete_thread(thread_id: str) -> None:
@@ -99,13 +95,9 @@ def _db_claim_thread(thread_id: str, user_id: str) -> bool:
     from src.db.engine import get_db_session
     from src.db.models import ThreadModel
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     with get_db_session() as session:
-        existing = (
-            session.query(ThreadModel)
-            .filter(ThreadModel.thread_id == thread_id)
-            .first()
-        )
+        existing = session.query(ThreadModel).filter(ThreadModel.thread_id == thread_id).first()
         if existing is None:
             thread = ThreadModel(
                 thread_id=thread_id,
@@ -123,11 +115,7 @@ def _db_get_thread_owner(thread_id: str) -> str | None:
     from src.db.models import ThreadModel
 
     with get_db_session() as session:
-        thread = (
-            session.query(ThreadModel)
-            .filter(ThreadModel.thread_id == thread_id)
-            .first()
-        )
+        thread = session.query(ThreadModel).filter(ThreadModel.thread_id == thread_id).first()
         return thread.user_id if thread else None
 
 
@@ -136,11 +124,7 @@ def _db_get_user_threads(user_id: str) -> list[str]:
     from src.db.models import ThreadModel
 
     with get_db_session() as session:
-        threads = (
-            session.query(ThreadModel.thread_id)
-            .filter(ThreadModel.user_id == user_id)
-            .all()
-        )
+        threads = session.query(ThreadModel.thread_id).filter(ThreadModel.user_id == user_id).all()
         return [t[0] for t in threads]
 
 
@@ -149,9 +133,7 @@ def _db_delete_thread(thread_id: str) -> None:
     from src.db.models import ThreadModel
 
     with get_db_session() as session:
-        session.query(ThreadModel).filter(
-            ThreadModel.thread_id == thread_id
-        ).delete()
+        session.query(ThreadModel).filter(ThreadModel.thread_id == thread_id).delete()
 
 
 # ---------------------------------------------------------------------------

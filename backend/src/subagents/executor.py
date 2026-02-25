@@ -72,14 +72,18 @@ _background_tasks: dict[str, SubagentResult] = {}
 _background_tasks_lock = threading.Lock()
 
 # Thread pool sizing: configurable via environment, defaults to max(8, cpu_count * 2)
-_SCHEDULER_WORKERS = int(os.environ.get(
-    "SUBAGENT_SCHEDULER_WORKERS",
-    max(8, (os.cpu_count() or 4) * 2),
-))
-_EXECUTION_WORKERS = int(os.environ.get(
-    "SUBAGENT_EXECUTION_WORKERS",
-    max(8, (os.cpu_count() or 4) * 2),
-))
+_SCHEDULER_WORKERS = int(
+    os.environ.get(
+        "SUBAGENT_SCHEDULER_WORKERS",
+        max(8, (os.cpu_count() or 4) * 2),
+    )
+)
+_EXECUTION_WORKERS = int(
+    os.environ.get(
+        "SUBAGENT_EXECUTION_WORKERS",
+        max(8, (os.cpu_count() or 4) * 2),
+    )
+)
 
 # Thread pool for background task scheduling and orchestration
 _scheduler_pool = ThreadPoolExecutor(
@@ -96,9 +100,7 @@ _execution_pool = ThreadPoolExecutor(
 # ---------------------------------------------------------------------------
 # Per-user concurrency control
 # ---------------------------------------------------------------------------
-MAX_CONCURRENT_SUBAGENTS_PER_USER = int(
-    os.environ.get("MAX_CONCURRENT_SUBAGENTS_PER_USER", 3)
-)
+MAX_CONCURRENT_SUBAGENTS_PER_USER = int(os.environ.get("MAX_CONCURRENT_SUBAGENTS_PER_USER", 3))
 
 # Bounded LRU cache of per-user semaphores: user_id -> (Semaphore, last_used)
 _user_semaphores: dict[str, tuple[threading.Semaphore, float]] = {}
@@ -123,9 +125,7 @@ def _get_user_semaphore(user_id: str) -> threading.Semaphore:
 
         # Evict oldest entries if cache is full
         if len(_user_semaphores) >= _MAX_SEMAPHORE_CACHE_SIZE:
-            sorted_entries = sorted(
-                _user_semaphores.items(), key=lambda x: x[1][1]
-            )
+            sorted_entries = sorted(_user_semaphores.items(), key=lambda x: x[1][1])
             evict_count = _MAX_SEMAPHORE_CACHE_SIZE // 5  # Remove 20%
             for key, _ in sorted_entries[:evict_count]:
                 del _user_semaphores[key]
@@ -384,6 +384,7 @@ class SubagentExecutor:
             # ── Prometheus metrics ─────────────────────────────────────
             try:
                 from src.gateway.metrics import subagent_tasks_total
+
                 subagent_tasks_total.labels(status="completed").inc()
             except Exception:
                 pass
@@ -397,6 +398,7 @@ class SubagentExecutor:
             # ── Prometheus metrics ─────────────────────────────────────
             try:
                 from src.gateway.metrics import subagent_tasks_total
+
                 subagent_tasks_total.labels(status="failed").inc()
             except Exception:
                 pass
@@ -441,16 +443,10 @@ class SubagentExecutor:
             sem = _get_user_semaphore(user_id or "anonymous")
             acquired = sem.acquire(timeout=30)
             if not acquired:
-                logger.warning(
-                    f"[trace={self.trace_id}] Subagent {self.config.name} "
-                    f"concurrency limit reached for user {user_id}"
-                )
+                logger.warning(f"[trace={self.trace_id}] Subagent {self.config.name} concurrency limit reached for user {user_id}")
                 with _background_tasks_lock:
                     _background_tasks[task_id].status = SubagentStatus.FAILED
-                    _background_tasks[task_id].error = (
-                        f"Concurrency limit reached: max {MAX_CONCURRENT_SUBAGENTS_PER_USER} "
-                        f"concurrent subagents per user"
-                    )
+                    _background_tasks[task_id].error = f"Concurrency limit reached: max {MAX_CONCURRENT_SUBAGENTS_PER_USER} concurrent subagents per user"
                     _background_tasks[task_id].completed_at = datetime.now()
                 return
 
@@ -483,6 +479,7 @@ class SubagentExecutor:
 
                     try:
                         from src.gateway.metrics import subagent_tasks_total
+
                         subagent_tasks_total.labels(status="timed_out").inc()
                     except Exception:
                         pass

@@ -200,18 +200,28 @@ class LocalContainerBackend(SandboxBackend):
 
         # Docker-specific security and resource limits
         if self._runtime == "docker":
-            cmd.extend([
-                "--security-opt", "seccomp=unconfined",
-                "--pids-limit", "256",
-                "--memory", "512m",
-                "--cpus", "1",
-                "--read-only",
-                "--tmpfs", "/tmp:size=100m",
-                "--tmpfs", "/run:size=10m",
-                "--cap-drop", "ALL",
-                "--cap-add", "NET_BIND_SERVICE",
-                "--no-new-privileges",
-            ])
+            cmd.extend(
+                [
+                    "--security-opt",
+                    "seccomp=unconfined",
+                    "--pids-limit",
+                    "256",
+                    "--memory",
+                    "512m",
+                    "--cpus",
+                    "1",
+                    "--read-only",
+                    "--tmpfs",
+                    "/tmp:size=100m",
+                    "--tmpfs",
+                    "/run:size=10m",
+                    "--cap-drop",
+                    "ALL",
+                    "--cap-add",
+                    "NET_BIND_SERVICE",
+                    "--no-new-privileges",
+                ]
+            )
 
         cmd.extend(
             [

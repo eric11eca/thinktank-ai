@@ -21,7 +21,7 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 logging.basicConfig(
@@ -67,9 +67,7 @@ def migrate_users(store_dir: Path) -> dict[str, str]:
                 email=record["email"],
                 password_hash=record["password_hash"],
                 display_name=record.get("display_name"),
-                created_at=datetime.fromisoformat(record["created_at"])
-                if record.get("created_at")
-                else datetime.now(timezone.utc),
+                created_at=datetime.fromisoformat(record["created_at"]) if record.get("created_at") else datetime.now(UTC),
             )
             session.add(user)
             migrated += 1
@@ -95,11 +93,7 @@ def migrate_threads(store_dir: Path) -> None:
 
     for thread_id, entry in threads.items():
         with get_db_session() as session:
-            existing = (
-                session.query(ThreadModel)
-                .filter(ThreadModel.thread_id == thread_id)
-                .first()
-            )
+            existing = session.query(ThreadModel).filter(ThreadModel.thread_id == thread_id).first()
             if existing:
                 skipped += 1
                 continue
@@ -107,9 +101,7 @@ def migrate_threads(store_dir: Path) -> None:
             thread = ThreadModel(
                 thread_id=thread_id,
                 user_id=entry["user_id"],
-                created_at=datetime.fromisoformat(entry["created_at"])
-                if entry.get("created_at")
-                else datetime.now(timezone.utc),
+                created_at=datetime.fromisoformat(entry["created_at"]) if entry.get("created_at") else datetime.now(UTC),
             )
             session.add(thread)
             migrated += 1
@@ -140,11 +132,7 @@ def migrate_memory(store_dir: Path) -> None:
             continue
 
         with get_db_session() as session:
-            existing = (
-                session.query(UserMemoryModel)
-                .filter(UserMemoryModel.user_id == user_id)
-                .first()
-            )
+            existing = session.query(UserMemoryModel).filter(UserMemoryModel.user_id == user_id).first()
             if existing:
                 skipped += 1
                 continue
@@ -232,10 +220,7 @@ def main() -> None:
 
     logger.info("=" * 60)
     logger.info("Data migration complete!")
-    logger.info(
-        "Note: The .think-tank/ directory has NOT been deleted. "
-        "Remove it manually after verifying the migration."
-    )
+    logger.info("Note: The .think-tank/ directory has NOT been deleted. Remove it manually after verifying the migration.")
 
 
 if __name__ == "__main__":
