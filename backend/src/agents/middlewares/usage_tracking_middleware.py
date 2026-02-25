@@ -76,6 +76,16 @@ class UsageTrackingMiddleware(AgentMiddleware[AgentState]):
                 delta["input_tokens"] += sub_usage["input_tokens"]
                 delta["output_tokens"] += sub_usage["output_tokens"]
 
+        # ── Prometheus metrics ──────────────────────────────────────────
+        try:
+            from src.gateway.metrics import llm_calls_total, llm_tokens_total
+
+            llm_calls_total.labels(model="default", status="success").inc()
+            llm_tokens_total.labels(direction="input").inc(delta["input_tokens"])
+            llm_tokens_total.labels(direction="output").inc(delta["output_tokens"])
+        except Exception:
+            pass  # metrics unavailable
+
         # Emit custom SSE event for real-time frontend display
         try:
             writer = get_stream_writer()
