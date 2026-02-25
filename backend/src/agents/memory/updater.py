@@ -8,7 +8,7 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -47,7 +47,7 @@ def _create_empty_memory() -> dict[str, Any]:
     """Create an empty memory structure."""
     return {
         "version": "1.0",
-        "lastUpdated": datetime.now(timezone.utc).isoformat(),
+        "lastUpdated": datetime.now(UTC).isoformat(),
         "user": {
             "workContext": {"summary": "", "updatedAt": ""},
             "personalContext": {"summary": "", "updatedAt": ""},
@@ -108,7 +108,7 @@ def _save_memory_to_file(user_id: str, memory_data: dict[str, Any]) -> bool:
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Update lastUpdated timestamp
-        memory_data["lastUpdated"] = datetime.now(timezone.utc).isoformat()
+        memory_data["lastUpdated"] = datetime.now(UTC).isoformat()
 
         # Write atomically using temp file
         temp_path = file_path.with_suffix(".tmp")
@@ -158,9 +158,7 @@ def _file_reload_memory_data(user_id: str) -> dict[str, Any]:
     _memory_data[user_id] = _load_memory_from_file(user_id)
 
     try:
-        _memory_file_mtime[user_id] = (
-            file_path.stat().st_mtime if file_path.exists() else None
-        )
+        _memory_file_mtime[user_id] = file_path.stat().st_mtime if file_path.exists() else None
     except OSError:
         _memory_file_mtime[user_id] = None
 
@@ -181,11 +179,7 @@ def _db_get_memory_data(user_id: str) -> dict[str, Any]:
     from src.db.models import UserMemoryModel
 
     with get_db_session() as session:
-        record = (
-            session.query(UserMemoryModel)
-            .filter(UserMemoryModel.user_id == user_id)
-            .first()
-        )
+        record = session.query(UserMemoryModel).filter(UserMemoryModel.user_id == user_id).first()
         if record and record.memory_json:
             memory = record.memory_json
         else:
@@ -216,14 +210,10 @@ def _db_save_memory(user_id: str, memory_data: dict[str, Any]) -> bool:
     from src.db.models import UserMemoryModel
 
     try:
-        memory_data["lastUpdated"] = datetime.now(timezone.utc).isoformat()
+        memory_data["lastUpdated"] = datetime.now(UTC).isoformat()
 
         with get_db_session() as session:
-            record = (
-                session.query(UserMemoryModel)
-                .filter(UserMemoryModel.user_id == user_id)
-                .first()
-            )
+            record = session.query(UserMemoryModel).filter(UserMemoryModel.user_id == user_id).first()
             if record:
                 record.memory_json = memory_data
             else:
@@ -359,22 +349,19 @@ class MemoryUpdater:
             # Remove markdown code blocks if present
             if response_text.startswith("```"):
                 lines = response_text.split("\n")
-                response_text = "\n".join(
-                    lines[1:-1] if lines[-1] == "```" else lines[1:]
-                )
+                response_text = "\n".join(lines[1:-1] if lines[-1] == "```" else lines[1:])
 
             update_data = json.loads(response_text)
 
             # Apply updates
-            updated_memory = self._apply_updates(
-                current_memory, update_data, thread_id
-            )
+            updated_memory = self._apply_updates(current_memory, update_data, thread_id)
 
             # Save for this user (uses DB or file automatically)
             success = _save_memory(user_id, updated_memory)
 
             try:
                 from src.gateway.metrics import memory_updates_total
+
                 memory_updates_total.labels(status="success" if success else "failure").inc()
             except Exception:
                 pass
@@ -385,6 +372,7 @@ class MemoryUpdater:
             logger.warning(f"Failed to parse LLM response for memory update: {e}")
             try:
                 from src.gateway.metrics import memory_updates_total
+
                 memory_updates_total.labels(status="failure").inc()
             except Exception:
                 pass
@@ -393,6 +381,7 @@ class MemoryUpdater:
             logger.error(f"Memory update failed for user {user_id}: {e}")
             try:
                 from src.gateway.metrics import memory_updates_total
+
                 memory_updates_total.labels(status="failure").inc()
             except Exception:
                 pass
@@ -415,7 +404,7 @@ class MemoryUpdater:
             Updated memory data.
         """
         config = get_memory_config()
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         # Update user sections
         user_updates = update_data.get("user", {})
@@ -440,11 +429,7 @@ class MemoryUpdater:
         # Remove facts
         facts_to_remove = set(update_data.get("factsToRemove", []))
         if facts_to_remove:
-            current_memory["facts"] = [
-                f
-                for f in current_memory.get("facts", [])
-                if f.get("id") not in facts_to_remove
-            ]
+            current_memory["facts"] = [f for f in current_memory.get("facts", []) if f.get("id") not in facts_to_remove]
 
         # Add new facts
         new_facts = update_data.get("newFacts", [])

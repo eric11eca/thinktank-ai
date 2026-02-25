@@ -12,13 +12,9 @@ import os
 import sys
 from unittest.mock import patch
 
-import pytest
-
 # Load provisioner app.py directly by file path to avoid conflict with the
 # 'docker' pip package (the provisioner lives in <repo>/docker/provisioner/).
-_provisioner_app_path = os.path.join(
-    os.path.dirname(__file__), "..", "..", "docker", "provisioner", "app.py"
-)
+_provisioner_app_path = os.path.join(os.path.dirname(__file__), "..", "..", "docker", "provisioner", "app.py")
 
 
 def _load_provisioner(module_name: str = "provisioner_app"):
@@ -91,11 +87,14 @@ class TestPodResourceLimits:
         assert requests["memory"] == "256Mi"
         assert requests["ephemeral-storage"] == "1Gi"
 
-    @patch.dict(os.environ, {
-        "SANDBOX_CPU_LIMIT": "2000m",
-        "SANDBOX_MEMORY_LIMIT": "1Gi",
-        "SANDBOX_EPHEMERAL_LIMIT": "10Gi",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "SANDBOX_CPU_LIMIT": "2000m",
+            "SANDBOX_MEMORY_LIMIT": "1Gi",
+            "SANDBOX_EPHEMERAL_LIMIT": "10Gi",
+        },
+    )
     def test_configurable_limits_via_env(self):
         # Reload module to pick up env vars (they're module-level constants)
         reloaded = _load_provisioner("provisioner_app_env_test")

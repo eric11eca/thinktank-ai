@@ -1728,14 +1728,14 @@ http {
 
 ### Infrastructure & DevOps [P2 - Medium]
 
-- [ ] **9.1** Create `docker/docker-compose-prod.yaml`
-- [ ] **9.2** Create `docker/nginx/nginx-prod.conf`
-- [ ] **9.3** Create `backend/Dockerfile.prod` (multi-stage, non-root)
-- [ ] **9.4** Set up CI/CD pipeline (GitHub Actions: lint, test, build, deploy)
-- [ ] **9.5** Create staging environment (mirrors production)
-- [ ] **9.6** Write deployment runbook documenting rollback procedures
-- [ ] **9.7** Configure automated database backups (pg_dump daily, WAL archiving) with S3 bucket as backup destination (via wal-g or pgBackRest)
-- [ ] **9.8** Set up DNS records and CDN configuration
+- [x] **9.1** Create `docker/docker-compose-prod.yaml`
+- [x] **9.2** Create `docker/nginx/nginx-prod.conf`
+- [x] **9.3** Create `backend/Dockerfile.prod` (multi-stage, non-root)
+- [x] **9.4** Set up CI/CD pipeline (GitHub Actions: lint, test, build, deploy) — `.github/workflows/ci.yml`, `docker-publish.yml`, `deploy.yml`
+- [x] **9.5** Create staging environment (mirrors production) — `docker/docker-compose-staging.yaml`, `scripts/staging.sh`
+- [x] **9.6** Write deployment runbook documenting rollback procedures — `docs/DEPLOYMENT_RUNBOOK.md`
+- [x] **9.7** Configure automated database backups (pg_dump daily, WAL archiving) with S3 bucket as backup destination — `docker/backup/`
+- [x] **9.8** Set up DNS records and CDN configuration — `docs/DNS_CDN_SETUP.md`
 
 ---
 

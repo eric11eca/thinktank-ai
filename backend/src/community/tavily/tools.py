@@ -12,16 +12,11 @@ def _normalize_api_key(api_key: str | None) -> str | None:
     normalized = api_key.strip()
     if not normalized:
         return None
-    if normalized.startswith(("\"", "'", "“", "‘")) and normalized.endswith(("\"", "'", "”", "’")):
+    if normalized.startswith(('"', "'", "“", "‘")) and normalized.endswith(('"', "'", "”", "’")):
         normalized = normalized[1:-1].strip()
     if not normalized:
         return None
-    normalized = (
-        normalized.replace("“", "")
-        .replace("”", "")
-        .replace("‘", "")
-        .replace("’", "")
-    )
+    normalized = normalized.replace("“", "").replace("”", "").replace("‘", "").replace("’", "")
     return normalized or None
 
 

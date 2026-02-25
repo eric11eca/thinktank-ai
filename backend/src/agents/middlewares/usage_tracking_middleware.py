@@ -89,11 +89,13 @@ class UsageTrackingMiddleware(AgentMiddleware[AgentState]):
         # Emit custom SSE event for real-time frontend display
         try:
             writer = get_stream_writer()
-            writer({
-                "type": "usage_update",
-                "input_tokens": delta["input_tokens"],
-                "output_tokens": delta["output_tokens"],
-            })
+            writer(
+                {
+                    "type": "usage_update",
+                    "input_tokens": delta["input_tokens"],
+                    "output_tokens": delta["output_tokens"],
+                }
+            )
         except Exception:
             # Stream writer may not be available in all contexts (e.g. tests)
             logger.debug("Could not emit usage_update event (no stream writer)")

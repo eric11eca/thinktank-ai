@@ -25,15 +25,11 @@ class TestRedisQueueCycle:
         mock_updater = MagicMock()
         mock_updater.update_memory.return_value = True
 
-        with patch(
-            "src.agents.memory.updater.MemoryUpdater", return_value=mock_updater
-        ):
+        with patch("src.agents.memory.updater.MemoryUpdater", return_value=mock_updater):
             result = process_memory_update(
                 user_id="user-int-1",
                 thread_id="thread-int-1",
-                messages_json=[
-                    {"type": "human", "content": "integration test message"}
-                ],
+                messages_json=[{"type": "human", "content": "integration test message"}],
             )
 
         assert result is True
@@ -65,9 +61,7 @@ class TestRedisQueueCycle:
         mock_updater = MagicMock()
         mock_updater.update_memory.return_value = True
 
-        with patch(
-            "src.agents.memory.updater.MemoryUpdater", return_value=mock_updater
-        ):
+        with patch("src.agents.memory.updater.MemoryUpdater", return_value=mock_updater):
             result = process_memory_update(
                 user_id="user-rt-1",
                 thread_id="thread-rt-1",
@@ -87,7 +81,6 @@ class TestConcurrentUserSemaphore:
     def test_multiple_users_concurrent_execution(self):
         """Multiple users should be able to execute subagents concurrently."""
         from src.subagents.executor import (
-            MAX_CONCURRENT_SUBAGENTS_PER_USER,
             _get_user_semaphore,
             _user_semaphores,
             _user_semaphores_lock,
@@ -98,7 +91,6 @@ class TestConcurrentUserSemaphore:
             _user_semaphores.clear()
 
         results = {}
-        errors = []
 
         def user_work(user_id: str, task_count: int):
             """Simulate a user running multiple subagent tasks."""
@@ -226,9 +218,7 @@ class TestGatewayHealthIntegration:
         from src.gateway.app import app
 
         # Verify the app has the health route registered
-        health_routes = [
-            route for route in app.routes if hasattr(route, "path") and route.path == "/health"
-        ]
+        health_routes = [route for route in app.routes if hasattr(route, "path") and route.path == "/health"]
         assert len(health_routes) == 1
 
     def test_redis_health_check_function(self):

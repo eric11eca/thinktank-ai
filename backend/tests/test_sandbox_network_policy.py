@@ -17,9 +17,7 @@ import pytest
 
 # Load provisioner app.py directly by file path to avoid conflict with the
 # 'docker' pip package (the provisioner lives in <repo>/docker/provisioner/).
-_provisioner_app_path = os.path.join(
-    os.path.dirname(__file__), "..", "..", "docker", "provisioner", "app.py"
-)
+_provisioner_app_path = os.path.join(os.path.dirname(__file__), "..", "..", "docker", "provisioner", "app.py")
 _spec = importlib.util.spec_from_file_location("provisioner_app_np", _provisioner_app_path)
 provisioner_app = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(provisioner_app)

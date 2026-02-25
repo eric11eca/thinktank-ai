@@ -356,10 +356,7 @@ class AioSandboxProvider(SandboxProvider):
             with self._lock:
                 current_count = len(self._user_sandboxes.get(user_id, set()))
             if current_count >= self._max_per_user:
-                raise RuntimeError(
-                    f"User {user_id} has reached the maximum of {self._max_per_user} "
-                    f"concurrent sandboxes. Release an existing sandbox first."
-                )
+                raise RuntimeError(f"User {user_id} has reached the maximum of {self._max_per_user} concurrent sandboxes. Release an existing sandbox first.")
 
         # Deterministic ID for thread-specific, random for anonymous
         sandbox_id = self._deterministic_sandbox_id(thread_id) if thread_id else str(uuid.uuid4())[:8]
@@ -441,9 +438,7 @@ class AioSandboxProvider(SandboxProvider):
         """
         extra_mounts = self._get_extra_mounts(thread_id)
 
-        info = self._backend.create(
-            thread_id, sandbox_id, extra_mounts=extra_mounts or None, user_id=user_id
-        )
+        info = self._backend.create(thread_id, sandbox_id, extra_mounts=extra_mounts or None, user_id=user_id)
 
         # Wait for sandbox to be ready
         if not wait_for_sandbox_ready(info.sandbox_url, timeout=60):

@@ -7,7 +7,6 @@ Provides:
 """
 
 import logging
-import os
 
 from fastapi import FastAPI
 
@@ -48,10 +47,7 @@ def setup_metrics(app: FastAPI) -> None:
         )
         logger.info("Prometheus metrics enabled at /metrics")
     except ImportError:
-        logger.warning(
-            "prometheus-fastapi-instrumentator not installed; "
-            "/metrics endpoint disabled"
-        )
+        logger.warning("prometheus-fastapi-instrumentator not installed; /metrics endpoint disabled")
     except Exception:
         logger.exception("Failed to initialize Prometheus metrics")
 

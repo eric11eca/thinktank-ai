@@ -17,8 +17,10 @@ from src.gateway.auth.middleware import get_current_user
 from src.gateway.auth.ownership import verify_thread_ownership
 from src.gateway.auth.thread_store import (
     claim_thread,
-    delete_thread as delete_thread_ownership,
     get_user_threads,
+)
+from src.gateway.auth.thread_store import (
+    delete_thread as delete_thread_ownership,
 )
 from src.gateway.config import get_gateway_config
 from src.gateway.rate_limiter import check_user_api_rate

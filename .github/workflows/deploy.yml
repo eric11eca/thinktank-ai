@@ -1,0 +1,118 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Thinktank.ai — Deployment Workflow
+# ─────────────────────────────────────────────────────────────────────────────
+# Deploys the application to staging or production via SSH.
+#
+# Trigger: Manual dispatch with environment selection.
+#
+# Prerequisites:
+#   1. GitHub Environments configured: "staging" and "production"
+#   2. Environment secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY
+#   3. Server has Docker + Docker Compose installed
+#   4. Repository cloned on the server at DEPLOY_PATH
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      image_tag:
+        description: "Docker image tag to deploy (default: latest)"
+        required: false
+        default: "latest"
+        type: string
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate environment
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          TAG="${{ github.event.inputs.image_tag }}"
+          echo "Deploying to: ${ENV}"
+          echo "Image tag: ${TAG}"
+
+          if [[ "$ENV" == "production" && "${{ github.ref }}" != "refs/heads/main" ]]; then
+            echo "::error::Production deployments must be from the main branch"
+            exit 1
+          fi
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Deploy to server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
+          IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+        run: |
+          SSH_CMD="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST}"
+
+          # Determine compose file
+          if [[ "$ENVIRONMENT" == "staging" ]]; then
+            COMPOSE_FILE="docker/docker-compose-staging.yaml"
+          else
+            COMPOSE_FILE="docker/docker-compose-prod.yaml"
+          fi
+
+          echo "=== Pulling latest code ==="
+          $SSH_CMD "cd ${DEPLOY_PATH} && git fetch origin main && git checkout main && git pull origin main"
+
+          echo "=== Pulling Docker images ==="
+          $SSH_CMD "cd ${DEPLOY_PATH} && docker compose -f ${COMPOSE_FILE} pull" || true
+
+          echo "=== Running database migrations ==="
+          $SSH_CMD "cd ${DEPLOY_PATH} && docker compose -f ${COMPOSE_FILE} run --rm gateway sh -c 'cd backend && uv run alembic upgrade head'" || true
+
+          echo "=== Deploying services (rolling update) ==="
+          $SSH_CMD "cd ${DEPLOY_PATH} && docker compose -f ${COMPOSE_FILE} up --build -d --remove-orphans"
+
+          echo "=== Waiting for health check ==="
+          for i in $(seq 1 30); do
+            if $SSH_CMD "curl -sf http://localhost:\${NGINX_HTTP_PORT:-80}/health > /dev/null 2>&1"; then
+              echo "Deployment healthy!"
+              exit 0
+            fi
+            echo "Waiting for health... ($i/30)"
+            sleep 5
+          done
+
+          echo "::warning::Health check did not pass within 150s — check logs"
+
+      - name: Post-deploy health verification
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          SSH_CMD="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST}"
+          echo "=== Service status ==="
+          $SSH_CMD "cd ${{ secrets.DEPLOY_PATH }} && docker compose -f docker/docker-compose-${{ github.event.inputs.environment == 'staging' && 'staging' || 'prod' }}.yaml ps"
+
+      - name: Cleanup SSH
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

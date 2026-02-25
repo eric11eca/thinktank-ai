@@ -315,6 +315,7 @@ def _get_memory_context(user_id: str | None = None) -> str:
 """
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).warning(f"Failed to load memory context: {e}")
         return ""
 

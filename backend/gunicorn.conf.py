@@ -15,10 +15,12 @@ bind = os.environ.get("GUNICORN_BIND", "0.0.0.0:8001")
 
 # Worker processes
 # Default: 2 * CPU cores + 1, capped at 9 to avoid excessive memory usage
-workers = int(os.environ.get(
-    "GATEWAY_WORKERS",
-    min(multiprocessing.cpu_count() * 2 + 1, 9),
-))
+workers = int(
+    os.environ.get(
+        "GATEWAY_WORKERS",
+        min(multiprocessing.cpu_count() * 2 + 1, 9),
+    )
+)
 
 # Use UvicornWorker for ASGI compatibility with FastAPI
 worker_class = "uvicorn.workers.UvicornWorker"
@@ -30,7 +32,7 @@ keepalive = 5
 
 # Logging
 accesslog = "-"  # stdout
-errorlog = "-"   # stderr
+errorlog = "-"  # stderr
 loglevel = os.environ.get("GUNICORN_LOG_LEVEL", "info")
 
 # Process naming

@@ -7,7 +7,6 @@ from fastapi import HTTPException
 
 from src.gateway.routers.uploads import (
     ALLOWED_EXTENSIONS,
-    ALLOWED_MIME_TYPES,
     CONVERTIBLE_EXTENSIONS,
     MAX_SINGLE_FILE_SIZE,
     _validate_upload,
@@ -134,7 +133,4 @@ class TestConvertibleSubset:
 
     def test_convertible_is_subset_of_allowed(self):
         """All convertible extensions must also be allowed."""
-        assert CONVERTIBLE_EXTENSIONS.issubset(ALLOWED_EXTENSIONS), (
-            f"Convertible extensions not in allowed: "
-            f"{CONVERTIBLE_EXTENSIONS - ALLOWED_EXTENSIONS}"
-        )
+        assert CONVERTIBLE_EXTENSIONS.issubset(ALLOWED_EXTENSIONS), f"Convertible extensions not in allowed: {CONVERTIBLE_EXTENSIONS - ALLOWED_EXTENSIONS}"

@@ -160,6 +160,7 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
 
     # ── Prometheus metrics instrumentation ──────────────────────────────────
     from src.gateway.metrics import setup_metrics
+
     setup_metrics(app)
 
     # ── Health check ─────────────────────────────────────────────────────────

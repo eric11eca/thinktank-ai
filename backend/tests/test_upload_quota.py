@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -65,13 +64,17 @@ class TestUserTotalUploadBytes:
 
     def test_empty_directory_returns_zero(self, tmp_path):
         """No uploads should return 0 bytes."""
-        with patch(
-            "src.db.engine.is_db_enabled",
-            return_value=False,
-        ), patch(
-            "src.gateway.routers.uploads.THREAD_DATA_BASE_DIR",
-            ".think-tank/threads",
-        ), patch("os.getcwd", return_value=str(tmp_path)):
+        with (
+            patch(
+                "src.db.engine.is_db_enabled",
+                return_value=False,
+            ),
+            patch(
+                "src.gateway.routers.uploads.THREAD_DATA_BASE_DIR",
+                ".think-tank/threads",
+            ),
+            patch("os.getcwd", return_value=str(tmp_path)),
+        ):
             total = _get_user_total_upload_bytes("user1")
             assert total == 0
 
@@ -85,13 +88,17 @@ class TestUserTotalUploadBytes:
         (thread_uploads / "file1.txt").write_text("hello")
         (thread_uploads / "file2.txt").write_text("world!")
 
-        with patch(
-            "src.db.engine.is_db_enabled",
-            return_value=False,
-        ), patch(
-            "src.gateway.routers.uploads.THREAD_DATA_BASE_DIR",
-            ".think-tank/threads",
-        ), patch("os.getcwd", return_value=str(tmp_path)):
+        with (
+            patch(
+                "src.db.engine.is_db_enabled",
+                return_value=False,
+            ),
+            patch(
+                "src.gateway.routers.uploads.THREAD_DATA_BASE_DIR",
+                ".think-tank/threads",
+            ),
+            patch("os.getcwd", return_value=str(tmp_path)),
+        ):
             total = _get_user_total_upload_bytes("user1")
             assert total == 5 + 6  # "hello" + "world!"
 
@@ -104,13 +111,17 @@ class TestUserTotalUploadBytes:
             uploads.mkdir(parents=True)
             (uploads / "data.bin").write_bytes(b"x" * 100)
 
-        with patch(
-            "src.db.engine.is_db_enabled",
-            return_value=False,
-        ), patch(
-            "src.gateway.routers.uploads.THREAD_DATA_BASE_DIR",
-            ".think-tank/threads",
-        ), patch("os.getcwd", return_value=str(tmp_path)):
+        with (
+            patch(
+                "src.db.engine.is_db_enabled",
+                return_value=False,
+            ),
+            patch(
+                "src.gateway.routers.uploads.THREAD_DATA_BASE_DIR",
+                ".think-tank/threads",
+            ),
+            patch("os.getcwd", return_value=str(tmp_path)),
+        ):
             total = _get_user_total_upload_bytes("user1")
             assert total == 200
 

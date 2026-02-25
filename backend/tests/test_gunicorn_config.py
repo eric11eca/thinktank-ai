@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
-
 GUNICORN_CONF_PATH = Path(__file__).parent.parent / "gunicorn.conf.py"
 
 
@@ -16,9 +15,7 @@ class TestGunicornConfig:
         """Load gunicorn.conf.py as a module with optional env overrides."""
         env = env_overrides or {}
         with patch.dict(os.environ, env, clear=False):
-            spec = importlib.util.spec_from_file_location(
-                "gunicorn_conf", GUNICORN_CONF_PATH
-            )
+            spec = importlib.util.spec_from_file_location("gunicorn_conf", GUNICORN_CONF_PATH)
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             return module

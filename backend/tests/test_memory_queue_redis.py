@@ -1,12 +1,10 @@
 """Tests for Redis-backed memory queue with graceful fallback."""
 
-import os
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.agents.memory.queue import (
-    DEFAULT_USER_ID,
     MemoryUpdateQueue,
     RedisMemoryUpdateQueue,
     get_memory_queue,
@@ -196,9 +194,7 @@ class TestMemoryTaskFunction:
         mock_updater = MagicMock()
         mock_updater.update_memory.return_value = True
 
-        with patch(
-            "src.agents.memory.updater.MemoryUpdater", return_value=mock_updater
-        ):
+        with patch("src.agents.memory.updater.MemoryUpdater", return_value=mock_updater):
             result = process_memory_update(
                 user_id="user-1",
                 thread_id="thread-1",
@@ -219,9 +215,7 @@ class TestMemoryTaskFunction:
         mock_updater = MagicMock()
         mock_updater.update_memory.return_value = False
 
-        with patch(
-            "src.agents.memory.updater.MemoryUpdater", return_value=mock_updater
-        ):
+        with patch("src.agents.memory.updater.MemoryUpdater", return_value=mock_updater):
             result = process_memory_update(
                 user_id="user-1",
                 thread_id="thread-1",

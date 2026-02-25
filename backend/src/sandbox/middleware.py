@@ -49,6 +49,7 @@ class SandboxMiddleware(AgentMiddleware[SandboxMiddlewareState]):
 
         try:
             from src.gateway.metrics import active_sandboxes
+
             active_sandboxes.inc()
         except Exception:
             pass

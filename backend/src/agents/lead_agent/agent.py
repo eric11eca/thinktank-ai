@@ -4,15 +4,13 @@ from langchain.agents import create_agent
 from langchain.agents.middleware import SummarizationMiddleware, TodoListMiddleware
 from langchain_core.runnables import RunnableConfig
 
-logger = logging.getLogger(__name__)
-
 from src.agents.lead_agent.prompt import apply_prompt_template
 from src.agents.middlewares.clarification_middleware import ClarificationMiddleware
 from src.agents.middlewares.dangling_tool_call_middleware import DanglingToolCallMiddleware
 from src.agents.middlewares.memory_middleware import MemoryMiddleware
 from src.agents.middlewares.subagent_limit_middleware import SubagentLimitMiddleware
-from src.agents.middlewares.timeline_logging_middleware import TimelineLoggingMiddleware
 from src.agents.middlewares.thread_data_middleware import ThreadDataMiddleware
+from src.agents.middlewares.timeline_logging_middleware import TimelineLoggingMiddleware
 from src.agents.middlewares.title_middleware import TitleMiddleware
 from src.agents.middlewares.uploads_middleware import UploadsMiddleware
 from src.agents.middlewares.usage_tracking_middleware import UsageTrackingMiddleware
@@ -22,6 +20,8 @@ from src.config import get_app_config
 from src.config.summarization_config import get_summarization_config
 from src.models import create_chat_model
 from src.sandbox.middleware import SandboxMiddleware
+
+logger = logging.getLogger(__name__)
 
 
 def _create_summarization_middleware() -> SummarizationMiddleware | None:
@@ -277,12 +277,14 @@ def make_lead_agent(config: RunnableConfig):
     # Inject run metadata for LangSmith trace tagging
     if "metadata" not in config:
         config["metadata"] = {}
-    config["metadata"].update({
-        "model_name": model_name or "default",
-        "thinking_enabled": thinking_enabled,
-        "is_plan_mode": is_plan_mode,
-        "subagent_enabled": subagent_enabled,
-    })
+    config["metadata"].update(
+        {
+            "model_name": model_name or "default",
+            "thinking_enabled": thinking_enabled,
+            "is_plan_mode": is_plan_mode,
+            "subagent_enabled": subagent_enabled,
+        }
+    )
 
     return create_agent(
         model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled, runtime_model=runtime_model),

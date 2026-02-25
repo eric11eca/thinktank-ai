@@ -1,6 +1,6 @@
 """Tests for JWT token creation and validation."""
 
-import time
+from datetime import UTC
 
 import jwt as pyjwt
 import pytest
@@ -99,9 +99,9 @@ class TestDecodeToken:
     def test_decode_expired_token(self, jwt_secret):
         """Decoding an expired token raises ExpiredSignatureError."""
         # Create a token that expired 1 second ago
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         payload = {
             "sub": "user-123",
             "email": "user@example.com",
@@ -116,9 +116,9 @@ class TestDecodeToken:
 
     def test_decode_wrong_secret(self, jwt_secret):
         """Decoding a token signed with a different secret fails."""
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         payload = {
             "sub": "user-123",
             "type": "access",

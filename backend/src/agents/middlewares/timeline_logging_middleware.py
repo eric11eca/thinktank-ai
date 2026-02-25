@@ -13,7 +13,7 @@ import json
 import logging
 import os
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, override
 
@@ -33,7 +33,7 @@ _WRITE_LOCK = threading.Lock()
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _resolve_outputs_path(state: AgentState, thread_id: str) -> str:
@@ -109,12 +109,7 @@ def _db_get_last_message_index(session: Any, thread_id: str) -> int:
 
     from src.db.models import TimelineEventModel
 
-    latest = (
-        session.query(TimelineEventModel)
-        .filter(TimelineEventModel.thread_id == thread_id)
-        .order_by(TimelineEventModel.id.desc())
-        .first()
-    )
+    latest = session.query(TimelineEventModel).filter(TimelineEventModel.thread_id == thread_id).order_by(TimelineEventModel.id.desc()).first()
 
     if latest is None:
         idx = 0

@@ -8,8 +8,8 @@ from unittest.mock import patch
 import pytest
 
 from src.subagents.executor import (
-    MAX_CONCURRENT_SUBAGENTS_PER_USER,
     _MAX_SEMAPHORE_CACHE_SIZE,
+    MAX_CONCURRENT_SUBAGENTS_PER_USER,
     _get_user_semaphore,
     _user_semaphores,
     _user_semaphores_lock,
@@ -108,10 +108,7 @@ class TestPerUserSemaphore:
             except Exception as e:
                 errors.append(e)
 
-        threads = [
-            threading.Thread(target=worker, args=(f"user-{i % 10}",))
-            for i in range(50)
-        ]
+        threads = [threading.Thread(target=worker, args=(f"user-{i % 10}",)) for i in range(50)]
         for t in threads:
             t.start()
         for t in threads:
@@ -125,7 +122,7 @@ class TestDynamicPoolSizing:
 
     def test_default_pool_size_minimum(self):
         """Default pool size should be at least 8."""
-        from src.subagents.executor import _SCHEDULER_WORKERS, _EXECUTION_WORKERS
+        from src.subagents.executor import _EXECUTION_WORKERS, _SCHEDULER_WORKERS
 
         assert _SCHEDULER_WORKERS >= 8
         assert _EXECUTION_WORKERS >= 8
