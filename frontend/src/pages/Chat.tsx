@@ -48,7 +48,7 @@ import {
   useSubmitThread,
   useThreadStream,
 } from "@/core/threads/hooks";
-import { resetTurnUsage } from "@/core/threads/usage-context";
+import { resetTurnUsage, useTurnUsage } from "@/core/threads/usage-context";
 import {
   pathOfThread,
   textOfMessage,
@@ -82,6 +82,10 @@ function ChatInner() {
   const navigate = useNavigate();
   const [settings, setSettings] = useLocalSettings();
   const [streamingVerbSeed, setStreamingVerbSeed] = useState(0);
+  const turnUsage = useTurnUsage();
+  const lastUsageRef = useRef<{ input_tokens: number; output_tokens: number } | null>(
+    null,
+  );
   const { setOpen: setSidebarOpen } = useSidebar();
   const {
     artifacts,
@@ -282,6 +286,34 @@ function ChatInner() {
     },
     [handleSubmit, hasConversation, isNewThread],
   );
+
+  useEffect(() => {
+    if (!thread.isLoading) {
+      lastUsageRef.current = null;
+      return;
+    }
+    if (!turnUsage) {
+      return;
+    }
+    const nextUsage = {
+      input_tokens: turnUsage.input_tokens,
+      output_tokens: turnUsage.output_tokens,
+    };
+    const prevUsage = lastUsageRef.current;
+    if (prevUsage) {
+      if (
+        prevUsage.input_tokens === nextUsage.input_tokens &&
+        prevUsage.output_tokens === nextUsage.output_tokens
+      ) {
+        return;
+      }
+    } else if (nextUsage.input_tokens === 0 && nextUsage.output_tokens === 0) {
+      lastUsageRef.current = nextUsage;
+      return;
+    }
+    setStreamingVerbSeed((prev) => prev + 1);
+    lastUsageRef.current = nextUsage;
+  }, [thread.isLoading, turnUsage?.input_tokens, turnUsage?.output_tokens]);
 
   // Handle automatic resubmission after truncation and remount
   useEffect(() => {
