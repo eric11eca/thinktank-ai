@@ -371,13 +371,31 @@ class MemoryUpdater:
             )
 
             # Save for this user (uses DB or file automatically)
-            return _save_memory(user_id, updated_memory)
+            success = _save_memory(user_id, updated_memory)
+
+            try:
+                from src.gateway.metrics import memory_updates_total
+                memory_updates_total.labels(status="success" if success else "failure").inc()
+            except Exception:
+                pass
+
+            return success
 
         except json.JSONDecodeError as e:
             logger.warning(f"Failed to parse LLM response for memory update: {e}")
+            try:
+                from src.gateway.metrics import memory_updates_total
+                memory_updates_total.labels(status="failure").inc()
+            except Exception:
+                pass
             return False
         except Exception as e:
             logger.error(f"Memory update failed for user {user_id}: {e}")
+            try:
+                from src.gateway.metrics import memory_updates_total
+                memory_updates_total.labels(status="failure").inc()
+            except Exception:
+                pass
             return False
 
     def _apply_updates(
