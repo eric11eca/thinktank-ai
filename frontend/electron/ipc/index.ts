@@ -1,7 +1,7 @@
 import { registerConfigHandlers } from "./config";
 import { registerDialogHandlers } from "./dialogs";
-import { registerWindowHandlers } from "./window";
 import { registerUpdateHandlers } from "./update";
+import { registerWindowHandlers } from "./window";
 
 /**
  * Register all IPC handlers

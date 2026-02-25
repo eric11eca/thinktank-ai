@@ -6,9 +6,9 @@ import { app, BrowserWindow, shell } from "electron";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import { registerIPCHandlers } from "./ipc";
 import { createMenu } from "./menu";
 import { setupAutoUpdater } from "./updater";
-import { registerIPCHandlers } from "./ipc";
 
 // Keep a global reference of the window object
 let mainWindow: BrowserWindow | null = null;
@@ -44,16 +44,16 @@ function createWindow() {
 
   // Load the app
   if (isDev && process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+    void mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
+    void mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
 
   // Open external links in default browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("http://") || url.startsWith("https://")) {
-      shell.openExternal(url);
+      void shell.openExternal(url);
     }
     return { action: "deny" };
   });
@@ -64,7 +64,7 @@ function createWindow() {
 }
 
 // Initialize app
-app.whenReady().then(() => {
+void app.whenReady().then(() => {
   // Set up menu
   createMenu();
 
@@ -101,7 +101,7 @@ app.on("web-contents-created", (_, contents) => {
     const parsedUrl = new URL(url);
     if (parsedUrl.origin !== "file://") {
       event.preventDefault();
-      shell.openExternal(url);
+      void shell.openExternal(url);
     }
   });
 });

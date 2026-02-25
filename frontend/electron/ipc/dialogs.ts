@@ -11,7 +11,7 @@ export function registerDialogHandlers(): void {
   // Open file dialog
   ipcMain.handle(
     "dialog:openFile",
-    async (_event, options?: OpenFileOptions): Promise<string | null> => {
+    async (_event, options?: OpenFileOptions): Promise<string | string[] | null> => {
       const window = BrowserWindow.getFocusedWindow();
       if (!window) return null;
 
@@ -27,9 +27,7 @@ export function registerDialogHandlers(): void {
         return null;
       }
 
-      return options?.multiple
-        ? (result.filePaths as unknown as string)
-        : result.filePaths[0]!;
+      return options?.multiple ? result.filePaths : result.filePaths[0];
     }
   );
 

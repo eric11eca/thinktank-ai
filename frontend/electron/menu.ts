@@ -133,13 +133,13 @@ export function createMenu(): void {
         {
           label: "Documentation",
           click: () => {
-            shell.openExternal("https://github.com/thinktank-ai/thinktank-ai");
+            void shell.openExternal("https://github.com/thinktank-ai/thinktank-ai");
           },
         },
         {
           label: "Report Issue",
           click: () => {
-            shell.openExternal("https://github.com/thinktank-ai/thinktank-ai/issues");
+            void shell.openExternal("https://github.com/thinktank-ai/thinktank-ai/issues");
           },
         },
         { type: "separator" },
