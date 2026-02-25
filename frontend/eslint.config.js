@@ -10,8 +10,10 @@ export default tseslint.config(
   {
     ignores: [
       ".next",
+      "dist/**",
       "src/components/ui/**",
       "src/components/ai-elements/**",
+      "src/**/*.bak/**",
       "*.js",
     ],
   },
@@ -24,6 +26,15 @@ export default tseslint.config(
     ],
     plugins: {
       import: importPlugin,
+    },
+    linterOptions: {
+      reportUnusedDisableDirectives: true,
+    },
+    languageOptions: {
+      parserOptions: {
+        project: ["./tsconfig.json", "./tsconfig.node.json"],
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
     rules: {
       "@next/next/no-img-element": "off",
@@ -83,16 +94,6 @@ export default tseslint.config(
           },
         },
       ],
-    },
-  },
-  {
-    linterOptions: {
-      reportUnusedDisableDirectives: true,
-    },
-    languageOptions: {
-      parserOptions: {
-        projectService: true,
-      },
     },
   },
 );
