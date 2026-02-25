@@ -412,6 +412,21 @@ CREATE TABLE uploads (
 );
 CREATE INDEX idx_uploads_thread_id ON uploads(thread_id);
 
+-- Agent timeline events (append-only log per thread)
+CREATE TABLE timeline_events (
+    id BIGSERIAL PRIMARY KEY,
+    thread_id UUID NOT NULL REFERENCES threads(thread_id) ON DELETE CASCADE,
+    event_type VARCHAR(64) NOT NULL,   -- 'message', 'history_truncated'
+    stage VARCHAR(32),                 -- 'before_model', 'after_model', 'after_agent'
+    message_index INT,
+    role VARCHAR(32),                  -- 'human', 'ai', 'tool'
+    message_id TEXT,
+    message_data JSONB,                -- serialized message content
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_timeline_thread_id ON timeline_events(thread_id);
+CREATE INDEX idx_timeline_created_at ON timeline_events(created_at);
+
 -- Rate limiting / usage tracking
 CREATE TABLE usage_log (
     id BIGSERIAL PRIMARY KEY,
@@ -1348,12 +1363,14 @@ http {
 - [ ] **2.2** Write migration: `user_memory` table
 - [ ] **2.3** Write migration: `user_api_keys` table
 - [ ] **2.4** Write migration: `uploads` metadata table
-- [ ] **2.5** Write migration: `usage_log` table
-- [ ] **2.6** Update `backend/langgraph.json` to use PostgreSQL checkpoint store
-- [ ] **2.7** Migrate `memory/updater.py` from file I/O to database queries
-- [ ] **2.8** Migrate `security/api_key_store.py` from file I/O to database queries
-- [ ] **2.9** Add database health check to `/health` endpoint
-- [ ] **2.10** Write data migration script for existing `.think-tank/` data to PostgreSQL
+- [x] **2.5** Write migration: `timeline_events` table
+- [ ] **2.6** Write migration: `usage_log` table
+- [ ] **2.7** Update `backend/langgraph.json` to use PostgreSQL checkpoint store
+- [ ] **2.8** Migrate `memory/updater.py` from file I/O to database queries
+- [x] **2.9** Migrate `middlewares/timeline_logging_middleware.py` from file I/O to database inserts (removes `_WRITE_LOCK`, enables append-only INSERTs)
+- [ ] **2.10** Migrate `security/api_key_store.py` from file I/O to database queries
+- [ ] **2.11** Add database health check to `/health` endpoint
+- [ ] **2.12** Write data migration script for existing `.think-tank/` data to PostgreSQL
 
 ### Phase 3: Sandbox Isolation [P1 - High]
 
@@ -1395,6 +1412,7 @@ http {
 - [ ] **6.8** Move secrets to environment variables or secrets manager (not files)
 - [ ] **6.9** Set security headers (HSTS, X-Content-Type-Options, X-Frame-Options)
 - [ ] **6.10** Audit all Pydantic models for input validation completeness
+- [ ] **6.11** Integrate S3-compatible object storage client (boto3/aiobotocore) for file uploads, thread artifacts, and sandbox outputs
 
 ### Phase 7: Monitoring & Observability [P2 - Medium]
 
@@ -1415,7 +1433,7 @@ http {
 - [ ] **8.4** Set up CI/CD pipeline (GitHub Actions: lint, test, build, deploy)
 - [ ] **8.5** Create staging environment (mirrors production)
 - [ ] **8.6** Write deployment runbook documenting rollback procedures
-- [ ] **8.7** Configure automated database backups (pg_dump daily, WAL archiving)
+- [ ] **8.7** Configure automated database backups (pg_dump daily, WAL archiving) with S3 bucket as backup destination (via wal-g or pgBackRest)
 - [ ] **8.8** Set up DNS records and CDN configuration
 
 ---
