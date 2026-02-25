@@ -15,6 +15,7 @@ def client():
         patch("src.queue.redis_connection.is_redis_available", return_value=False),
     ):
         from src.gateway.app import create_app
+
         app = create_app()
         yield TestClient(app)
 

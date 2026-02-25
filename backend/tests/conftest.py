@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Generator
 from pathlib import Path
-from typing import Any, Generator
 from unittest.mock import patch
 
 import pytest
@@ -82,10 +82,9 @@ def db_engine():
 
     Creates all tables from ORM models and yields the engine.
     """
-    from src.db.engine import Base
-
     # Import models to register them with Base
     import src.db.models  # noqa: F401
+    from src.db.engine import Base
 
     engine = create_engine("sqlite:///:memory:", echo=False)
 

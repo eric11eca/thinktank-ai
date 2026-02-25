@@ -5,11 +5,13 @@ from unittest.mock import patch
 
 import pytest
 
+
 # Reset the cached config before each test
 @pytest.fixture(autouse=True)
 def reset_tracing_config():
     """Reset the tracing config singleton between tests."""
     import src.config.tracing_config as mod
+
     mod._tracing_config = None
     yield
     mod._tracing_config = None
@@ -27,6 +29,7 @@ class TestTracingConfig:
         }
         with patch.dict(os.environ, env, clear=False):
             from src.config.tracing_config import get_tracing_config
+
             config = get_tracing_config()
             assert config.enabled is True
             assert config.api_key == "lsv2_test_key"
@@ -48,6 +51,7 @@ class TestTracingConfig:
             os.environ.pop("LANGSMITH_ENDPOINT", None)
 
             from src.config.tracing_config import get_tracing_config
+
             config = get_tracing_config()
             assert config.enabled is True
             assert config.api_key == "lsv2_chain_key"
@@ -62,6 +66,7 @@ class TestTracingConfig:
             os.environ.pop("LANGCHAIN_API_KEY", None)
 
             from src.config.tracing_config import get_tracing_config
+
             config = get_tracing_config()
             assert config.enabled is True
             assert config.api_key is None
@@ -70,12 +75,11 @@ class TestTracingConfig:
     def test_disabled_by_default(self):
         """Tracing is disabled when env vars are not set."""
         with patch.dict(os.environ, {}, clear=False):
-            for key in ["LANGSMITH_TRACING", "LANGSMITH_API_KEY", "LANGSMITH_PROJECT",
-                        "LANGSMITH_ENDPOINT", "LANGCHAIN_TRACING_V2", "LANGCHAIN_API_KEY",
-                        "LANGCHAIN_PROJECT", "LANGCHAIN_ENDPOINT"]:
+            for key in ["LANGSMITH_TRACING", "LANGSMITH_API_KEY", "LANGSMITH_PROJECT", "LANGSMITH_ENDPOINT", "LANGCHAIN_TRACING_V2", "LANGCHAIN_API_KEY", "LANGCHAIN_PROJECT", "LANGCHAIN_ENDPOINT"]:
                 os.environ.pop(key, None)
 
             from src.config.tracing_config import get_tracing_config
+
             config = get_tracing_config()
             assert config.enabled is False
             assert config.is_configured is False
@@ -87,6 +91,7 @@ class TestTracingConfig:
             os.environ.pop("LANGCHAIN_PROJECT", None)
 
             from src.config.tracing_config import get_tracing_config
+
             config = get_tracing_config()
             assert config.project == "deer-flow"
 
@@ -102,6 +107,7 @@ class TestTracingConfig:
         }
         with patch.dict(os.environ, env, clear=False):
             from src.config.tracing_config import get_tracing_config
+
             config = get_tracing_config()
             assert config.api_key == "langsmith_key"
             assert config.project == "smith-project"

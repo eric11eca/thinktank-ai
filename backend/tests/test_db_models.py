@@ -1,7 +1,7 @@
 """Tests for database ORM models and schema."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -58,7 +58,7 @@ class TestUserModel:
             email="dict@test.com",
             password_hash="secret",
             display_name="Dict User",
-            created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
         )
         db_session.add(user)
         db_session.commit()
@@ -107,9 +107,7 @@ class TestThreadModel:
         db_session.add(ThreadModel(thread_id="t3", user_id="user-A"))
         db_session.commit()
 
-        user_a_threads = (
-            db_session.query(ThreadModel).filter(ThreadModel.user_id == "user-A").all()
-        )
+        user_a_threads = db_session.query(ThreadModel).filter(ThreadModel.user_id == "user-A").all()
         assert len(user_a_threads) == 2
 
 
@@ -175,12 +173,8 @@ class TestUserApiKeyModel:
         """The (user_id, provider) pair must be unique."""
         import sqlalchemy.exc
 
-        key1 = UserApiKeyModel(
-            id=uuid.uuid4().hex, user_id="user-dup", provider="openai", encrypted_key="key1"
-        )
-        key2 = UserApiKeyModel(
-            id=uuid.uuid4().hex, user_id="user-dup", provider="openai", encrypted_key="key2"
-        )
+        key1 = UserApiKeyModel(id=uuid.uuid4().hex, user_id="user-dup", provider="openai", encrypted_key="key1")
+        key2 = UserApiKeyModel(id=uuid.uuid4().hex, user_id="user-dup", provider="openai", encrypted_key="key2")
         db_session.add(key1)
         db_session.commit()
         db_session.add(key2)
@@ -209,11 +203,7 @@ class TestUploadModel:
         db_session.add(upload)
         db_session.commit()
 
-        fetched = (
-            db_session.query(UploadModel)
-            .filter(UploadModel.thread_id == "thread-up-1")
-            .first()
-        )
+        fetched = db_session.query(UploadModel).filter(UploadModel.thread_id == "thread-up-1").first()
         assert fetched is not None
         assert fetched.filename == "report.pdf"
         assert fetched.size_bytes == 1024000

@@ -25,6 +25,7 @@ class TestConfigureLogging:
         with patch.dict(os.environ, env, clear=False):
             # Re-import to pick up new env vars
             from src.logging_config import configure_logging
+
             configure_logging()
 
             # Replace handler stream with our capture buffer
@@ -73,6 +74,7 @@ class TestConfigureLogging:
             os.environ.pop("LOG_LEVEL", None)
             os.environ.pop("LOG_FORMAT", None)
             from src.logging_config import configure_logging
+
             configure_logging()
             root = logging.getLogger()
             assert root.level == logging.INFO
@@ -106,7 +108,4 @@ class TestNoPrintStatements:
                 if re.match(r"^print\s*\(", stripped):
                     violations.append(f"{py_file.relative_to(src_dir)}:{i}: {stripped[:80]}")
 
-        assert not violations, (
-            f"Found {len(violations)} print() call(s) in source:\n"
-            + "\n".join(violations)
-        )
+        assert not violations, f"Found {len(violations)} print() call(s) in source:\n" + "\n".join(violations)

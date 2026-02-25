@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-
 BACKUP_DIR = Path(__file__).parent.parent.parent / "docker" / "backup"
 COMPOSE_PROD = Path(__file__).parent.parent.parent / "docker" / "docker-compose-prod.yaml"
 
@@ -180,6 +179,7 @@ class TestBackupInProductionCompose:
     @pytest.fixture(autouse=True)
     def setup(self):
         import yaml
+
         with open(COMPOSE_PROD) as f:
             self.compose = yaml.safe_load(f)
 

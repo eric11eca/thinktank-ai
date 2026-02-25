@@ -6,9 +6,8 @@ and has appropriate staging-specific settings.
 
 from pathlib import Path
 
-import yaml
 import pytest
-
+import yaml
 
 DOCKER_DIR = Path(__file__).parent.parent.parent / "docker"
 STAGING_COMPOSE = DOCKER_DIR / "docker-compose-staging.yaml"
@@ -39,6 +38,7 @@ class TestStagingComposeExists:
     def test_staging_script_is_executable(self):
         path = Path(__file__).parent.parent.parent / "scripts" / "staging.sh"
         import os
+
         assert os.access(path, os.X_OK), "staging.sh should be executable"
 
 
@@ -61,9 +61,7 @@ class TestStagingMirrorsProduction:
         staging_services = set(self.staging.get("services", {}).keys())
 
         missing = prod_services - staging_services
-        assert not missing, (
-            f"Staging is missing production services: {missing}"
-        )
+        assert not missing, f"Staging is missing production services: {missing}"
 
     def test_has_postgres(self):
         assert "postgres" in self.staging["services"]
@@ -116,44 +114,34 @@ class TestStagingSpecificSettings:
             service = self.staging["services"].get(service_name, {})
             deploy = service.get("deploy", {})
             replicas = deploy.get("replicas", 1)
-            assert replicas == 1, (
-                f"Staging service '{service_name}' should have 1 replica, got {replicas}"
-            )
+            assert replicas == 1, f"Staging service '{service_name}' should have 1 replica, got {replicas}"
 
     def test_containers_have_staging_prefix(self):
         """Staging containers should be named with 'staging' prefix."""
         for name, service in self.staging["services"].items():
             container_name = service.get("container_name", "")
             if container_name:
-                assert "staging" in container_name, (
-                    f"Container '{container_name}' should include 'staging' in name"
-                )
+                assert "staging" in container_name, f"Container '{container_name}' should include 'staging' in name"
 
     def test_uses_unless_stopped_restart(self):
         """Staging should use 'unless-stopped' restart (not 'always')."""
         for name, service in self.staging["services"].items():
             restart = service.get("restart", "")
             if restart:
-                assert restart == "unless-stopped", (
-                    f"Staging service '{name}' should use 'unless-stopped', not '{restart}'"
-                )
+                assert restart == "unless-stopped", f"Staging service '{name}' should use 'unless-stopped', not '{restart}'"
 
     def test_volumes_have_staging_prefix(self):
         """Staging volumes should be prefixed to avoid conflicts with production."""
         volumes = self.staging.get("volumes", {})
         for vol_name in volumes:
-            assert "staging" in vol_name, (
-                f"Volume '{vol_name}' should include 'staging' prefix"
-            )
+            assert "staging" in vol_name, f"Volume '{vol_name}' should include 'staging' prefix"
 
     def test_uses_separate_network(self):
         """Staging should use a separate Docker network from production."""
         networks = self.staging.get("networks", {})
         assert len(networks) > 0
         network_names = list(networks.keys())
-        assert any("staging" in n for n in network_names), (
-            "Staging should use a network with 'staging' in its name"
-        )
+        assert any("staging" in n for n in network_names), "Staging should use a network with 'staging' in its name"
 
 
 class TestStagingEnvExample:
@@ -193,9 +181,7 @@ class TestStagingEnvExample:
                 key, _, value = line.partition("=")
                 # Values should be clearly placeholder/staging defaults
                 if key.strip() in ("JWT_SECRET_KEY", "ENCRYPTION_KEY"):
-                    assert "staging" in value.lower() or "not-for-prod" in value.lower() or len(value.strip()) < 50, (
-                        f"Env var {key.strip()} may contain a real secret"
-                    )
+                    assert "staging" in value.lower() or "not-for-prod" in value.lower() or len(value.strip()) < 50, f"Env var {key.strip()} may contain a real secret"
 
 
 class TestStagingScript:

@@ -9,7 +9,6 @@ Verifies that AioSandboxProvider correctly:
 - LocalSandboxProvider accepts user_id without error
 """
 
-import threading
 from unittest.mock import MagicMock, patch
 
 import pytest

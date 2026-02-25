@@ -6,9 +6,8 @@ contain required jobs, and have properly configured triggers.
 
 from pathlib import Path
 
-import yaml
 import pytest
-
+import yaml
 
 WORKFLOWS_DIR = Path(__file__).parent.parent.parent / ".github" / "workflows"
 
@@ -110,9 +109,7 @@ class TestCIWorkflow:
         jobs = self.workflow.get("jobs", {})
         for name, job in jobs.items():
             if_condition = job.get("if", "")
-            assert "draft == false" in if_condition, (
-                f"Job '{name}' should skip draft PRs"
-            )
+            assert "draft == false" in if_condition, f"Job '{name}' should skip draft PRs"
 
 
 class TestDockerPublishWorkflow:
@@ -185,11 +182,7 @@ class TestDeployWorkflow:
 
     def test_environment_input_choices(self):
         """Should offer staging and production environments."""
-        inputs = (
-            _get_triggers(self.workflow)
-            .get("workflow_dispatch", {})
-            .get("inputs", {})
-        )
+        inputs = _get_triggers(self.workflow).get("workflow_dispatch", {}).get("inputs", {})
         env_input = inputs.get("environment", {})
         options = env_input.get("options", [])
         assert "staging" in options
@@ -231,13 +224,11 @@ class TestAllWorkflows:
 
         secret_patterns = [
             "ghp_",  # GitHub personal access tokens
-            "sk-",   # OpenAI API keys
+            "sk-",  # OpenAI API keys
             "AKIA",  # AWS access keys
         ]
 
         for yml_file in WORKFLOWS_DIR.glob("*.yml"):
             content = yml_file.read_text()
             for pattern in secret_patterns:
-                assert pattern not in content, (
-                    f"{yml_file.name} contains potential hardcoded secret: {pattern}"
-                )
+                assert pattern not in content, f"{yml_file.name} contains potential hardcoded secret: {pattern}"
