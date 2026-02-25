@@ -32,7 +32,7 @@ export function Login() {
 
     try {
       await login(email, password);
-      navigate("/workspace", { replace: true });
+      void navigate("/workspace", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

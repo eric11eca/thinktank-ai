@@ -1,4 +1,5 @@
 import { FlatCompat } from "@eslint/eslintrc";
+import importPlugin from "eslint-plugin-import";
 import tseslint from "typescript-eslint";
 
 const compat = new FlatCompat({
@@ -9,12 +10,13 @@ export default tseslint.config(
   {
     ignores: [
       ".next",
+      "dist/**",
       "src/components/ui/**",
       "src/components/ai-elements/**",
+      "src/**/*.bak/**",
       "*.js",
     ],
   },
-  ...compat.extends("next/core-web-vitals"),
   {
     files: ["**/*.ts", "**/*.tsx"],
     extends: [
@@ -22,6 +24,18 @@ export default tseslint.config(
       ...tseslint.configs.recommendedTypeChecked,
       ...tseslint.configs.stylisticTypeChecked,
     ],
+    plugins: {
+      import: importPlugin,
+    },
+    linterOptions: {
+      reportUnusedDisableDirectives: true,
+    },
+    languageOptions: {
+      parserOptions: {
+        project: ["./tsconfig.json", "./tsconfig.node.json"],
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
       "@next/next/no-img-element": "off",
       "@typescript-eslint/array-type": "off",
@@ -80,16 +94,6 @@ export default tseslint.config(
           },
         },
       ],
-    },
-  },
-  {
-    linterOptions: {
-      reportUnusedDisableDirectives: true,
-    },
-    languageOptions: {
-      parserOptions: {
-        projectService: true,
-      },
     },
   },
 );

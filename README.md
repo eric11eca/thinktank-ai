@@ -126,6 +126,8 @@ If you prefer running services locally:
 
 4. **Access**: http://localhost:3000
    - Nginx forwards `/api/langgraph/*` to LangGraph and all other `/api/*` routes (including auth) to the gateway.
+   - Frontend linting uses the flat config in `frontend/eslint.config.js` with `eslint-plugin-import` for `import/order` (no Next.js ESLint presets required).
+   - Frontend lint rules enforce explicit async handling (`no-floating-promises`) and nullish coalescing for defaults.
 
 ## Thinktank.ai as Super Agent Harness for the Public Sector
 

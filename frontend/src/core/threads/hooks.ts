@@ -1,6 +1,5 @@
 import type { HumanMessage } from "@langchain/core/messages";
 import type { AIMessage } from "@langchain/langgraph-sdk";
-import type { ThreadsClient } from "@langchain/langgraph-sdk/client";
 import { useStream, type UseStream } from "@langchain/langgraph-sdk/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
@@ -8,6 +7,7 @@ import { useCallback, useEffect } from "react";
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 
 import { getAPIClient } from "../api";
+import { authFetch } from "../auth/fetch";
 import { useUpdateSubtask } from "../tasks/context";
 import { uploadFiles } from "../uploads";
 
@@ -199,6 +199,14 @@ export function useSubmitThread({
           },
         },
       );
+
+      // Claim ownership of newly created threads via the gateway
+      if (isNewThread && threadId) {
+        authFetch(`/api/threads/${threadId}/claim`, { method: "POST" }).catch(
+          (err) => console.error("Failed to claim thread:", err),
+        );
+      }
+
       void queryClient.invalidateQueries({ queryKey: ["threads", "search"] });
       afterSubmit?.();
     },
@@ -207,29 +215,36 @@ export function useSubmitThread({
   return callback;
 }
 
-export function useThreads(
-  params: Parameters<ThreadsClient["search"]>[0] = {
-    limit: 50,
-    sortBy: "updated_at",
-    sortOrder: "desc",
-  },
-) {
-  const apiClient = getAPIClient();
+/**
+ * Fetch threads owned by the authenticated user via the gateway.
+ * Returns only threads belonging to the current user (user-scoped).
+ */
+export function useThreads() {
   return useQuery<AgentThread[]>({
-    queryKey: ["threads", "search", params],
+    queryKey: ["threads", "search"],
     queryFn: async () => {
-      const response = await apiClient.threads.search<AgentThreadState>(params);
-      return response as AgentThread[];
+      const response = await authFetch("/api/threads");
+      if (!response.ok) {
+        throw new Error(`Failed to fetch threads: ${response.status}`);
+      }
+      return response.json();
     },
   });
 }
 
+/**
+ * Delete a thread via the gateway (with ownership verification).
+ */
 export function useDeleteThread() {
   const queryClient = useQueryClient();
-  const apiClient = getAPIClient();
   return useMutation({
     mutationFn: async ({ threadId }: { threadId: string }) => {
-      await apiClient.threads.delete(threadId);
+      const response = await authFetch(`/api/threads/${threadId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to delete thread: ${response.status}`);
+      }
     },
     onSuccess(_, { threadId }) {
       queryClient.setQueriesData(
@@ -245,9 +260,11 @@ export function useDeleteThread() {
   });
 }
 
+/**
+ * Rename a thread via the gateway (with ownership verification).
+ */
 export function useRenameThread() {
   const queryClient = useQueryClient();
-  const apiClient = getAPIClient();
   return useMutation({
     mutationFn: async ({
       threadId,
@@ -256,9 +273,14 @@ export function useRenameThread() {
       threadId: string;
       title: string;
     }) => {
-      await apiClient.threads.updateState(threadId, {
-        values: { title },
+      const response = await authFetch(`/api/threads/${threadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
       });
+      if (!response.ok) {
+        throw new Error(`Failed to rename thread: ${response.status}`);
+      }
     },
     onSuccess(_, { threadId, title }) {
       queryClient.setQueriesData(

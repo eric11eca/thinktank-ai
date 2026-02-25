@@ -1,0 +1,50 @@
+# Production Dockerfile for Nginx + Frontend
+# Multi-stage build: Node.js builds the frontend, nginx serves it.
+#
+# Build context: project root (../ from docker/)
+# Usage: docker build -f docker/Dockerfile.nginx .
+#
+# Build args (all optional, default empty for same-origin deployment):
+#   VITE_BACKEND_BASE_URL    - Backend API URL (leave empty when nginx proxies API)
+#   VITE_LANGGRAPH_BASE_URL  - LangGraph API URL (leave empty for same-origin)
+
+# ── Stage 1: Build Frontend ─────────────────────────────────────────
+FROM node:22-alpine AS frontend-builder
+
+# Install pnpm
+RUN corepack enable && corepack install -g pnpm@10.26.2
+
+WORKDIR /app/frontend
+
+# Copy package files first for better layer caching
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
+
+# Install dependencies (cached unless lockfile changes)
+RUN pnpm install --frozen-lockfile
+
+# Copy the rest of the frontend source
+COPY frontend/ ./
+
+# Build-time environment variables (override via --build-arg)
+ARG VITE_BACKEND_BASE_URL=
+ARG VITE_LANGGRAPH_BASE_URL=
+ARG VITE_STATIC_WEBSITE_ONLY=false
+
+# Build for web mode
+RUN pnpm run build:web
+
+# ── Stage 2: Production Nginx ───────────────────────────────────────
+FROM nginx:alpine
+
+# Remove default nginx site config
+RUN rm -rf /etc/nginx/conf.d/default.conf
+
+# Copy nginx production config
+COPY docker/nginx/nginx-prod.conf /etc/nginx/nginx.conf
+
+# Copy built frontend assets
+COPY --from=frontend-builder /app/frontend/dist/renderer /var/www/frontend
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

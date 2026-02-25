@@ -51,7 +51,7 @@ const electronAPI: ElectronAPI = {
 
     if (!allowedEventChannels.includes(channel)) {
       console.warn(`IPC event channel "${channel}" is not allowed`);
-      return () => {};
+      return () => undefined;
     }
 
     const listener = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => {
@@ -76,7 +76,7 @@ const electronAPI: ElectronAPI = {
   },
 
   // File operations
-  openFile: (options?: OpenFileOptions): Promise<string | null> => {
+  openFile: (options?: OpenFileOptions): Promise<string | string[] | null> => {
     return ipcRenderer.invoke("dialog:openFile", options);
   },
 
@@ -86,15 +86,15 @@ const electronAPI: ElectronAPI = {
 
   // Window controls
   minimize: (): void => {
-    ipcRenderer.invoke("window:minimize");
+    void ipcRenderer.invoke("window:minimize");
   },
 
   maximize: (): void => {
-    ipcRenderer.invoke("window:maximize");
+    void ipcRenderer.invoke("window:maximize");
   },
 
   close: (): void => {
-    ipcRenderer.invoke("window:close");
+    void ipcRenderer.invoke("window:close");
   },
 
   isMaximized: (): Promise<boolean> => {
@@ -116,7 +116,7 @@ const electronAPI: ElectronAPI = {
   },
 
   installUpdate: (): void => {
-    ipcRenderer.invoke("update:install");
+    void ipcRenderer.invoke("update:install");
   },
 };
 

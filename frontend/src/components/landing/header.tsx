@@ -58,14 +58,8 @@ async function StarCounter() {
     const response = await fetch(
       "https://api.github.com/repos/thinktank-ai/thinktank-ai",
       {
-        headers: env.GITHUB_OAUTH_TOKEN
-          ? {
-              Authorization: `Bearer ${env.GITHUB_OAUTH_TOKEN}`,
-              "Content-Type": "application/json",
-            }
-          : {},
-        next: {
-          revalidate: 3600,
+        headers: {
+          "Content-Type": "application/json",
         },
       },
     );

@@ -1,5 +1,4 @@
 import { GitHubLogoIcon } from "@radix-ui/react-icons";
-import { Link } from "react-router";
 
 import { AuroraText } from "@/components/ui/aurora-text";
 import { Button } from "@/components/ui/button";

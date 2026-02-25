@@ -1,5 +1,4 @@
 import { autoUpdater } from "electron-updater";
-import { BrowserWindow } from "electron";
 
 import { getMainWindow } from "./main";
 

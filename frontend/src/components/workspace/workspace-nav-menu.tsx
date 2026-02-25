@@ -153,9 +153,9 @@ export function WorkspaceNavMenu() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={async () => {
-                    await logout();
-                    navigate("/login");
+                  onClick={() => {
+                    void logout();
+                    void navigate("/login");
                   }}
                 >
                   <LogOutIcon />

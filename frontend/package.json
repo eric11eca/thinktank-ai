@@ -10,6 +10,7 @@
     "dev:electron": "vite --mode electron",
     "dev:web": "vite --mode web",
     "build": "tsc -b && vite build",
+    "build:web": "tsc -b && vite build --mode web",
     "build:electron": "tsc -b && vite build --mode electron",
     "build:mac": "pnpm build:electron && electron-builder --mac",
     "build:win": "pnpm build:electron && electron-builder --win",
@@ -20,7 +21,8 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:web": "playwright test --project=web-deployment"
   },
   "dependencies": {
     "@codemirror/lang-css": "^6.3.1",
@@ -102,6 +104,7 @@
     "electron-builder": "^26.8.1",
     "electron-updater": "^6.3.9",
     "eslint": "^9.23.0",
+    "eslint-plugin-import": "^2.32.0",
     "postcss": "^8.5.3",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.7.2",

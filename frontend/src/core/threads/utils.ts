@@ -12,7 +12,7 @@ export function textOfMessage(message: BaseMessage) {
   } else if (Array.isArray(message.content)) {
     const textPart = message.content.find(
       (part): part is { type: "text"; text: string } =>
-        part.type === "text" && part.text.length > 0,
+        typeof part === "object" && part !== null && "type" in part && part.type === "text" && "text" in part && typeof part.text === "string" && part.text.length > 0,
     );
     return textPart?.text ?? null;
   }

@@ -1,6 +1,5 @@
 import type { ChatStatus } from "ai";
 import {
-  ArrowRightIcon,
   ArrowUpIcon,
   CheckIcon,
   ChevronDownIcon,
@@ -27,7 +26,6 @@ import {
   PromptInputBody,
   PromptInputButton,
   PromptInputFooter,
-  PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
   usePromptInputAttachments,
@@ -41,8 +39,8 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useI18n } from "@/core/i18n/hooks";
-import { useLocalSettings } from "@/core/settings";
 import { useModels } from "@/core/models/hooks";
+import { useLocalSettings } from "@/core/settings";
 import type { AgentThreadContext } from "@/core/threads";
 import { cn } from "@/lib/utils";
 
@@ -173,6 +171,15 @@ export function InputBox({
     },
     [isMissingProviderKey, onSubmit, onStop, status],
   );
+  const modeLabel =
+    context.mode === "flash"
+      ? t.inputBox.flashMode
+      : context.mode === "thinking"
+        ? t.inputBox.reasoningMode
+        : context.mode === "pro"
+          ? t.inputBox.proMode
+          : t.inputBox.ultraMode;
+  const submitDisabled = disabled ? true : isMissingProviderKey;
   return (
     <PromptInput
       className={cn(
@@ -244,10 +251,7 @@ export function InputBox({
                     context.mode === "ultra" ? "golden-text" : "",
                   )}
                 >
-                  {(context.mode === "flash" && t.inputBox.flashMode) ||
-                    (context.mode === "thinking" && t.inputBox.reasoningMode) ||
-                    (context.mode === "pro" && t.inputBox.proMode) ||
-                    (context.mode === "ultra" && t.inputBox.ultraMode)}
+                  {modeLabel}
                 </div>
               </PromptInputActionMenuTrigger>
             </ModeHoverGuide>
@@ -434,7 +438,7 @@ export function InputBox({
             )}
           </div>
           <SubmitButton
-            disabled={disabled || isMissingProviderKey}
+            disabled={submitDisabled}
             status={status}
           />
         </PromptInputTools>
@@ -542,7 +546,6 @@ function SubmitButton({
   disabled?: boolean;
   status?: ChatStatus;
 }) {
-  const { t } = useI18n();
   const isStreaming = status === "streaming";
   const isSubmitted = status === "submitted";
 

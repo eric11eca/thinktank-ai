@@ -14,5 +14,10 @@
     "declaration": true,
     "declarationMap": true
   },
-  "include": ["electron/**/*.ts", "vite.config.ts"]
+  "include": [
+    "electron/**/*.ts",
+    "e2e/**/*.ts",
+    "playwright.config.ts",
+    "vite.config.ts"
+  ]
 }

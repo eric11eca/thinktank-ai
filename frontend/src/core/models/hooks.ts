@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef } from "react";
 import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef } from "react";
 
 import { useLocalSettings } from "../settings";
 import { getLocalSettings } from "../settings/local";
@@ -52,7 +52,7 @@ export function useModels({ enabled = true }: { enabled?: boolean } = {}) {
       return;
     }
     syncedRef.current = true;
-    Promise.all(
+    void Promise.all(
       providerEntries.map(async ([providerId]) => {
         try {
           const status = await getProviderKeyStatus(providerId);

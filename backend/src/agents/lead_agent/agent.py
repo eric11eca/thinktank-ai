@@ -260,6 +260,11 @@ def make_lead_agent(config: RunnableConfig):
     thinking_enabled = configurable.get("thinking_enabled", True)
     model_name = configurable.get("model_name") or configurable.get("model")
     runtime_model = configurable.get("model_spec")
+    # Inject user_id into runtime model spec so the factory can look up stored API keys
+    if isinstance(runtime_model, dict) and "user_id" not in runtime_model:
+        user_id = configurable.get("user_id")
+        if user_id:
+            runtime_model = {**runtime_model, "user_id": user_id}
     is_plan_mode = configurable.get("is_plan_mode", False)
     subagent_enabled = configurable.get("subagent_enabled", False)
     max_concurrent_subagents = configurable.get("max_concurrent_subagents", 3)

@@ -46,8 +46,8 @@ export function Register() {
     setSubmitting(true);
 
     try {
-      await register(email, password, displayName || undefined);
-      navigate("/workspace", { replace: true });
+      await register(email, password, displayName ? displayName : undefined);
+      void navigate("/workspace", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {

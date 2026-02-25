@@ -70,7 +70,7 @@ async def get_artifact(
     thread_id: str,
     path: str,
     request: Request,
-    current_user: Annotated[dict[str, Any], Depends(get_current_user)] = None,
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> FileResponse:
     """Get an artifact file by its path.
 
@@ -101,8 +101,7 @@ async def get_artifact(
         - Get HTML file: `/api/threads/abc123/artifacts/mnt/user-data/outputs/index.html`
         - Download file: `/api/threads/abc123/artifacts/mnt/user-data/outputs/data.csv?download=true`
     """
-    if current_user:
-        verify_thread_ownership(thread_id, current_user["id"])
+    verify_thread_ownership(thread_id, current_user["id"])
 
     # Check if this is a request for a file inside a .skill archive (e.g., xxx.skill/SKILL.md)
     if ".skill/" in path:

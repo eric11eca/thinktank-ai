@@ -23,7 +23,7 @@ venv/
 .pytest_cache/
 
 # test files
-tests/
+# tests/
 
 # Environment variables
 .env

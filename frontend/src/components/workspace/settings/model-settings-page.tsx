@@ -82,7 +82,6 @@ export function ModelSettingsPage() {
             key={providerId}
             providerId={providerId}
             providerConfig={providerConfig}
-            settings={settings}
             setSettings={setSettings}
           />
         ))}
@@ -94,7 +93,6 @@ export function ModelSettingsPage() {
 function ProviderSection({
   providerId,
   providerConfig,
-  settings,
   setSettings,
 }: {
   providerId: ProviderId;
@@ -106,7 +104,6 @@ function ProviderSection({
     last_validation_status?: "valid" | "invalid" | "unknown";
     last_validation_message?: string;
   };
-  settings: ReturnType<typeof useLocalSettings>[0];
   setSettings: ReturnType<typeof useLocalSettings>[1];
 }) {
   const { t } = useI18n();

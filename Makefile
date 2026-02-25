@@ -1,12 +1,12 @@
-# DeerFlow - Unified Development Environment
+# Thinktank - Unified Development Environment
 
-.PHONY: help config check install dev stop clean db-start db-stop db-migrate db-reset docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway
+.PHONY: help config check install dev stop clean db-start db-stop db-migrate db-reset docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway build-frontend build-prod prod-start prod-stop prod-logs prod-status prod-health prod-test
 
 # Default DATABASE_URL for the local PostgreSQL container
-DB_URL ?= postgresql://deerflow:deerflow@localhost:5432/deerflow
+DB_URL ?= postgresql://thinktank:matterhorn@localhost:5432/thinktank
 
 help:
-	@echo "DeerFlow Development Commands:"
+	@echo "Thinktank Development Commands:"
 	@echo "  make check           - Check if all required tools are installed"
 	@echo "  make install         - Install all dependencies (frontend + backend)"
 	@echo "  make setup-sandbox   - Pre-pull sandbox container image (recommended)"
@@ -27,6 +27,20 @@ help:
 	@echo "  make docker-logs     - View Docker development logs"
 	@echo "  make docker-logs-frontend - View Docker frontend logs"
 	@echo "  make docker-logs-gateway - View Docker gateway logs"
+	@echo ""
+	@echo "Production Commands:"
+	@echo "  make build-frontend  - Build frontend for web deployment (outputs to frontend/dist/renderer/)"
+	@echo "  make build-prod      - Build all production Docker images (nginx+frontend, backend)"
+	@echo "  make prod-start      - Start production environment (Docker Compose)"
+	@echo "  make prod-stop       - Stop production environment"
+	@echo "  make prod-logs       - View production logs"
+	@echo "  make prod-status     - Show production service status"
+	@echo "  make prod-health     - Run health checks against production stack"
+	@echo "  make prod-test       - Run Playwright E2E tests against production stack"
+	@echo ""
+	@echo "Quick start (production):"
+	@echo "  ./scripts/prod.sh start   - Build and start everything"
+	@echo "  ./scripts/prod.sh help    - Show all production commands"
 
 config:
 	@test -f config.yaml || cp config.example.yaml config.yaml
@@ -160,21 +174,21 @@ setup-sandbox:
 
 # Start PostgreSQL in a Docker container
 db-start:
-	@if docker ps --format '{{.Names}}' | grep -q '^deer-flow-postgres$$'; then \
+	@if docker ps --format '{{.Names}}' | grep -q '^thinktank-postgres$$'; then \
 		echo "✓ PostgreSQL is already running"; \
 	else \
 		echo "Starting PostgreSQL..."; \
 		docker run -d \
-			--name deer-flow-postgres \
-			-e POSTGRES_USER=deerflow \
-			-e POSTGRES_PASSWORD=deerflow \
-			-e POSTGRES_DB=deerflow \
+			--name thinktank-postgres \
+			-e POSTGRES_USER=thinktank \
+			-e POSTGRES_PASSWORD=matterhorn \
+			-e POSTGRES_DB=thinktank \
 			-p 5432:5432 \
-			-v deer-flow-pgdata:/var/lib/postgresql/data \
+			-v thinktank-pgdata:/var/lib/postgresql/data \
 			postgres:16-alpine >/dev/null; \
 		echo "Waiting for PostgreSQL to be ready..."; \
 		for i in $$(seq 1 30); do \
-			if docker exec deer-flow-postgres pg_isready -U deerflow >/dev/null 2>&1; then \
+			if docker exec thinktank-postgres pg_isready -U thinktank >/dev/null 2>&1; then \
 				echo "✓ PostgreSQL is ready on localhost:5432"; \
 				echo "  DATABASE_URL=$(DB_URL)"; \
 				break; \
@@ -186,8 +200,8 @@ db-start:
 # Stop PostgreSQL container
 db-stop:
 	@echo "Stopping PostgreSQL..."
-	@-docker stop deer-flow-postgres 2>/dev/null || true
-	@-docker rm deer-flow-postgres 2>/dev/null || true
+	@-docker stop thinktank-postgres 2>/dev/null || true
+	@-docker rm thinktank-postgres 2>/dev/null || true
 	@echo "✓ PostgreSQL stopped"
 
 # Run Alembic migrations
@@ -199,9 +213,9 @@ db-migrate: db-start
 # Reset database (destructive!)
 db-reset:
 	@echo "Resetting database..."
-	@-docker stop deer-flow-postgres 2>/dev/null || true
-	@-docker rm deer-flow-postgres 2>/dev/null || true
-	@-docker volume rm deer-flow-pgdata 2>/dev/null || true
+	@-docker stop thinktank-postgres 2>/dev/null || true
+	@-docker rm thinktank-postgres 2>/dev/null || true
+	@-docker volume rm thinktank-pgdata 2>/dev/null || true
 	@echo "✓ Database reset. Run 'make db-start && make db-migrate' to recreate."
 
 # Start all services
@@ -213,32 +227,32 @@ dev:
 	@-nginx -c $(PWD)/docker/nginx/nginx.local.conf -p $(PWD) -s quit 2>/dev/null || true
 	@sleep 1
 	@-pkill -9 nginx 2>/dev/null || true
-	@-./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
+	@-./scripts/cleanup-containers.sh thinktank-sandbox 2>/dev/null || true
 	@sleep 1
 	@echo ""
 	@echo "=========================================="
-	@echo "  Starting DeerFlow Development Server"
+	@echo "  Starting Thinktank Development Server"
 	@echo "=========================================="
 	@echo ""
 	@# Start PostgreSQL if Docker is available
 	@if command -v docker >/dev/null 2>&1; then \
-		if docker ps --format '{{.Names}}' | grep -q '^deer-flow-postgres$$'; then \
+		if docker ps --format '{{.Names}}' | grep -q '^thinktank-postgres$$'; then \
 			echo "✓ PostgreSQL already running"; \
 		else \
-			if docker ps -a --format '{{.Names}}' | grep -q '^deer-flow-postgres$$'; then \
-				docker start deer-flow-postgres >/dev/null; \
+			if docker ps -a --format '{{.Names}}' | grep -q '^thinktank-postgres$$'; then \
+				docker start thinktank-postgres >/dev/null; \
 			else \
 				docker run -d \
-					--name deer-flow-postgres \
-					-e POSTGRES_USER=deerflow \
-					-e POSTGRES_PASSWORD=deerflow \
-					-e POSTGRES_DB=deerflow \
+					--name thinktank-postgres \
+					-e POSTGRES_USER=thinktank \
+					-e POSTGRES_PASSWORD=matterhorn \
+					-e POSTGRES_DB=thinktank \
 					-p 5432:5432 \
-					-v deer-flow-pgdata:/var/lib/postgresql/data \
+					-v thinktank-pgdata:/var/lib/postgresql/data \
 					postgres:16-alpine >/dev/null; \
 			fi; \
 			for i in $$(seq 1 30); do \
-				if docker exec deer-flow-postgres pg_isready -U deerflow >/dev/null 2>&1; then \
+				if docker exec thinktank-postgres pg_isready -U thinktank >/dev/null 2>&1; then \
 					break; \
 				fi; \
 				sleep 1; \
@@ -267,14 +281,14 @@ dev:
 		sleep 1; \
 		pkill -9 nginx 2>/dev/null || true; \
 		echo "Cleaning up sandbox containers..."; \
-		./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true; \
+		./scripts/cleanup-containers.sh thinktank-sandbox 2>/dev/null || true; \
 		echo "✓ All services stopped (PostgreSQL container kept running)"; \
 		exit 0; \
 	}; \
 	trap cleanup INT TERM; \
 	mkdir -p logs; \
 	DB_AVAILABLE=0; \
-	if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^deer-flow-postgres$$'; then \
+	if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^thinktank-postgres$$'; then \
 		DB_AVAILABLE=1; \
 	fi; \
 	echo "Starting LangGraph server..."; \
@@ -303,14 +317,14 @@ dev:
 	echo "✓ Nginx started on localhost:2026"; \
 	echo ""; \
 	echo "=========================================="; \
-	echo "  DeerFlow is ready!"; \
+	echo "  Thinktank is ready!"; \
 	echo "=========================================="; \
 	echo ""; \
 	echo "  🌐 Application: http://localhost:2026"; \
 	echo "  📡 API Gateway: http://localhost:2026/api/*"; \
 	echo "  🤖 LangGraph:   http://localhost:2026/api/langgraph/*"; \
 	if [ $$DB_AVAILABLE -eq 1 ]; then \
-		echo "  🗄  Database:    postgresql://localhost:5432/deerflow"; \
+		echo "  🗄  Database:    postgresql://localhost:5432/thinktank"; \
 	else \
 		echo "  📁 Storage:     file-based (.think-tank/)"; \
 	fi; \
@@ -335,7 +349,7 @@ stop:
 	@sleep 1
 	@-pkill -9 nginx 2>/dev/null || true
 	@echo "Cleaning up sandbox containers..."
-	@-./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
+	@-./scripts/cleanup-containers.sh thinktank-sandbox 2>/dev/null || true
 	@echo "✓ All services stopped"
 	@echo "  (PostgreSQL container is still running. Use 'make db-stop' to stop it.)"
 
@@ -370,3 +384,41 @@ docker-logs-frontend:
 	@./scripts/docker.sh logs --frontend
 docker-logs-gateway:
 	@./scripts/docker.sh logs --gateway
+
+# ==========================================
+# Production Commands
+# ==========================================
+
+# Build frontend for web deployment
+build-frontend:
+	@echo "Building frontend for web deployment..."
+	@cd frontend && pnpm run build:web
+	@echo "✓ Frontend built to frontend/dist/renderer/"
+
+# Build production Docker images (nginx+frontend, backend)
+build-prod:
+	@./scripts/prod.sh build
+
+# Start production environment
+prod-start:
+	@./scripts/prod.sh start
+
+# Stop production environment
+prod-stop:
+	@./scripts/prod.sh stop
+
+# View production logs
+prod-logs:
+	@./scripts/prod.sh logs
+
+# Show production service status
+prod-status:
+	@./scripts/prod.sh status
+
+# Run production health checks
+prod-health:
+	@./scripts/prod.sh health
+
+# Run E2E tests against production stack
+prod-test:
+	@./scripts/prod.sh test
