@@ -1,7 +1,8 @@
-"""Upload router for handling file uploads."""
+"""Upload router for handling file uploads with security validation."""
 
 import logging
 import os
+import uuid
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -11,6 +12,7 @@ from pydantic import BaseModel
 from src.agents.middlewares.thread_data_middleware import THREAD_DATA_BASE_DIR
 from src.gateway.auth.middleware import get_current_user
 from src.gateway.auth.ownership import verify_thread_ownership
+from src.gateway.rate_limiter import check_user_api_rate
 from src.sandbox.sandbox_provider import get_sandbox_provider
 
 logger = logging.getLogger(__name__)
@@ -28,6 +30,53 @@ CONVERTIBLE_EXTENSIONS = {
     ".docx",
 }
 
+# ---------------------------------------------------------------------------
+# Upload validation constants
+# ---------------------------------------------------------------------------
+ALLOWED_EXTENSIONS = {
+    # Documents
+    ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
+    ".txt", ".md", ".csv", ".json", ".yaml", ".yml", ".xml",
+    # Images
+    ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".bmp",
+    # Code
+    ".py", ".js", ".ts", ".jsx", ".tsx", ".html", ".css", ".sh",
+    ".java", ".c", ".cpp", ".h", ".go", ".rs", ".rb", ".php",
+    # Data
+    ".sql", ".log", ".ini", ".cfg", ".toml", ".env",
+    # Archives (for skill installation)
+    ".zip",
+}
+
+ALLOWED_MIME_TYPES = {
+    # Documents
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    # Text
+    "text/plain", "text/markdown", "text/csv", "text/html", "text/css",
+    "text/xml", "text/x-python", "text/javascript", "text/x-sh",
+    # Structured data
+    "application/json", "application/xml", "application/x-yaml",
+    # Images
+    "image/png", "image/jpeg", "image/gif", "image/svg+xml", "image/webp",
+    "image/bmp",
+    # Archives
+    "application/zip", "application/x-zip-compressed",
+    # Fallback for unknown but extension-validated files
+    "application/octet-stream",
+}
+
+# Maximum size per individual file (50 MB)
+MAX_SINGLE_FILE_SIZE = 50 * 1024 * 1024
+
+# Per-user upload quota (configurable via UPLOAD_QUOTA_MB env var, default 500 MB)
+UPLOAD_QUOTA_BYTES = int(os.environ.get("UPLOAD_QUOTA_MB", "500")) * 1024 * 1024
+
 
 class UploadResponse(BaseModel):
     """Response model for file upload."""
@@ -38,35 +87,125 @@ class UploadResponse(BaseModel):
 
 
 def get_uploads_dir(thread_id: str) -> Path:
-    """Get the uploads directory for a thread.
-
-    Args:
-        thread_id: The thread ID.
-
-    Returns:
-        Path to the uploads directory.
-    """
+    """Get the uploads directory for a thread."""
     base_dir = Path(os.getcwd()) / THREAD_DATA_BASE_DIR / thread_id / "user-data" / "uploads"
     base_dir.mkdir(parents=True, exist_ok=True)
     return base_dir
 
 
-async def convert_file_to_markdown(file_path: Path) -> Path | None:
-    """Convert a file to markdown using markitdown.
+def _validate_upload(filename: str, content_type: str | None, content_size: int) -> None:
+    """Validate a file upload against security rules.
 
     Args:
-        file_path: Path to the file to convert.
+        filename: The original filename.
+        content_type: The MIME type from the upload.
+        content_size: The size of the file content in bytes.
 
-    Returns:
-        Path to the markdown file if conversion was successful, None otherwise.
+    Raises:
+        HTTPException: If validation fails.
     """
+    ext = Path(filename).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type '{ext}' is not allowed. Allowed types: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+        )
+
+    if content_type and content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"MIME type '{content_type}' is not allowed for upload.",
+        )
+
+    if content_size > MAX_SINGLE_FILE_SIZE:
+        max_mb = MAX_SINGLE_FILE_SIZE // (1024 * 1024)
+        raise HTTPException(
+            status_code=413,
+            detail=f"File '{filename}' exceeds maximum size of {max_mb} MB.",
+        )
+
+
+def _get_user_total_upload_bytes(user_id: str) -> int:
+    """Get total upload bytes for a user across all threads.
+
+    Uses database query when available, falls back to filesystem scan.
+    """
+    from src.db.engine import is_db_enabled
+
+    if is_db_enabled():
+        from sqlalchemy import func
+
+        from src.db.engine import get_db_session
+        from src.db.models import UploadModel
+
+        with get_db_session() as session:
+            total = (
+                session.query(func.coalesce(func.sum(UploadModel.size_bytes), 0))
+                .filter(UploadModel.user_id == user_id)
+                .scalar()
+            )
+            return int(total)
+
+    # File-based fallback: walk all thread upload directories
+    base = Path(os.getcwd()) / THREAD_DATA_BASE_DIR
+    total = 0
+    if base.exists():
+        for upload_dir in base.glob("*/user-data/uploads"):
+            for f in upload_dir.iterdir():
+                if f.is_file():
+                    total += f.stat().st_size
+    return total
+
+
+def _check_upload_quota(user_id: str, new_bytes: int) -> None:
+    """Check if uploading new_bytes would exceed the user's quota.
+
+    Raises:
+        HTTPException: 413 if quota would be exceeded.
+    """
+    current = _get_user_total_upload_bytes(user_id)
+    if current + new_bytes > UPLOAD_QUOTA_BYTES:
+        used_mb = current / (1024 * 1024)
+        quota_mb = UPLOAD_QUOTA_BYTES / (1024 * 1024)
+        raise HTTPException(
+            status_code=413,
+            detail=f"Upload quota exceeded. Used: {used_mb:.1f} MB / {quota_mb:.0f} MB limit.",
+        )
+
+
+def _record_upload(
+    user_id: str, thread_id: str, filename: str, content_type: str | None, size_bytes: int, storage_path: str
+) -> None:
+    """Record upload metadata in the database (if enabled)."""
+    from src.db.engine import is_db_enabled
+
+    if not is_db_enabled():
+        return
+
+    from src.db.engine import get_db_session
+    from src.db.models import UploadModel
+
+    with get_db_session() as session:
+        upload = UploadModel(
+            id=uuid.uuid4().hex[:32],
+            thread_id=thread_id,
+            user_id=user_id,
+            filename=filename,
+            content_type=content_type,
+            size_bytes=size_bytes,
+            storage_path=storage_path,
+        )
+        session.add(upload)
+
+
+async def convert_file_to_markdown(file_path: Path) -> Path | None:
+    """Convert a file to markdown using markitdown."""
     try:
         from markitdown import MarkItDown
 
         md = MarkItDown()
         result = md.convert(str(file_path))
 
-        # Save as .md file with same name
         md_path = file_path.with_suffix(".md")
         md_path.write_text(result.text_content, encoding="utf-8")
 
@@ -85,21 +224,33 @@ async def upload_files(
 ) -> UploadResponse:
     """Upload multiple files to a thread's uploads directory.
 
-    For PDF, PPT, Excel, and Word files, they will be converted to markdown using markitdown.
-    All files (original and converted) are saved to /mnt/user-data/uploads.
-
-    Args:
-        thread_id: The thread ID to upload files to.
-        current_user: The authenticated user (injected by dependency).
-        files: List of files to upload.
-
-    Returns:
-        Upload response with success status and file information.
+    Validates file type, MIME type, size, and per-user quota before saving.
+    For PDF, PPT, Excel, and Word files, they will be converted to markdown.
     """
+    check_user_api_rate(current_user["id"])
     verify_thread_ownership(thread_id, current_user["id"])
 
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")
+
+    # Read all file contents and validate before writing anything
+    file_contents: list[tuple[UploadFile, bytes]] = []
+    total_new_bytes = 0
+
+    for file in files:
+        if not file.filename:
+            continue
+
+        content = await file.read()
+        _validate_upload(file.filename, file.content_type, len(content))
+        file_contents.append((file, content))
+        total_new_bytes += len(content)
+
+    if not file_contents:
+        raise HTTPException(status_code=400, detail="No valid files to upload")
+
+    # Check quota before writing
+    _check_upload_quota(current_user["id"], total_new_bytes)
 
     uploads_dir = get_uploads_dir(thread_id)
     uploaded_files = []
@@ -108,16 +259,9 @@ async def upload_files(
     sandbox_id = sandbox_provider.acquire(thread_id)
     sandbox = sandbox_provider.get(sandbox_id)
 
-    for file in files:
-        if not file.filename:
-            continue
-
+    for file, content in file_contents:
         try:
-            # Save the original file
             file_path = uploads_dir / file.filename
-            content = await file.read()
-
-            # Build relative path from backend root
             relative_path = f".think-tank/threads/{thread_id}/user-data/uploads/{file.filename}"
             virtual_path = f"/mnt/user-data/uploads/{file.filename}"
             sandbox.update_file(virtual_path, content)
@@ -132,6 +276,16 @@ async def upload_files(
 
             logger.info(f"Saved file: {file.filename} ({len(content)} bytes) to {relative_path}")
 
+            # Record upload in database
+            _record_upload(
+                user_id=current_user["id"],
+                thread_id=thread_id,
+                filename=file.filename,
+                content_type=file.content_type,
+                size_bytes=len(content),
+                storage_path=relative_path,
+            )
+
             # Check if file should be converted to markdown
             file_ext = file_path.suffix.lower()
             if file_ext in CONVERTIBLE_EXTENSIONS:
@@ -145,6 +299,8 @@ async def upload_files(
 
             uploaded_files.append(file_info)
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Failed to upload {file.filename}: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to upload {file.filename}: {str(e)}")
@@ -161,15 +317,7 @@ async def list_uploaded_files(
     thread_id: str,
     current_user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict:
-    """List all files in a thread's uploads directory.
-
-    Args:
-        thread_id: The thread ID to list files for.
-        current_user: The authenticated user (injected by dependency).
-
-    Returns:
-        Dictionary containing list of files with their metadata.
-    """
+    """List all files in a thread's uploads directory."""
     verify_thread_ownership(thread_id, current_user["id"])
 
     uploads_dir = get_uploads_dir(thread_id)
@@ -203,16 +351,7 @@ async def delete_uploaded_file(
     filename: str,
     current_user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict:
-    """Delete a file from a thread's uploads directory.
-
-    Args:
-        thread_id: The thread ID.
-        filename: The filename to delete.
-        current_user: The authenticated user (injected by dependency).
-
-    Returns:
-        Success message.
-    """
+    """Delete a file from a thread's uploads directory."""
     verify_thread_ownership(thread_id, current_user["id"])
 
     uploads_dir = get_uploads_dir(thread_id)

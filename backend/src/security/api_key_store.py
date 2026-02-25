@@ -46,6 +46,26 @@ def _write_file(path: Path, content: str) -> None:
 
 
 def _get_or_create_master_key() -> bytes:
+    """Get or create the master encryption key for API key storage.
+
+    Priority: ENCRYPTION_KEY env var > file-based key > generate new key.
+    When REQUIRE_ENV_SECRETS is set (production), ENCRYPTION_KEY env var
+    is required and file-based generation is disabled.
+    """
+    # 1. Environment variable (preferred, required in production)
+    env_key = os.environ.get("ENCRYPTION_KEY")
+    if env_key:
+        return env_key.encode("utf-8")
+
+    # 2. Production mode requires env var
+    if os.environ.get("REQUIRE_ENV_SECRETS"):
+        raise RuntimeError(
+            "ENCRYPTION_KEY environment variable is required when "
+            "REQUIRE_ENV_SECRETS is set. Generate one with: "
+            "python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
+        )
+
+    # 3. File-based fallback (development only)
     _ensure_store_dir()
     existing = _read_file(_KEY_FILE)
     if existing:

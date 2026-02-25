@@ -20,6 +20,7 @@ from src.gateway.auth.thread_store import (
     delete_thread as delete_thread_ownership,
     get_user_threads,
 )
+from src.gateway.rate_limiter import check_user_api_rate
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +84,7 @@ async def list_threads(
         List of thread objects belonging to the user, sorted by updated_at desc.
     """
     user_id = current_user["id"]
+    check_user_api_rate(user_id)
 
     try:
         # Get thread IDs owned by this user from the ownership store

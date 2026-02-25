@@ -22,10 +22,20 @@ def _get_secret_key() -> str:
 
     The secret is read from the JWT_SECRET_KEY environment variable.
     If not set, a random secret is generated and persisted to disk.
+
+    When REQUIRE_ENV_SECRETS is set (production mode), the JWT_SECRET_KEY
+    environment variable is required and file-based fallback is disabled.
     """
     env_secret = os.environ.get("JWT_SECRET_KEY")
     if env_secret:
         return env_secret
+
+    if os.environ.get("REQUIRE_ENV_SECRETS"):
+        raise RuntimeError(
+            "JWT_SECRET_KEY environment variable is required when "
+            "REQUIRE_ENV_SECRETS is set. Set JWT_SECRET_KEY in your "
+            "environment or .env file for production deployments."
+        )
 
     _STORE_DIR.mkdir(parents=True, exist_ok=True)
     if _SECRET_FILE.exists():

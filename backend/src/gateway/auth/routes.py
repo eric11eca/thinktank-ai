@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 
 from src.gateway.auth.jwt import (
     REFRESH_TOKEN_EXPIRE_DAYS,
@@ -22,6 +23,7 @@ from src.gateway.auth.models import (
 )
 from src.gateway.auth.password import hash_password, verify_password
 from src.gateway.auth.user_store import create_user, get_user_by_email
+from src.gateway.rate_limiter import check_auth_rate
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +33,18 @@ REFRESH_COOKIE_NAME = "refresh_token"
 REFRESH_COOKIE_MAX_AGE = REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
 
 
+def _is_production() -> bool:
+    """Check if running in production mode."""
+    return bool(os.environ.get("REQUIRE_ENV_SECRETS"))
+
+
 def _set_refresh_cookie(response: Response, token: str) -> None:
     """Set the refresh token as an httpOnly cookie."""
     response.set_cookie(
         key=REFRESH_COOKIE_NAME,
         value=token,
         httponly=True,
-        secure=False,  # Set to True in production with HTTPS
+        secure=_is_production(),
         samesite="lax",
         max_age=REFRESH_COOKIE_MAX_AGE,
         path="/api/auth",
@@ -59,7 +66,7 @@ def _clear_refresh_cookie(response: Response) -> None:
     summary="Register New User",
     description="Create a new user account with email and password.",
 )
-async def register(request: UserRegisterRequest, response: Response) -> TokenResponse:
+async def register(request: UserRegisterRequest, response: Response, http_request: Request = None) -> TokenResponse:
     """Register a new user account.
 
     Args:
@@ -72,6 +79,8 @@ async def register(request: UserRegisterRequest, response: Response) -> TokenRes
     Raises:
         HTTPException: 409 if email is already registered.
     """
+    if http_request:
+        check_auth_rate(http_request)
     password_hashed = hash_password(request.password)
 
     try:
@@ -104,7 +113,7 @@ async def register(request: UserRegisterRequest, response: Response) -> TokenRes
     summary="Login",
     description="Authenticate with email and password.",
 )
-async def login(request: UserLoginRequest, response: Response) -> TokenResponse:
+async def login(request: UserLoginRequest, response: Response, http_request: Request = None) -> TokenResponse:
     """Authenticate a user and return tokens.
 
     Args:
@@ -117,6 +126,8 @@ async def login(request: UserLoginRequest, response: Response) -> TokenResponse:
     Raises:
         HTTPException: 401 if credentials are invalid.
     """
+    if http_request:
+        check_auth_rate(http_request)
     user = get_user_by_email(request.email)
     if not user:
         raise HTTPException(
