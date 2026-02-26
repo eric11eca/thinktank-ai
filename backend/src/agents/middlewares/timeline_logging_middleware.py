@@ -25,6 +25,9 @@ from src.sandbox.consts import THREAD_DATA_BASE_DIR
 
 logger = logging.getLogger(__name__)
 
+# Set to "1"/"true"/"yes" to force file-mode timeline logging (dev-only).
+_FORCE_FILE_MODE = os.getenv("THINKTANK_TIMELINE_FILE_MODE", "").strip().lower() in {"1", "true", "yes"}
+
 # ---------------------------------------------------------------------------
 # File-mode helpers (kept for backward-compatibility when no DB is configured)
 # ---------------------------------------------------------------------------
@@ -256,7 +259,7 @@ class TimelineLoggingMiddleware(AgentMiddleware[AgentState]):
         try:
             from src.db.engine import is_db_enabled
 
-            if is_db_enabled():
+            if not _FORCE_FILE_MODE and is_db_enabled():
                 _db_record_messages(thread_id, messages, stage)
             else:
                 _file_record_messages(state, thread_id, messages, stage)
