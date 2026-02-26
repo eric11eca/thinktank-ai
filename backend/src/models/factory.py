@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from src.config import get_app_config, get_tracing_config, is_tracing_enabled
 from src.models.patched_deepseek import PatchedChatDeepSeek
+from src.models.patched_openai import PatchedChatOpenAI
 from src.reflection import resolve_class
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ PROVIDER_BASE_URLS = {
     "kimi": "https://api.moonshot.ai/v1",
     "zai": "https://api.z.ai/api/paas/v4",
     "minimax": "https://api.minimax.io/v1",
+    "epfl-rcp": "https://inference-rcp.epfl.ch/v1",
 }
 
 ANTHROPIC_ADAPTIVE_THINKING_MODELS = {"claude-opus-4-6"}
@@ -56,7 +58,7 @@ def _runtime_tier_settings(spec: RuntimeModelSpec, thinking_enabled: bool) -> di
 
 def _create_runtime_model(spec: RuntimeModelSpec, thinking_enabled: bool, **kwargs) -> BaseChatModel:
     provider = spec.provider.lower()
-    if provider not in {"openai", "anthropic", "gemini", "deepseek", "kimi", "zai", "minimax"}:
+    if provider not in {"openai", "anthropic", "gemini", "deepseek", "kimi", "zai", "minimax", "epfl-rcp"}:
         raise ValueError(f"Unsupported provider: {spec.provider}") from None
     api_key = (spec.api_key or "").strip()
     if not api_key:
@@ -91,6 +93,8 @@ def _create_runtime_model(spec: RuntimeModelSpec, thinking_enabled: bool, **kwar
             settings.pop("base_url", None)
         settings.setdefault("max_tokens", 65536)
         return PatchedChatDeepSeek(**settings)
+    if provider == "epfl-rcp":
+        return PatchedChatOpenAI(**settings)
 
     return ChatOpenAI(**settings)
 

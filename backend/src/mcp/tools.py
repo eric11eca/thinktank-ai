@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 async def get_mcp_tools() -> list[BaseTool]:
     """Get all tools from enabled MCP servers.
 
+    Loads tools from each server independently so that one failing server
+    does not prevent tools from other servers from being loaded.
+
     Returns:
         List of LangChain tools from all enabled MCP servers.
     """
@@ -33,17 +36,17 @@ async def get_mcp_tools() -> list[BaseTool]:
         logger.info("No enabled MCP servers configured")
         return []
 
-    try:
-        # Create the multi-server MCP client
-        logger.info(f"Initializing MCP client with {len(servers_config)} server(s)")
-        client = MultiServerMCPClient(servers_config)
+    logger.info(f"Initializing MCP tools from {len(servers_config)} server(s)")
 
-        # Get all tools from all servers
-        tools = await client.get_tools()
-        logger.info(f"Successfully loaded {len(tools)} tool(s) from MCP servers")
+    all_tools: list[BaseTool] = []
+    for server_name, server_params in servers_config.items():
+        try:
+            client = MultiServerMCPClient({server_name: server_params})
+            tools = await client.get_tools()
+            all_tools.extend(tools)
+            logger.info(f"Loaded {len(tools)} tool(s) from MCP server '{server_name}'")
+        except Exception as e:
+            logger.error(f"Failed to load tools from MCP server '{server_name}': {e}")
 
-        return tools
-
-    except Exception as e:
-        logger.error(f"Failed to load MCP tools: {e}", exc_info=True)
-        return []
+    logger.info(f"Successfully loaded {len(all_tools)} tool(s) from MCP servers")
+    return all_tools

@@ -94,7 +94,12 @@ class ReadabilityExtractor:
 
     def extract_article(self, html: str) -> Article:
         self._ensure_readability_js_dependencies()
-        article = simple_json_from_html_string(html, use_readability=True)
+
+        try:
+            article = simple_json_from_html_string(html, use_readability=True)
+        except Exception:
+            # Fall back to basic extraction when Readability JS parsing fails.
+            article = simple_json_from_html_string(html, use_readability=False)
 
         html_content = article.get("content")
         if not html_content or not str(html_content).strip():
