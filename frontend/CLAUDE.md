@@ -94,6 +94,7 @@ Reasoning (model thoughts) rendering reads from `core/messages/utils.ts`, which 
 - **Electron IPC** for native features (file dialogs, window controls, auto-update)
 - **HashRouter** in Electron (for file:// protocol compatibility), BrowserRouter in web mode
 - **Local settings** are loaded synchronously on mount to avoid transient defaults overriding the user's model selection
+- **Provider settings** are configured in Settings → Models, including `epfl-rcp` for EPFL RCP AIaaS (OpenAI-compatible `https://inference-rcp.epfl.ch/v1`); these models default to thinking-capable mode selection
 - **Thinking blocks** auto-expand while streaming, auto-scroll to new tokens, and scroll within a capped height
 
 ## Code Style
