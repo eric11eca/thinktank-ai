@@ -47,6 +47,7 @@ SUPPORTED_PROVIDERS = {
     "kimi",
     "zai",
     "minimax",
+    "epfl-rcp",
 }
 
 OPENAI_DEPRECATED_MODELS = {
@@ -121,8 +122,18 @@ MINIMAX_MODELS = [
     "M2-her",
 ]
 
+EPFL_RCP_MODELS = [
+    "Qwen/Qwen3-235B-A22B-Thinking-2507",
+    "openai/gpt-oss-120b",
+    "moonshotai/Kimi-K2.5",
+    "deepseek-ai/DeepSeek-V3.2",
+    "swiss-ai/Apertus-8B-Instruct-2509",
+    "zai-org/GLM-4.7",
+]
+
 ZAI_BASE_URL = "https://api.z.ai/api/paas/v4"
 MINIMAX_BASE_URL = "https://api.minimax.io/v1"
+EPFL_RCP_BASE_URL = "https://inference-rcp.epfl.ch/v1"
 
 
 def _cache_key(provider: str, api_key: str | None, base_url: str | None) -> str:
@@ -402,6 +413,8 @@ def _manual_provider_models(
     provider: str,
     model_ids: Iterable[str],
     thinking_models: set[str] | None = None,
+    *,
+    add_thinking_tier: bool = True,
 ) -> list[ProviderModelInfo]:
     thinking_models = thinking_models or set()
     models = []
@@ -418,7 +431,7 @@ def _manual_provider_models(
                 supports_vision=_supports_vision(model_id),
             )
         )
-        if supports_thinking:
+        if supports_thinking and add_thinking_tier:
             models.append(
                 ProviderModelInfo(
                     id=_build_model_id(provider, model_id, "thinking"),
@@ -438,7 +451,7 @@ async def list_provider_models(provider: str, api_key: str | None, base_url: str
     provider = provider.lower()
     if provider not in SUPPORTED_PROVIDERS:
         raise ProviderCatalogError(f"Unsupported provider: {provider}")
-    if provider in {"openai", "anthropic", "gemini", "deepseek", "kimi"} and not api_key:
+    if provider in {"openai", "anthropic", "gemini", "deepseek", "kimi", "epfl-rcp"} and not api_key:
         raise ProviderCatalogError(f"Provider {provider} requires an API key to list models.")
 
     cache_key = _cache_key(provider, api_key, base_url)
@@ -460,6 +473,13 @@ async def list_provider_models(provider: str, api_key: str | None, base_url: str
         models = _manual_provider_models("zai", ZAI_MODELS, ZAI_THINKING_MODELS)
     elif provider == "minimax":
         models = _manual_provider_models("minimax", MINIMAX_MODELS, set())
+    elif provider == "epfl-rcp":
+        models = _manual_provider_models(
+            "epfl-rcp",
+            EPFL_RCP_MODELS,
+            set(EPFL_RCP_MODELS),
+            add_thinking_tier=False,
+        )
     else:
         models = []
 
@@ -476,6 +496,24 @@ async def validate_provider_key(provider: str, api_key: str | None, base_url: st
     if provider in {"zai", "minimax"}:
         probe_base = base_url or (ZAI_BASE_URL if provider == "zai" else MINIMAX_BASE_URL)
         probe_model = ZAI_MODELS[0] if provider == "zai" else MINIMAX_MODELS[0]
+        try:
+            async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SECONDS) as client:
+                response = await client.post(
+                    f"{probe_base.rstrip('/')}/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    json={
+                        "model": probe_model,
+                        "messages": [{"role": "user", "content": "ping"}],
+                        "max_tokens": 1,
+                    },
+                )
+                response.raise_for_status()
+            return True, "API key is valid."
+        except httpx.HTTPError as exc:
+            return False, f"API request failed: {exc}"
+    if provider == "epfl-rcp":
+        probe_base = base_url or EPFL_RCP_BASE_URL
+        probe_model = EPFL_RCP_MODELS[0]
         try:
             async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SECONDS) as client:
                 response = await client.post(
