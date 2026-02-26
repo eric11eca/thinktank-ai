@@ -45,10 +45,14 @@ Thinktank.ai is an open-source **super agent harness** that orchestrates **sub-a
    - `.env`: backend service keys (optional if you only use per-user keys via Settings).
 - **Model setup (recommended)**
    - Open **Settings → Models** in the UI to enable providers, paste API keys (stored in localStorage), validate them, and select which models appear in the model picker.
+   - EPFL RCP AIaaS is available as provider `epfl-rcp` and uses the OpenAI-compatible endpoint `https://inference-rcp.epfl.ch/v1`.
+   - EPFL RCP models expose `reasoning_content` when available; the backend now preserves it for streaming and timeline logs.
+   - EPFL RCP models are marked as thinking-capable so the UI defaults to reasoning modes for them.
    - On app start, Thinktank.ai fetches the latest available models from each enabled provider.
 - **Optional**
    - `frontend/.env`: configure backend API URLs.
    - `extensions_config.json`: configure desired MCP servers and skills.
+   - `THINKTANK_TIMELINE_FILE_MODE=1`: force agent timeline logs to `.think-tank/threads/{thread_id}/user-data/outputs/agent_timeline.json` (useful for local development).
 
    For OpenAI reasoning-capable models, enable thinking via `when_thinking_enabled.reasoning` (this switches to the Responses API and lets you set `effort`). When thinking is enabled, Thinktank.ai surfaces a short reasoning summary in the chat UI.
 

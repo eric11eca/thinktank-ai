@@ -52,6 +52,7 @@ models:
 - OpenAI (`langchain_openai:ChatOpenAI`)
 - Anthropic (`langchain_anthropic:ChatAnthropic`)
 - DeepSeek (`src.models.patched_deepseek:PatchedChatDeepSeek`)
+- EPFL RCP AIaaS (`langchain_openai:ChatOpenAI` with `base_url: https://inference-rcp.epfl.ch/v1`)
 - Any LangChain-compatible provider
 
 **Thinking Models**:

@@ -132,6 +132,7 @@ Middlewares execute in strict order in `src/agents/lead_agent/agent.py`:
 
 Timeline logs are written per thread to:
 `backend/.think-tank/threads/{thread_id}/user-data/outputs/agent_timeline.json`
+Set `THINKTANK_TIMELINE_FILE_MODE=1` to force file-mode logging even when the database is enabled (dev-only).
 
 ### Configuration System
 
@@ -168,6 +169,9 @@ When using Anthropic extended thinking, ensure `max_tokens` is at least `thinkin
 - These endpoints expect the `x-device-id` header to identify the device.
 - OpenAI model discovery only includes GPT-5.2 (excluding codex).
 - Anthropic model discovery only includes models containing 4.6.
+- EPFL RCP AIaaS is available as provider `epfl-rcp` with a static model list and OpenAI-compatible endpoint `https://inference-rcp.epfl.ch/v1`.
+- EPFL RCP responses may include `reasoning_content`; the backend preserves this in streaming chunks and stored timelines.
+- EPFL RCP models are flagged as thinking-capable, so reasoning modes are enabled by default in the UI.
 
 **Extensions Configuration** (`extensions_config.json`):
 
