@@ -1,7 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import {
   type ComponentProps,
@@ -13,6 +11,9 @@ import {
   useState,
 } from "react";
 import { type BundledLanguage, codeToHtml, type ShikiTransformer } from "shiki";
+
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   code: string;
@@ -83,6 +84,10 @@ export const CodeBlock = ({
   const [html, setHtml] = useState<string>("");
   const [darkHtml, setDarkHtml] = useState<string>("");
   const mounted = useRef(false);
+  const rawLanguageLabel = String(language || "text");
+  const languageLabel = ["bash", "sh", "shell"].includes(rawLanguageLabel)
+    ? rawLanguageLabel
+    : rawLanguageLabel.replace(/^\w/, (c) => c.toUpperCase());
 
   useEffect(() => {
     highlightCode(code, language, showLineNumbers).then(([light, dark]) => {
@@ -102,27 +107,29 @@ export const CodeBlock = ({
     <CodeBlockContext.Provider value={{ code }}>
       <div
         className={cn(
-          "group bg-background text-foreground relative size-full overflow-hidden rounded-md border",
+          "font-claude-code-body group bg-[var(--code-bg)] text-foreground relative size-full overflow-hidden rounded-xl border border-[var(--code-border)] shadow-[0_10px_30px_-18px_rgba(0,0,0,0.45)]",
           className,
         )}
+        data-language={languageLabel}
         {...props}
       >
-        <div className="relative size-full">
+        <div className="flex items-center justify-between border-b border-[var(--code-border)] bg-[var(--code-header-bg)] px-3 py-0.5 text-[0.7rem] font-medium text-[var(--code-header-fg)]">
+          <div className="flex items-center gap-2">
+            <span>{languageLabel}</span>
+          </div>
+          {children && <div className="flex items-center gap-1.5">{children}</div>}
+        </div>
+        <div className="relative size-full" data-code-body>
           <div
-            className="[&>pre]:bg-background! [&>pre]:text-foreground! size-full overflow-auto dark:hidden [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:text-sm [&>pre]:whitespace-pre-wrap"
+            className="[&>pre]:bg-transparent! [&>pre]:text-foreground! size-full overflow-auto dark:hidden [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:text-sm [&>pre]:whitespace-pre [&>pre]:leading-relaxed"
             // biome-ignore lint/security/noDangerouslySetInnerHtml: "this is needed."
             dangerouslySetInnerHTML={{ __html: html }}
           />
           <div
-            className="[&>pre]:bg-background! [&>pre]:text-foreground! hidden size-full overflow-auto dark:block [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:text-sm [&>pre]:whitespace-pre-wrap"
+            className="[&>pre]:bg-transparent! [&>pre]:text-foreground! hidden size-full overflow-auto dark:block [&_code]:font-mono [&_code]:text-sm [&>pre]:m-0 [&>pre]:text-sm [&>pre]:whitespace-pre [&>pre]:leading-relaxed"
             // biome-ignore lint/security/noDangerouslySetInnerHtml: "this is needed."
             dangerouslySetInnerHTML={{ __html: darkHtml }}
           />
-          {children && (
-            <div className="absolute top-2 right-2 flex items-center gap-2">
-              {children}
-            </div>
-          )}
         </div>
       </div>
     </CodeBlockContext.Provider>

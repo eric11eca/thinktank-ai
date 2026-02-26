@@ -58,6 +58,10 @@ const PROVIDER_LABELS: Record<
     title: "Minimax",
     description: "MiniMax M2 series models (curated list).",
   },
+  "epfl-rcp": {
+    title: "EPFL RCP AIaaS",
+    description: "EPFL RCP AI Inference-as-a-Service (OpenAI-compatible).",
+  },
 };
 
 export function ModelSettingsPage() {

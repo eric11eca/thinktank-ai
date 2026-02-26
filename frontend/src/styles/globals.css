@@ -11,13 +11,20 @@
   src: url("/fonts/SwissSans_Roman_UI.woff2") format("woff2");
 }
 
+@font-face {
+  font-family: "SwissMono-Code";
+  src: url("/fonts/SwissMono_Roman_Code.woff2") format("woff2");
+}
+
 :root {
-  --font-claude-response: "SwissSerif-AI", ui-serif, Georgia, serif;
-  --font-claude-user: "SwissSans-UI", ui-serif, Georgia, sans-serif;
+  --font-response: "SwissSerif-AI", ui-serif, Georgia, serif;
+  --font-user: "SwissSans-UI", ui-serif, Georgia, sans-serif;
+  --font-code: "SwissMono-Code", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 .font-claude-response-body {
-  font-family: var(--font-claude-response);
+  font-family: var(--font-response);
   font-size: 1rem;
   font-weight: 360;
   line-height: 1.5;
@@ -26,10 +33,19 @@
 }
 
 .font-claude-user-body {
-  font-family: var(--font-claude-user);
+  font-family: var(--font-user);
   font-size: 1rem;
   font-weight: 360;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-claude-code-body {
+  font-family: var(--font-code);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  font-variant-ligatures: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -304,6 +320,10 @@
   --coral-light: oklch(0.72 0.16 30);
   --lavender: oklch(0.94 0.04 290);
   --lavender-foreground: oklch(0.38 0.12 290);
+  --code-bg: #f7f9fc;
+  --code-border: #e2e7ef;
+  --code-header-bg: #eef2f7;
+  --code-header-fg: #3e4a59;
 }
 
 .dark {
@@ -343,6 +363,10 @@
   --coral-light: #d4846a;
   --lavender: #3d3a4a;
   --lavender-foreground: #b0a8c0;
+  --code-bg: #1e1e1e;
+  --code-border: #2a2a2a;
+  --code-header-bg: #242424;
+  --code-header-fg: #a9b0bb;
   font-weight: 300;
 }
 
@@ -352,6 +376,33 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  .code-block pre {
+    padding: 1rem;
+  }
+
+  .code-block code {
+    font-family: var(--font-code);
+    font-variant-ligatures: none;
+  }
+
+  [data-streamdown="code-block"] {
+    width: fit-content;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    align-self: flex-start;
+  }
+
+  .is-user [data-streamdown="code-block"] {
+    align-self: flex-end;
+  }
+
+  [data-streamdown="code-block"] pre {
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: pre;
   }
 
   .container-md {

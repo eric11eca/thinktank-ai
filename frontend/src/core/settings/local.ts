@@ -40,6 +40,10 @@ export const DEFAULT_LOCAL_SETTINGS: LocalSettings = {
         enabled: false,
         has_key: false,
       },
+      "epfl-rcp": {
+        enabled: false,
+        has_key: false,
+      },
     },
     enabled_models: {},
   },

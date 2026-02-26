@@ -5,7 +5,8 @@ export type ProviderId =
   | "deepseek"
   | "kimi"
   | "zai"
-  | "minimax";
+  | "minimax"
+  | "epfl-rcp";
 
 export interface ProviderModel {
   id: string;
