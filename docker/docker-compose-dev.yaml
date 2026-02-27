@@ -36,6 +36,28 @@ services:
       timeout: 3s
       retries: 5
       start_period: 5s
+  # ── ERP Sample Database Initializer ──────────────────────────────────
+  # One-shot service: creates and populates the erp_sample database
+  erp-init:
+    image: postgres:16-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./erp-sample:/erp-sample:ro
+    entrypoint:
+      - sh
+      - -c
+      - |
+        echo "Setting up ERP sample database..."
+        PGPASSWORD=deerflow psql -h postgres -U deerflow -tc "SELECT 1 FROM pg_database WHERE datname='erp_sample'" | grep -q 1 \
+          || PGPASSWORD=deerflow psql -h postgres -U deerflow -c "CREATE DATABASE erp_sample"
+        PGPASSWORD=deerflow psql -h postgres -U deerflow -d erp_sample -f /erp-sample/init-erp.sql -q
+        echo "ERP sample database ready"
+    networks:
+      - deer-flow-dev
+    restart: "no"
+
   # ── Sandbox Provisioner ────────────────────────────────────────────────
   # Manages per-sandbox Pod + Service lifecycle in the host Kubernetes
   # cluster via the K8s API.

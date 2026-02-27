@@ -1,6 +1,6 @@
 # Thinktank - Unified Development Environment
 
-.PHONY: help config check install dev stop clean db-start db-stop db-migrate db-reset docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway build-frontend build-prod prod-start prod-stop prod-logs prod-status prod-health prod-test
+.PHONY: help config check install dev stop clean db-start db-stop db-migrate db-reset erp-setup docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway build-frontend build-prod prod-start prod-stop prod-logs prod-status prod-health prod-test
 
 # Default DATABASE_URL for the local PostgreSQL container
 DB_URL ?= postgresql://thinktank:matterhorn@localhost:5432/thinktank
@@ -19,6 +19,7 @@ help:
 	@echo "  make db-stop         - Stop PostgreSQL container"
 	@echo "  make db-migrate      - Run Alembic migrations against local PostgreSQL"
 	@echo "  make db-reset        - Drop and recreate the database (destructive!)"
+	@echo "  make erp-setup       - Set up ERP sample database for deep research"
 	@echo ""
 	@echo "Docker Development Commands:"
 	@echo "  make docker-init     - Build the custom k3s image (with pre-cached sandbox image)"
@@ -210,6 +211,14 @@ db-migrate: db-start
 	@cd backend && DATABASE_URL=$(DB_URL) uv run alembic upgrade head
 	@echo "✓ Migrations complete"
 
+# Set up ERP sample database for deep research
+erp-setup: db-start
+	@echo "Setting up ERP sample database..."
+	@docker exec thinktank-postgres psql -U thinktank -tc "SELECT 1 FROM pg_database WHERE datname='erp_sample'" | grep -q 1 || docker exec thinktank-postgres psql -U thinktank -c "CREATE DATABASE erp_sample"
+	@docker cp docker/erp-sample/init-erp.sql thinktank-postgres:/tmp/init-erp.sql
+	@docker exec thinktank-postgres psql -U thinktank -d erp_sample -f /tmp/init-erp.sql -q
+	@echo "✓ ERP sample database ready (postgresql://localhost:5432/erp_sample)"
+
 # Reset database (destructive!)
 db-reset:
 	@echo "Resetting database..."
@@ -262,6 +271,11 @@ dev:
 		echo "Running database migrations..."; \
 		cd backend && DATABASE_URL=$(DB_URL) uv run alembic upgrade head 2>&1 | tail -1; \
 		echo "✓ Database migrations applied"; \
+		echo "Setting up ERP sample database..."; \
+		docker exec thinktank-postgres psql -U thinktank -tc "SELECT 1 FROM pg_database WHERE datname='erp_sample'" | grep -q 1 || docker exec thinktank-postgres psql -U thinktank -c "CREATE DATABASE erp_sample" >/dev/null; \
+		docker cp docker/erp-sample/init-erp.sql thinktank-postgres:/tmp/init-erp.sql >/dev/null; \
+		docker exec thinktank-postgres psql -U thinktank -d erp_sample -f /tmp/init-erp.sql -q 2>&1 | tail -1; \
+		echo "✓ ERP sample database ready"; \
 	else \
 		echo "⚠ Docker not found — running without PostgreSQL (file-based storage)"; \
 	fi
