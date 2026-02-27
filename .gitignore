@@ -95,3 +95,5 @@ sandbox_image_cache.tar
 
 # ignore the legacy `web` folder
 web/
+api.anthropic.com_02-25-2026-21-36-07.json
+rcp-client-examples/*
