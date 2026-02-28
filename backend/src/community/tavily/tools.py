@@ -30,10 +30,15 @@ def _get_tavily_client() -> TavilyClient:
 
 @tool("web_search", parse_docstring=True)
 def web_search_tool(query: str) -> str:
-    """Search the web.
+    """Search the web for current information, articles, documentation, and data.
+
+    Examples:
+        web_search(query="Python pandas groupby aggregation tutorial 2026")
+        web_search(query="Tesla Q4 2025 earnings revenue net income")
+        web_search(query="LangChain MCP integration documentation")
 
     Args:
-        query: The query to search for.
+        query: The query to search for. Be specific and include relevant keywords for better results.
     """
     config = get_app_config().get_tool_config("web_search")
     max_results = 5
@@ -62,8 +67,12 @@ def web_fetch_tool(url: str) -> str:
     Do NOT add www. to URLs that do NOT have them.
     URLs must include the schema: https://example.com is a valid URL while example.com is an invalid URL.
 
+    Examples:
+        web_fetch(url="https://docs.python.org/3/library/asyncio.html")
+        web_fetch(url="https://arxiv.org/abs/2401.12345")
+
     Args:
-        url: The URL to fetch the contents of.
+        url: The URL to fetch the contents of. Must include the schema (https://).
     """
     client = _get_tavily_client()
     res = client.extract([url])
