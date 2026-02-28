@@ -151,6 +151,8 @@ Tools follow the same philosophy. Thinktank.ai comes with a core toolset — web
 
 In the chat UI, the Context panel surfaces the resolved tool list and enabled skills for the current session, backed by the gateway endpoint `GET /api/agent/context`.
 
+The tool call timeline in the chat UI displays outputs for key tools (including the `reflection` scratchpad) so you can inspect intermediate reasoning steps.
+
 ```
 # Paths inside the sandbox container
 /mnt/skills/public

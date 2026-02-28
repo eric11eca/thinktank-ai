@@ -121,7 +121,7 @@ Middlewares execute in strict order in `src/agents/lead_agent/agent.py`:
 2. **UploadsMiddleware** - Tracks and injects newly uploaded files into conversation
 3. **SandboxMiddleware** - Acquires sandbox, stores `sandbox_id` in state
 4. **DanglingToolCallMiddleware** - Injects placeholder ToolMessages for AIMessage tool_calls that lack responses (e.g., due to user interruption)
-5. **ToolRetryMiddleware** - Retries transient tool failures (timeout, 502/503/504, rate limit) with exponential backoff (max 2 retries). Classifies errors as TRANSIENT/AUTH/PERSISTENT/UNKNOWN; only retries TRANSIENT. Never retries `ask_clarification`, `think`, or `present_files`.
+5. **ToolRetryMiddleware** - Retries transient tool failures (timeout, 502/503/504, rate limit) with exponential backoff (max 2 retries). Classifies errors as TRANSIENT/AUTH/PERSISTENT/UNKNOWN; only retries TRANSIENT. Never retries `ask_clarification`, `reflection`, or `present_files`.
 6. **UsageTrackingMiddleware** - Tracks token usage (after ToolRetryMiddleware so retried calls accumulate)
 7. **SummarizationMiddleware** - Context reduction when approaching token limits (optional, if enabled)
 8. **TodoListMiddleware** - Task tracking with `write_todos` tool (optional, if plan_mode)
@@ -242,7 +242,7 @@ Proxied through nginx: `/api/langgraph/*` → LangGraph, all other `/api/*` → 
 3. **Built-in tools**:
    - `present_files` - Make output files visible to user (only `/mnt/user-data/outputs`)
    - `ask_clarification` - Request clarification (intercepted by ClarificationMiddleware → interrupts)
-   - `think` - Scratchpad for structured reasoning between tool calls (always available)
+   - `reflection` - Scratchpad for structured reasoning between tool calls (always available)
    - `view_image` - Read image as base64 (added only if model supports vision)
 4. **Subagent tool** (if enabled):
    - `task` - Delegate to subagent (description, prompt, subagent_type, max_turns)
