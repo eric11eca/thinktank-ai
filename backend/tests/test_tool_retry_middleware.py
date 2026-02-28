@@ -170,7 +170,7 @@ class TestWrapToolCall:
 
     def test_no_retry_tool_passes_error_through(self):
         """Tools in NO_RETRY_TOOLS should not be retried even for transient errors."""
-        request = self._make_request("think")
+        request = self._make_request("reflection")
         handler = MagicMock(return_value=self._make_error_result("Error: Connection timed out"))
 
         result = self.middleware.wrap_tool_call(request, handler)

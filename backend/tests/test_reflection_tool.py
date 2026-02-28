@@ -1,62 +1,61 @@
-"""Tests for the think tool."""
+"""Tests for the reflection tool."""
 
 
+class TestReflectionTool:
+    """Tests for reflection_tool functionality."""
 
-class TestThinkTool:
-    """Tests for think_tool functionality."""
+    def test_reflection_tool_returns_thought(self):
+        """Reflection tool should return the input thought as-is."""
+        from src.tools.builtins.reflection_tool import reflection_tool
 
-    def test_think_tool_returns_thought(self):
-        """Think tool should return the input thought as-is."""
-        from src.tools.builtins.think_tool import think_tool
-
-        result = think_tool.invoke({"thought": "test reasoning"})
+        result = reflection_tool.invoke({"thought": "test reasoning"})
         assert result == "test reasoning"
 
-    def test_think_tool_preserves_content(self):
-        """Think tool should preserve the full thought content."""
-        from src.tools.builtins.think_tool import think_tool
+    def test_reflection_tool_preserves_content(self):
+        """Reflection tool should preserve the full thought content."""
+        from src.tools.builtins.reflection_tool import reflection_tool
 
         complex_thought = (
             "The search results show three sources. "
             "Source A says X, Source B says Y. "
             "I should proceed with X because it's more recent."
         )
-        result = think_tool.invoke({"thought": complex_thought})
+        result = reflection_tool.invoke({"thought": complex_thought})
         assert result == complex_thought
 
-    def test_think_tool_has_correct_name(self):
-        """Think tool should be named 'think'."""
-        from src.tools.builtins.think_tool import think_tool
+    def test_reflection_tool_has_correct_name(self):
+        """Reflection tool should be named 'reflection'."""
+        from src.tools.builtins.reflection_tool import reflection_tool
 
-        assert think_tool.name == "think"
+        assert reflection_tool.name == "reflection"
 
-    def test_think_tool_has_examples_in_docstring(self):
-        """Think tool should have Examples in its description."""
-        from src.tools.builtins.think_tool import think_tool
+    def test_reflection_tool_has_examples_in_docstring(self):
+        """Reflection tool should have Examples in its description."""
+        from src.tools.builtins.reflection_tool import reflection_tool
 
-        assert "Examples:" in think_tool.description
+        assert "Examples:" in reflection_tool.description
 
-    def test_think_tool_in_builtin_tools(self):
-        """Think tool should be included in BUILTIN_TOOLS."""
+    def test_reflection_tool_in_builtin_tools(self):
+        """Reflection tool should be included in BUILTIN_TOOLS."""
         from src.tools.tools import BUILTIN_TOOLS
 
         tool_names = [t.name for t in BUILTIN_TOOLS]
-        assert "think" in tool_names
+        assert "reflection" in tool_names
 
-    def test_think_tool_in_builtins_all(self):
-        """Think tool should be exported from builtins __all__."""
+    def test_reflection_tool_in_builtins_all(self):
+        """Reflection tool should be exported from builtins __all__."""
         from src.tools.builtins import __all__
 
-        assert "think_tool" in __all__
+        assert "reflection_tool" in __all__
 
-    def test_think_tool_not_in_subagent_disallowed_tools(self):
-        """Think tool should NOT be in general-purpose subagent's disallowed_tools.
+    def test_reflection_tool_not_in_subagent_disallowed_tools(self):
+        """Reflection tool should NOT be in general-purpose subagent's disallowed_tools.
 
-        Subagents should be able to use the think tool for structured reasoning.
+        Subagents should be able to use the reflection tool for structured reasoning.
         """
         from src.subagents.builtins.general_purpose import GENERAL_PURPOSE_CONFIG
 
-        assert "think" not in GENERAL_PURPOSE_CONFIG.disallowed_tools
+        assert "reflection" not in GENERAL_PURPOSE_CONFIG.disallowed_tools
 
 
 class TestToolPolicies:
@@ -66,10 +65,10 @@ class TestToolPolicies:
         """Policies should include rules for tools in the provided list."""
         from src.tools.docs.tool_policies import get_tool_usage_policies
 
-        policies = get_tool_usage_policies(["bash", "read_file", "think"])
+        policies = get_tool_usage_policies(["bash", "read_file", "reflection"])
         assert "bash — Behavioral Rules:" in policies
         assert "read_file — Behavioral Rules:" in policies
-        assert "think — Behavioral Rules:" in policies
+        assert "reflection — Behavioral Rules:" in policies
 
     def test_get_tool_usage_policies_excludes_irrelevant_rules(self):
         """Policies should NOT include rules for tools not in the list."""
@@ -108,8 +107,8 @@ class TestPhaseFilterMiddleware:
     def test_phase_tool_allowlist_has_all_phases(self):
         """PHASE_TOOL_ALLOWLIST should have entries for all phases."""
         from src.agents.middlewares.phase_filter_middleware import (
-            PHASE_TOOL_ALLOWLIST,
             ExecutionPhase,
+            PHASE_TOOL_ALLOWLIST,
         )
 
         for phase in ExecutionPhase:
@@ -118,20 +117,20 @@ class TestPhaseFilterMiddleware:
     def test_planning_phase_includes_search_tools(self):
         """Planning phase should include search and read tools."""
         from src.agents.middlewares.phase_filter_middleware import (
-            PHASE_TOOL_ALLOWLIST,
             ExecutionPhase,
+            PHASE_TOOL_ALLOWLIST,
         )
 
         planning = PHASE_TOOL_ALLOWLIST[ExecutionPhase.PLANNING]
         assert "web_search" in planning
         assert "read_file" in planning
-        assert "think" in planning
+        assert "reflection" in planning
 
     def test_planning_phase_excludes_write_tools(self):
         """Planning phase should exclude write/execution tools."""
         from src.agents.middlewares.phase_filter_middleware import (
-            PHASE_TOOL_ALLOWLIST,
             ExecutionPhase,
+            PHASE_TOOL_ALLOWLIST,
         )
 
         planning = PHASE_TOOL_ALLOWLIST[ExecutionPhase.PLANNING]
@@ -141,8 +140,8 @@ class TestPhaseFilterMiddleware:
     def test_execution_phase_includes_all_tools(self):
         """Execution phase should include the broadest set of tools."""
         from src.agents.middlewares.phase_filter_middleware import (
-            PHASE_TOOL_ALLOWLIST,
             ExecutionPhase,
+            PHASE_TOOL_ALLOWLIST,
         )
 
         execution = PHASE_TOOL_ALLOWLIST[ExecutionPhase.EXECUTION]
@@ -154,8 +153,8 @@ class TestPhaseFilterMiddleware:
     def test_synthesis_phase_excludes_search(self):
         """Synthesis phase should not include web search tools."""
         from src.agents.middlewares.phase_filter_middleware import (
-            PHASE_TOOL_ALLOWLIST,
             ExecutionPhase,
+            PHASE_TOOL_ALLOWLIST,
         )
 
         synthesis = PHASE_TOOL_ALLOWLIST[ExecutionPhase.SYNTHESIS]
@@ -166,12 +165,12 @@ class TestPhaseFilterMiddleware:
     def test_review_phase_is_read_heavy(self):
         """Review phase should be read-heavy with limited write access."""
         from src.agents.middlewares.phase_filter_middleware import (
-            PHASE_TOOL_ALLOWLIST,
             ExecutionPhase,
+            PHASE_TOOL_ALLOWLIST,
         )
 
         review = PHASE_TOOL_ALLOWLIST[ExecutionPhase.REVIEW]
         assert "read_file" in review
-        assert "think" in review
+        assert "reflection" in review
         assert "write_file" not in review
         assert "str_replace" not in review
