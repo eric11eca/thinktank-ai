@@ -34,25 +34,25 @@ class ExecutionPhase(StrEnum):
 PHASE_TOOL_ALLOWLIST: dict[ExecutionPhase, set[str]] = {
     ExecutionPhase.PLANNING: {
         "web_search", "web_fetch",
-        "think", "read_file", "ls",
+        "reflection", "read_file", "ls",
         "ask_clarification",
     },
     ExecutionPhase.EXECUTION: {
         "web_search", "web_fetch",
-        "think", "read_file", "ls",
+        "reflection", "read_file", "ls",
         "ask_clarification",
         "bash", "write_file", "str_replace",
         "execute_python",
         "present_files", "task",
     },
     ExecutionPhase.SYNTHESIS: {
-        "think", "read_file", "ls",
+        "reflection", "read_file", "ls",
         "ask_clarification",
         "bash", "write_file", "str_replace",
         "execute_python",
     },
     ExecutionPhase.REVIEW: {
-        "think", "read_file", "ls",
+        "reflection", "read_file", "ls",
         "ask_clarification",
         "bash",  # for running tests
     },

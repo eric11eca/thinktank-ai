@@ -27,7 +27,7 @@ class ErrorCategory(StrEnum):
 
 
 # Tools that should never be retried
-NO_RETRY_TOOLS: set[str] = {"ask_clarification", "think", "present_files"}
+NO_RETRY_TOOLS: set[str] = {"ask_clarification", "reflection", "present_files"}
 
 # Patterns for error classification (compiled for performance)
 _TRANSIENT_PATTERNS = re.compile(
