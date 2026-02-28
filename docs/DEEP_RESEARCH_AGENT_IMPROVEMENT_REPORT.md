@@ -1,6 +1,6 @@
 # Deep Research: Agent Architecture Improvement Report
 
-> Comprehensive analysis of state-of-the-art agentic systems with actionable recommendations for DeerFlow 2.0
+> Comprehensive analysis of state-of-the-art agentic systems with actionable recommendations for Thinktank.ai 2.0
 
 **Date**: 2026-02-27
 **Systems Analyzed**: 15+ agentic frameworks and deep-research systems
@@ -26,13 +26,13 @@
 
 ## 1. Executive Summary
 
-After analyzing 15+ production agentic systems, seven major improvement areas emerge for DeerFlow 2.0. The most impactful changes cluster around three themes:
+After analyzing 15+ production agentic systems, seven major improvement areas emerge for Thinktank.ai 2.0. The most impactful changes cluster around three themes:
 
 1. **Context engineering as a first-class discipline** -- treating the context window as an engineered system with its own lifecycle, budget management, and optimization metrics (KV-cache hit rate, attention anchoring, selective compaction)
 2. **Externalized state persistence** -- moving from in-memory conversation state to file-based progress tracking that survives context resets and enables multi-session operation
 3. **Structured research orchestration** -- replacing ad-hoc subagent delegation with explicit planning-execution-synthesis pipelines with progressive context accumulation
 
-The gap analysis reveals that DeerFlow has strong foundations (middleware chain, MCP integration, memory system, subagent orchestration) but lacks several patterns that top systems have converged on independently: progressive tool discovery, KV-cache-aware context construction, attention anchoring via todo rewriting, multi-pass synthesis, and structured research planning.
+The gap analysis reveals that Thinktank.ai has strong foundations (middleware chain, MCP integration, memory system, subagent orchestration) but lacks several patterns that top systems have converged on independently: progressive tool discovery, KV-cache-aware context construction, attention anchoring via todo rewriting, multi-pass synthesis, and structured research planning.
 
 ---
 
@@ -77,7 +77,7 @@ The gap analysis reveals that DeerFlow has strong foundations (middleware chain,
 
 ### 3.1 Current State
 
-DeerFlow uses a template-based system prompt in `backend/src/agents/lead_agent/prompt.py` with dynamic injection of memory context, skills, subagent instructions, and working directory paths. The prompt is monolithic -- one large template with conditional sections.
+Thinktank.ai uses a template-based system prompt in `backend/src/agents/lead_agent/prompt.py` with dynamic injection of memory context, skills, subagent instructions, and working directory paths. The prompt is monolithic -- one large template with conditional sections.
 
 ### 3.2 Best Practices from Industry
 
@@ -153,7 +153,7 @@ Claude Code uses `${TOOL_NAME}` variables rather than hardcoded tool references,
 
 ### 4.1 Current State
 
-DeerFlow has `SummarizationMiddleware` that compresses older messages when approaching token limits (trigger at configurable threshold, keeps recent messages). Memory injection is capped at 2000 tokens. Tool results are returned in full.
+Thinktank.ai has `SummarizationMiddleware` that compresses older messages when approaching token limits (trigger at configurable threshold, keeps recent messages). Memory injection is capped at 2000 tokens. Tool results are returned in full.
 
 ### 4.2 Critical Concept: Context Rot
 
@@ -261,7 +261,7 @@ Based on patterns across all analyzed systems, here is a recommended context bud
 
 ### 5.1 Current State
 
-DeerFlow has a robust per-user memory system with confidence-scored facts (max 100), contextual summaries (user context, history, long-term background), and a debounced update queue. Memory is injected into system prompts within a 2000-token budget.
+Thinktank.ai has a robust per-user memory system with confidence-scored facts (max 100), contextual summaries (user context, history, long-term background), and a debounced update queue. Memory is injected into system prompts within a 2000-token budget.
 
 ### 5.2 Best Practices from Industry
 
@@ -299,7 +299,7 @@ OpenClaw's memory system combines:
 
 The formula: `vectorWeight * vectorScore + textWeight * textScore`, with decay applied, then MMR diversification.
 
-**Current gap**: DeerFlow's memory uses confidence-based ranking but lacks temporal decay and diversity re-ranking. Old facts can persist indefinitely even when irrelevant.
+**Current gap**: Thinktank.ai's memory uses confidence-based ranking but lacks temporal decay and diversity re-ranking. Old facts can persist indefinitely even when irrelevant.
 
 **Recommendation**:
 
@@ -384,7 +384,7 @@ Anthropic's "Code Execution with MCP" blog describes a pattern where agents pers
 
 ### 6.1 Current State
 
-DeerFlow assembles tools from 5 sources (config, MCP, built-in, subagent, community). MCP tools use lazy initialization with file mtime caching. Tool execution uses virtual path translation and sandbox isolation.
+Thinktank.ai assembles tools from 5 sources (config, MCP, built-in, subagent, community). MCP tools use lazy initialization with file mtime caching. Tool execution uses virtual path translation and sandbox isolation.
 
 ### 6.2 Best Practices from Industry
 
@@ -440,7 +440,7 @@ The research subagent in open-ptc-agent is required to call `reflection` after e
 
 LangGraph implements retry with backoff at the tool node level. OpenClaw has cascading recovery: retry -> fallback provider -> auth rotation -> thinking level fallback.
 
-**Current gap**: DeerFlow's tool failures don't trigger retry logic. Dangling tool calls get generic placeholder messages.
+**Current gap**: Thinktank.ai's tool failures don't trigger retry logic. Dangling tool calls get generic placeholder messages.
 
 **Recommendation**: Implement a `ToolRetryMiddleware` that:
 
@@ -500,7 +500,7 @@ Search the web for current information.
 
 ### 7.1 Current State
 
-DeerFlow auto-converts uploaded files (PDF/PPT/Excel/Word -> Markdown) via markitdown. Files are stored in thread-isolated directories with virtual path mapping. The agent receives a file list with metadata.
+Thinktank.ai auto-converts uploaded files (PDF/PPT/Excel/Word -> Markdown) via markitdown. Files are stored in thread-isolated directories with virtual path mapping. The agent receives a file list with metadata.
 
 ### 7.2 Best Practices from Industry
 
@@ -580,7 +580,7 @@ Anthropic's "Code Execution with MCP" blog highlights a critical benefit of sand
 
 ### 8.1 Current State
 
-DeerFlow has a supervisor pattern with the lead agent delegating to `general-purpose` and `bash` subagents. Concurrency is controlled via per-user semaphores (max 3), with batch processing for >3 tasks (clamped to [2,4] per response). Subagents cannot spawn further subagents.
+Thinktank.ai has a supervisor pattern with the lead agent delegating to `general-purpose` and `bash` subagents. Concurrency is controlled via per-user semaphores (max 3), with batch processing for >3 tasks (clamped to [2,4] per response). Subagents cannot spawn further subagents.
 
 ### 8.2 Best Practices from Industry
 
@@ -691,7 +691,7 @@ Based on the cross-cutting analysis, four dominant patterns exist:
 | **Handoff (delegation chain)**             | Clear specialist routing          | OpenAI Agents SDK |
 
 
-**Recommendation**: DeerFlow currently uses the role-based pattern. For deep research specifically, consider adding a graph-based sub-workflow:
+**Recommendation**: Thinktank.ai currently uses the role-based pattern. For deep research specifically, consider adding a graph-based sub-workflow:
 
 ```
 Plan -> [Parallel Research Tasks] -> Synthesize -> Self-Critique -> Final Output
@@ -703,7 +703,7 @@ Plan -> [Parallel Research Tasks] -> Synthesize -> Self-Critique -> Final Output
 
 ### 9.1 Current State
 
-DeerFlow delegates research to `general-purpose` subagents with web search tools (Tavily, Jina, Firecrawl). There is no structured research planning, no citation grounding, no multi-pass synthesis, and no think-after-search loop.
+Thinktank.ai delegates research to `general-purpose` subagents with web search tools (Tavily, Jina, Firecrawl). There is no structured research planning, no citation grounding, no multi-pass synthesis, and no think-after-search loop.
 
 ### 9.2 Research Pipeline Architecture
 
@@ -917,4 +917,3 @@ Layer strategically: address the dominant bottleneck first, measure impact, then
 10. **OpenAI Codex** -- Native compaction, sandboxed execution, multi-agent command center
 11. **DSPy** -- Declarative signatures, automatic prompt optimization
 12. **OpenAI Agents SDK** -- Handoffs, guardrails, tracing primitives
-
