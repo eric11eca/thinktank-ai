@@ -237,9 +237,14 @@ def ensure_thread_directories_exist(runtime: ToolRuntime[ContextT, ThreadState] 
 def bash_tool(runtime: ToolRuntime[ContextT, ThreadState], description: str, command: str) -> str:
     """Execute a bash command in a Linux environment.
 
-
     - Use `python` to run Python code.
     - Use `pip install` to install Python packages.
+
+    Examples:
+        bash(description="Install pandas", command="pip install pandas")
+        bash(description="Run analysis script", command="python /mnt/user-data/workspace/analyze.py")
+        bash(description="Count lines in CSV", command="wc -l /mnt/user-data/uploads/data.csv")
+        bash(description="Search for pattern in logs", command="grep -r 'ERROR' /mnt/user-data/uploads/logs/")
 
     Args:
         description: Explain why you are running this command in short words. ALWAYS PROVIDE THIS PARAMETER FIRST.
@@ -296,6 +301,10 @@ def read_file_tool(
 ) -> str:
     """Read the contents of a text file. Use this to examine source code, configuration files, logs, or any text-based file.
 
+    Examples:
+        read_file(description="Read config", path="/mnt/user-data/uploads/config.yaml")
+        read_file(description="Read function definition", path="/mnt/user-data/workspace/app.py", start_line=50, end_line=75)
+
     Args:
         description: Explain why you are reading this file in short words. ALWAYS PROVIDE THIS PARAMETER FIRST.
         path: The **absolute** path to the file to read.
@@ -334,7 +343,11 @@ def write_file_tool(
     content: str,
     append: bool = False,
 ) -> str:
-    """Write text content to a file.
+    """Write text content to a file. Creates parent directories automatically if they don't exist.
+
+    Examples:
+        write_file(description="Create Python script", path="/mnt/user-data/workspace/script.py", content="import pandas as pd\\ndf = pd.read_csv('data.csv')\\nprint(df.describe())")
+        write_file(description="Append log entry", path="/mnt/user-data/workspace/run.log", content="Step 3 completed successfully\\n", append=True)
 
     Args:
         description: Explain why you are writing to this file in short words. ALWAYS PROVIDE THIS PARAMETER FIRST.
@@ -372,6 +385,13 @@ def str_replace_tool(
 ) -> str:
     """Replace a substring in a file with another substring.
     If `replace_all` is False (default), the substring to replace must appear **exactly once** in the file.
+
+    Prefer this tool over `write_file` for targeted edits to existing files — it preserves the rest of the file content.
+
+    Examples:
+        str_replace(description="Fix typo", path="/mnt/user-data/workspace/app.py", old_str="recieve", new_str="receive")
+        str_replace(description="Update import", path="/mnt/user-data/workspace/main.py", old_str="from utils import old_func", new_str="from utils import new_func")
+        str_replace(description="Rename variable everywhere", path="/mnt/user-data/workspace/data.py", old_str="tmp_var", new_str="processed_data", replace_all=True)
 
     Args:
         description: Explain why you are replacing the substring in short words. ALWAYS PROVIDE THIS PARAMETER FIRST.
