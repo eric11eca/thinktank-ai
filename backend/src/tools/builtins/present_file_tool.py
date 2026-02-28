@@ -30,6 +30,10 @@ def present_file_tool(
     - You should call this tool after creating files and moving them to the `/mnt/user-data/outputs` directory.
     - This tool can be safely called in parallel with other tools. State updates are handled by a reducer to prevent conflicts.
 
+    Examples:
+        present_files(filepaths=["/mnt/user-data/outputs/report.pdf"])
+        present_files(filepaths=["/mnt/user-data/outputs/chart.png", "/mnt/user-data/outputs/data.csv", "/mnt/user-data/outputs/analysis.md"])
+
     Args:
         filepaths: List of absolute file paths to present to the user. **Only** files in `/mnt/user-data/outputs` can be presented.
     """

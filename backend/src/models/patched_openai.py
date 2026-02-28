@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import openai
 from langchain_core.messages import AIMessage, AIMessageChunk
 from langchain_core.outputs import ChatGenerationChunk, ChatResult

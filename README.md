@@ -130,6 +130,7 @@ If you prefer running services locally:
 
 4. **Access**: http://localhost:3000
    - Nginx forwards `/api/langgraph/*` to LangGraph and all other `/api/*` routes (including auth) to the gateway.
+   - Backend linting uses `ruff` and enforces sorted imports.
    - Frontend linting uses the flat config in `frontend/eslint.config.js` with `eslint-plugin-import` for `import/order` (no Next.js ESLint presets required).
    - Frontend lint rules enforce explicit async handling (`no-floating-promises`) and nullish coalescing for defaults.
 
@@ -150,6 +151,8 @@ Skills are loaded progressively — only when the task needs them, not all at on
 Tools follow the same philosophy. Thinktank.ai comes with a core toolset — web search, web fetch, file operations, bash execution — and supports custom tools via MCP servers and Python functions. Swap anything. Add anything.
 
 In the chat UI, the Context panel surfaces the resolved tool list and enabled skills for the current session, backed by the gateway endpoint `GET /api/agent/context`.
+
+The tool call timeline in the chat UI displays outputs for key tools (including the `reflection` scratchpad) so you can inspect intermediate reasoning steps.
 
 ```
 # Paths inside the sandbox container

@@ -4,8 +4,6 @@ Verifies that the sql-queries skill is properly discovered, parsed,
 and enabled by default for the agent's system prompt.
 """
 
-import pytest
-
 from src.config.extensions_config import ExtensionsConfig
 from src.skills.loader import load_skills
 

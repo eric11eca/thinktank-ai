@@ -10,6 +10,7 @@ import {
   MessageCircleQuestionMarkIcon,
   NotebookPenIcon,
   SearchIcon,
+  SparklesIcon,
   SquareTerminalIcon,
   WrenchIcon,
 } from "lucide-react";
@@ -251,6 +252,7 @@ function ToolCall({
   const { t } = useI18n();
   const { setOpen, autoOpen, autoSelect, selectedArtifact, select } =
     useArtifacts();
+  const rehypePlugins = useRehypeSplitWordsIntoSpans(isLoading);
 
   if (name === "web_search") {
     let label: React.ReactNode = t.toolCalls.searchForRelatedInfo;
@@ -394,6 +396,28 @@ function ToolCall({
             {path}
           </ChainOfThoughtSearchResult>
         )}
+      </ChainOfThoughtStep>
+    );
+  } else if (name === "reflection" || name === "think") {
+    const content =
+      typeof result === "string"
+        ? result
+        : result
+          ? JSON.stringify(result, null, 2)
+          : "";
+    return (
+      <ChainOfThoughtStep
+        key={id}
+        label={t.common.reflecting}
+        icon={SparklesIcon}
+      >
+        {content ? (
+          <MarkdownContent
+            content={content}
+            isLoading={isLoading}
+            rehypePlugins={rehypePlugins}
+          />
+        ) : null}
       </ChainOfThoughtStep>
     );
   } else if (name === "write_file" || name === "str_replace") {

@@ -96,6 +96,7 @@ Reasoning (model thoughts) rendering reads from `core/messages/utils.ts`, which 
 - **Local settings** are loaded synchronously on mount to avoid transient defaults overriding the user's model selection
 - **Provider settings** are configured in Settings → Models, including `epfl-rcp` for EPFL RCP AIaaS (OpenAI-compatible `https://inference-rcp.epfl.ch/v1`); these models default to thinking-capable mode selection
 - **Thinking blocks** auto-expand while streaming, auto-scroll to new tokens, and scroll within a capped height
+- **Tool call timeline** renders tool outputs (including the `reflection` scratchpad) in the chain-of-thought list
 
 ## Code Style
 
