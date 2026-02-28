@@ -412,6 +412,7 @@ For models with `supports_vision: true`:
 ## Code Style
 
 - Uses `ruff` for linting and formatting
+- `ruff` enforces import sorting; keep imports ordered to avoid lint failures
 - Line length: 240 characters
 - Python 3.12+ with type hints
 - Double quotes, space indentation
