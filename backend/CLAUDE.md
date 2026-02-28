@@ -121,14 +121,16 @@ Middlewares execute in strict order in `src/agents/lead_agent/agent.py`:
 2. **UploadsMiddleware** - Tracks and injects newly uploaded files into conversation
 3. **SandboxMiddleware** - Acquires sandbox, stores `sandbox_id` in state
 4. **DanglingToolCallMiddleware** - Injects placeholder ToolMessages for AIMessage tool_calls that lack responses (e.g., due to user interruption)
-5. **SummarizationMiddleware** - Context reduction when approaching token limits (optional, if enabled)
-6. **TodoListMiddleware** - Task tracking with `write_todos` tool (optional, if plan_mode)
-7. **TitleMiddleware** - Auto-generates thread title after first complete exchange
-8. **MemoryMiddleware** - Queues conversations for async memory update (filters to user + final AI responses)
-9. **ViewImageMiddleware** - Injects base64 image data before LLM call (conditional on vision support)
-10. **SubagentLimitMiddleware** - Truncates excess `task` tool calls from model response to enforce `MAX_CONCURRENT_SUBAGENTS` limit (optional, if subagent_enabled)
-11. **TimelineLoggingMiddleware** - Persists a chronological JSON log of thread messages for auditing
-12. **ClarificationMiddleware** - Intercepts `ask_clarification` tool calls, interrupts via `Command(goto=END)` (must be last)
+5. **ToolRetryMiddleware** - Retries transient tool failures (timeout, 502/503/504, rate limit) with exponential backoff (max 2 retries). Classifies errors as TRANSIENT/AUTH/PERSISTENT/UNKNOWN; only retries TRANSIENT. Never retries `ask_clarification`, `think`, or `present_files`.
+6. **UsageTrackingMiddleware** - Tracks token usage (after ToolRetryMiddleware so retried calls accumulate)
+7. **SummarizationMiddleware** - Context reduction when approaching token limits (optional, if enabled)
+8. **TodoListMiddleware** - Task tracking with `write_todos` tool (optional, if plan_mode)
+9. **TitleMiddleware** - Auto-generates thread title after first complete exchange
+10. **MemoryMiddleware** - Queues conversations for async memory update (filters to user + final AI responses)
+11. **ViewImageMiddleware** - Injects base64 image data before LLM call (conditional on vision support)
+12. **SubagentLimitMiddleware** - Truncates excess `task` tool calls from model response to enforce `MAX_CONCURRENT_SUBAGENTS` limit (optional, if subagent_enabled)
+13. **TimelineLoggingMiddleware** - Persists a chronological JSON log of thread messages for auditing
+14. **ClarificationMiddleware** - Intercepts `ask_clarification` tool calls, interrupts via `Command(goto=END)` (must be last)
 
 Timeline logs are written per thread to:
 `backend/.think-tank/threads/{thread_id}/user-data/outputs/agent_timeline.json`
@@ -222,6 +224,7 @@ Proxied through nginx: `/api/langgraph/*` → LangGraph, all other `/api/*` → 
 - `read_file` - Read file contents with optional line range
 - `write_file` - Write/append to files, creates directories
 - `str_replace` - Substring replacement (single or all occurrences)
+- `execute_python` (in `src/sandbox/code_execution.py`) - Dedicated Python execution with output truncation (4096 char limit), optional `save_output_to` for full output
 
 ### Subagent System (`src/subagents/`)
 
@@ -239,9 +242,15 @@ Proxied through nginx: `/api/langgraph/*` → LangGraph, all other `/api/*` → 
 3. **Built-in tools**:
    - `present_files` - Make output files visible to user (only `/mnt/user-data/outputs`)
    - `ask_clarification` - Request clarification (intercepted by ClarificationMiddleware → interrupts)
+   - `think` - Scratchpad for structured reasoning between tool calls (always available)
    - `view_image` - Read image as base64 (added only if model supports vision)
 4. **Subagent tool** (if enabled):
    - `task` - Delegate to subagent (description, prompt, subagent_type, max_turns)
+
+**Tool Documentation System** (`src/tools/docs/`):
+- `tool_policies.py` - Cross-cutting policies (preference cascade, anti-patterns, parallel calling) and per-tool behavioral rules
+- `get_tool_usage_policies(tool_names)` assembles relevant policies into `<tool_usage_policies>` section injected into system prompt
+- Phase-aware guidance (planning/execution/synthesis/review) via soft prompt enforcement
 
 **Community tools** (`src/community/`):
 - `tavily/` - Web search (5 results default) and web fetch (4KB limit)
