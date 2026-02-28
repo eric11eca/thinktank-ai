@@ -72,8 +72,8 @@ def setup_mcp_config():
     from src.config.extensions_config import (
         ExtensionsConfig,
         McpServerConfig,
-        set_extensions_config,
         reset_extensions_config,
+        set_extensions_config,
     )
     from src.mcp.cache import reset_mcp_tools_cache
 

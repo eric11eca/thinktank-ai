@@ -106,20 +106,14 @@ class TestPhaseFilterMiddleware:
 
     def test_phase_tool_allowlist_has_all_phases(self):
         """PHASE_TOOL_ALLOWLIST should have entries for all phases."""
-        from src.agents.middlewares.phase_filter_middleware import (
-            ExecutionPhase,
-            PHASE_TOOL_ALLOWLIST,
-        )
+        from src.agents.middlewares.phase_filter_middleware import ExecutionPhase, PHASE_TOOL_ALLOWLIST
 
         for phase in ExecutionPhase:
             assert phase in PHASE_TOOL_ALLOWLIST
 
     def test_planning_phase_includes_search_tools(self):
         """Planning phase should include search and read tools."""
-        from src.agents.middlewares.phase_filter_middleware import (
-            ExecutionPhase,
-            PHASE_TOOL_ALLOWLIST,
-        )
+        from src.agents.middlewares.phase_filter_middleware import ExecutionPhase, PHASE_TOOL_ALLOWLIST
 
         planning = PHASE_TOOL_ALLOWLIST[ExecutionPhase.PLANNING]
         assert "web_search" in planning
@@ -128,10 +122,7 @@ class TestPhaseFilterMiddleware:
 
     def test_planning_phase_excludes_write_tools(self):
         """Planning phase should exclude write/execution tools."""
-        from src.agents.middlewares.phase_filter_middleware import (
-            ExecutionPhase,
-            PHASE_TOOL_ALLOWLIST,
-        )
+        from src.agents.middlewares.phase_filter_middleware import ExecutionPhase, PHASE_TOOL_ALLOWLIST
 
         planning = PHASE_TOOL_ALLOWLIST[ExecutionPhase.PLANNING]
         assert "write_file" not in planning
@@ -139,10 +130,7 @@ class TestPhaseFilterMiddleware:
 
     def test_execution_phase_includes_all_tools(self):
         """Execution phase should include the broadest set of tools."""
-        from src.agents.middlewares.phase_filter_middleware import (
-            ExecutionPhase,
-            PHASE_TOOL_ALLOWLIST,
-        )
+        from src.agents.middlewares.phase_filter_middleware import ExecutionPhase, PHASE_TOOL_ALLOWLIST
 
         execution = PHASE_TOOL_ALLOWLIST[ExecutionPhase.EXECUTION]
         assert "bash" in execution
@@ -152,10 +140,7 @@ class TestPhaseFilterMiddleware:
 
     def test_synthesis_phase_excludes_search(self):
         """Synthesis phase should not include web search tools."""
-        from src.agents.middlewares.phase_filter_middleware import (
-            ExecutionPhase,
-            PHASE_TOOL_ALLOWLIST,
-        )
+        from src.agents.middlewares.phase_filter_middleware import ExecutionPhase, PHASE_TOOL_ALLOWLIST
 
         synthesis = PHASE_TOOL_ALLOWLIST[ExecutionPhase.SYNTHESIS]
         assert "web_search" not in synthesis
@@ -164,10 +149,7 @@ class TestPhaseFilterMiddleware:
 
     def test_review_phase_is_read_heavy(self):
         """Review phase should be read-heavy with limited write access."""
-        from src.agents.middlewares.phase_filter_middleware import (
-            ExecutionPhase,
-            PHASE_TOOL_ALLOWLIST,
-        )
+        from src.agents.middlewares.phase_filter_middleware import ExecutionPhase, PHASE_TOOL_ALLOWLIST
 
         review = PHASE_TOOL_ALLOWLIST[ExecutionPhase.REVIEW]
         assert "read_file" in review
