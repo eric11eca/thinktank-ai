@@ -11,21 +11,21 @@ CROSS_CUTTING_POLICIES = """<tool_usage_policies>
 2. Use `str_replace` instead of `write_file` for targeted edits to existing files
 3. Use `ls` instead of `bash(command="ls ...")` or `bash(command="find ...")` for directory listing
 4. Use `write_file` only for creating new files or complete rewrites
-5. Use `think` after gathering information from search or file reads to analyze before acting
+5. Use `reflection` after gathering information from search or file reads to analyze before acting
 6. Use `execute_python` instead of `bash(command="python ...")` for data analysis and structured Python execution
 
 **Anti-Patterns to Avoid:**
 - Do NOT chain multiple bash commands when dedicated tools exist (e.g., `bash("cat file.py | grep pattern")` — use `read_file` then analyze)
 - Do NOT use `write_file` to make small edits — use `str_replace` to preserve surrounding content
-- Do NOT call tools redundantly — if you already have the information, use `think` to analyze it
+- Do NOT call tools redundantly — if you already have the information, use `reflection` to analyze it
 - Do NOT execute destructive commands (rm -rf, DROP TABLE) without explicit user confirmation via `ask_clarification`
 
 **Parallel Tool Calling:**
 - Call independent tools in parallel when possible (e.g., reading multiple files, searching multiple queries)
 - Do NOT parallelize tools with dependencies (e.g., write then read the same file)
 
-**Think-After-Search Rule:**
-- After receiving results from `web_search`, `read_file`, or multiple tool calls, use `think` to analyze and synthesize before taking the next action
+**Reflection-After-Search Rule:**
+- After receiving results from `web_search`, `read_file`, or multiple tool calls, use `reflection` to analyze and synthesize before taking the next action
 - This ensures deliberate reasoning rather than reactive tool chaining
 
 {phase_guidance}
@@ -43,7 +43,7 @@ TOOL_BEHAVIORAL_RULES: dict[str, str] = {
     "web_search": """**web_search — Behavioral Rules:**
 - Use specific, targeted queries with relevant keywords
 - Include year/date qualifiers for time-sensitive information
-- After receiving results, use `think` to evaluate relevance and credibility
+- After receiving results, use `reflection` to evaluate relevance and credibility
 - If initial results are insufficient, refine the query rather than repeating it
 - Follow up with `web_fetch` only on URLs from search results""",
 
@@ -76,10 +76,10 @@ TOOL_BEHAVIORAL_RULES: dict[str, str] = {
 - Include necessary imports in each code block (execution is stateless)
 - Use `description` to explain the analysis goal clearly""",
 
-    "think": """**think — Behavioral Rules:**
+    "reflection": """**reflection — Behavioral Rules:**
 - Use after receiving search results or reading files to analyze before acting
 - Use before making complex decisions to weigh options explicitly
-- Keep thoughts focused and actionable — avoid restating raw data
+- Keep reflections focused and actionable — avoid restating raw data
 - Do NOT use as a substitute for the model's built-in reasoning""",
 
     "present_files": """**present_files — Behavioral Rules:**
@@ -95,10 +95,10 @@ Consider which phase of work you are in and select tools accordingly:
 
 | Phase | Appropriate Tools | Avoid |
 |-------|------------------|-------|
-| **Planning** (understanding requirements, exploring codebase) | think, read_file, ls, web_search, web_fetch, ask_clarification | bash, write_file, str_replace |
-| **Execution** (implementing changes, running code) | bash, write_file, str_replace, read_file, execute_python, task, think | — |
-| **Synthesis** (assembling results, writing reports) | write_file, str_replace, read_file, think, execute_python | web_search, web_fetch |
-| **Review** (verifying results, checking quality) | read_file, ls, think, ask_clarification, bash (for tests only) | write_file, str_replace |
+| **Planning** (understanding requirements, exploring codebase) | reflection, read_file, ls, web_search, web_fetch, ask_clarification | bash, write_file, str_replace |
+| **Execution** (implementing changes, running code) | bash, write_file, str_replace, read_file, execute_python, task, reflection | — |
+| **Synthesis** (assembling results, writing reports) | write_file, str_replace, read_file, reflection, execute_python | web_search, web_fetch |
+| **Review** (verifying results, checking quality) | read_file, ls, reflection, ask_clarification, bash (for tests only) | write_file, str_replace |
 """
 
 

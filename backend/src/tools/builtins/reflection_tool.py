@@ -1,11 +1,11 @@
-"""Think tool for structured reasoning between tool calls."""
+"""Reflection tool for structured reasoning between tool calls."""
 
 from langchain.tools import tool
 
 
-@tool("think", parse_docstring=True)
-def think_tool(thought: str) -> str:
-    """Use this tool to think step-by-step, reflect on gathered information, and plan your next actions.
+@tool("reflection", parse_docstring=True)
+def reflection_tool(thought: str) -> str:
+    """Use this tool to reflect step-by-step, analyze gathered information, and plan your next actions.
 
     This is a scratchpad for explicit reasoning. The thought content is returned as-is
     and becomes part of the conversation context.
@@ -23,8 +23,8 @@ def think_tool(thought: str) -> str:
     - To repeat information without adding analysis
 
     Examples:
-        think(thought="Search results show 3 conflicting claims. Sources A and C agree on 100/min. Source B is outdated (2023). Proceeding with 100/min.")
-        think(thought="Plan: 1) Read auth middleware, 2) Find token validation, 3) Add refresh token support, 4) Update tests.")
+        reflection(thought="Search results show 3 conflicting claims. Sources A and C agree on 100/min. Source B is outdated (2023). Proceeding with 100/min.")
+        reflection(thought="Plan: 1) Read auth middleware, 2) Find token validation, 3) Add refresh token support, 4) Update tests.")
 
     Args:
         thought: Your reasoning, analysis, or plan. Be specific and actionable.
