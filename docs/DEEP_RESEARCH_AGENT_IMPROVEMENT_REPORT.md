@@ -432,9 +432,9 @@ def think(reflection: str) -> str:
     return f"Reflection recorded: {reflection}"
 ```
 
-The research subagent in open-ptc-agent is required to call `think` after every search, analyzing: what was found, what's missing, whether to continue or synthesize.
+The research subagent in open-ptc-agent is required to call `reflection` after every search, analyzing: what was found, what's missing, whether to continue or synthesize.
 
-**Recommendation**: Add a `think` tool and mandate its use in the research planning workflow. This is lightweight to implement but significantly improves research depth.
+**Recommendation**: Add a `reflection` tool and mandate its use in the research planning workflow. This is lightweight to implement but significantly improves research depth.
 
 #### D. Tool Error Recovery (LangGraph + OpenClaw Patterns)
 
@@ -599,7 +599,7 @@ Claude Code defines specialized agents with tiered capabilities:
 
 open-ptc-agent separates:
 
-- **Research subagent**: Tavily search + think tool only (stateless)
+- **Research subagent**: Tavily search + reflection tool only (stateless)
 - **General-purpose subagent**: Full sandbox + MCP + filesystem (stateful)
 
 **Recommendation**: Expand the subagent registry with specialized types:
@@ -734,7 +734,7 @@ Based on patterns from all analyzed systems, here is a recommended deep research
 
 **Recommendation**: Create a `research` subagent type with:
 
-1. `web_search` + `web_fetch` + `think` tools only
+1. `web_search` + `web_fetch` + `reflection` tools only
 2. Mandatory `think()` call after every search
 3. Explicit stop conditions in the prompt
 4. Progress tracking via notes written to workspace files
@@ -876,7 +876,7 @@ Layer strategically: address the dominant bottleneck first, measure impact, then
 
 ### Quick Wins (< 1 day each)
 
-1. Add `think` tool (trivial implementation, high research quality impact)
+1. Add `reflection` tool (trivial implementation, high research quality impact)
 2. Update compaction prompt to use 5-section template
 3. Add "Current Focus" to todo list middleware output
 4. Preserve failed tool calls during compaction
