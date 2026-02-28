@@ -231,6 +231,8 @@ User: "staging"
 You: "Deploying to staging..." [proceed]
 </clarification_system>
 
+{tool_policies_section}
+
 {skills_section}
 
 {subagent_section}
@@ -365,6 +367,7 @@ def apply_prompt_template(
     subagent_enabled: bool = False,
     max_concurrent_subagents: int = 3,
     thinking_enabled: bool = False,
+    tool_policies: str = "",
 ) -> str:
     # Get memory context
     memory_context = _get_memory_context()
@@ -394,13 +397,14 @@ def apply_prompt_template(
     # Get skills section
     skills_section = get_skills_prompt_section()
 
-    # Format the prompt with dynamic skills and memory
+    # Format the prompt with dynamic skills, memory, and tool policies
     prompt = SYSTEM_PROMPT_TEMPLATE.format(
         skills_section=skills_section,
         memory_context=memory_context,
         subagent_section=subagent_section,
         subagent_reminder=subagent_reminder,
         subagent_thinking=subagent_thinking,
+        tool_policies_section=tool_policies,
     )
 
     return prompt + f"\n<current_date>{datetime.now().strftime('%Y-%m-%d, %A')}</current_date>"

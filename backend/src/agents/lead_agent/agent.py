@@ -12,6 +12,7 @@ from src.agents.middlewares.subagent_limit_middleware import SubagentLimitMiddle
 from src.agents.middlewares.thread_data_middleware import ThreadDataMiddleware
 from src.agents.middlewares.timeline_logging_middleware import TimelineLoggingMiddleware
 from src.agents.middlewares.title_middleware import TitleMiddleware
+from src.agents.middlewares.tool_retry_middleware import ToolRetryMiddleware
 from src.agents.middlewares.uploads_middleware import UploadsMiddleware
 from src.agents.middlewares.usage_tracking_middleware import UsageTrackingMiddleware
 from src.agents.middlewares.view_image_middleware import ViewImageMiddleware
@@ -204,6 +205,7 @@ def _build_middlewares(config: RunnableConfig):
         UploadsMiddleware(),
         SandboxMiddleware(),
         DanglingToolCallMiddleware(),
+        ToolRetryMiddleware(),
         UsageTrackingMiddleware(),
     ]
 
@@ -286,14 +288,23 @@ def make_lead_agent(config: RunnableConfig):
         }
     )
 
+    tools = get_available_tools(model_name=model_name, runtime_model=runtime_model, subagent_enabled=subagent_enabled)
+
+    # Compute tool usage policies based on available tools
+    from src.tools.docs.tool_policies import get_tool_usage_policies
+
+    tool_names = [getattr(t, "name", "") for t in tools]
+    tool_policies = get_tool_usage_policies(tool_names)
+
     return create_agent(
         model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled, runtime_model=runtime_model),
-        tools=get_available_tools(model_name=model_name, runtime_model=runtime_model, subagent_enabled=subagent_enabled),
+        tools=tools,
         middleware=_build_middlewares(config),
         system_prompt=apply_prompt_template(
             subagent_enabled=subagent_enabled,
             max_concurrent_subagents=max_concurrent_subagents,
             thinking_enabled=thinking_enabled,
+            tool_policies=tool_policies,
         ),
         state_schema=ThreadState,
     )
