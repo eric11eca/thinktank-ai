@@ -30,6 +30,7 @@ export const enUS: Translations = {
     search: "Search",
     download: "Download",
     thinking: "Thinking",
+    reflecting: "Reflecting",
     artifacts: "Artifacts",
     public: "Public",
     custom: "Custom",
