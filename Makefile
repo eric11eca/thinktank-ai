@@ -1,6 +1,6 @@
 # Thinktank - Unified Development Environment
 
-.PHONY: help config check install dev stop clean db-start db-stop db-migrate db-reset erp-setup docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway build-frontend build-prod prod-start prod-stop prod-logs prod-status prod-health prod-test
+.PHONY: help config check install dev dev-mcp stop clean db-start db-stop db-migrate db-reset erp-setup docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway build-frontend build-prod prod-start prod-stop prod-logs prod-status prod-health prod-test mcp-build mcp-start mcp-stop mcp-status mcp-logs
 
 # Default DATABASE_URL for the local PostgreSQL container
 DB_URL ?= postgresql://thinktank:matterhorn@localhost:5432/thinktank
@@ -11,6 +11,7 @@ help:
 	@echo "  make install         - Install all dependencies (frontend + backend)"
 	@echo "  make setup-sandbox   - Pre-pull sandbox container image (recommended)"
 	@echo "  make dev             - Start all services (frontend + backend + nginx on localhost:2026)"
+	@echo "  make dev-mcp         - Start MCP containers + dev stack (make dev with SSE MCP)"
 	@echo "  make stop            - Stop all running services"
 	@echo "  make clean           - Clean up processes and temporary files"
 	@echo ""
@@ -441,3 +442,35 @@ prod-health:
 # Run E2E tests against production stack
 prod-test:
 	@./scripts/prod.sh test
+
+# ==========================================
+# MCP Server Commands
+# ==========================================
+
+# Build MCP server Docker images
+mcp-build:
+	@./scripts/prod.sh mcp-build
+
+# Start MCP containers (standalone)
+mcp-start:
+	@./scripts/prod.sh mcp-start
+
+# Start MCP containers + dev stack (make dev with SSE MCP servers)
+dev-mcp:
+	@./scripts/prod.sh mcp-start-dev
+	@echo ""
+	@echo "Starting development server with MCP containers..."
+	@echo ""
+	DEER_FLOW_EXTENSIONS_CONFIG_PATH=$(PWD)/docker/extensions_config.mcp-dev.json $(MAKE) dev
+
+# Stop MCP containers
+mcp-stop:
+	@./scripts/prod.sh mcp-stop
+
+# Show MCP container status
+mcp-status:
+	@./scripts/prod.sh mcp-status
+
+# Follow MCP server logs
+mcp-logs:
+	@./scripts/prod.sh mcp-logs

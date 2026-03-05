@@ -34,6 +34,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 DOCKER_DIR="$PROJECT_ROOT/docker"
 COMPOSE_FILE="$DOCKER_DIR/docker-compose-prod.yaml"
+MCP_COMPOSE_FILE="$DOCKER_DIR/docker-compose-mcp.yaml"
+MCP_OVERRIDE_FILE="$DOCKER_DIR/docker-compose-mcp-override.yaml"
+MCP_DEV_CONFIG="$DOCKER_DIR/extensions_config.mcp-dev.json"
 
 # Defaults (override via environment or .env)
 export DB_PASSWORD="${DB_PASSWORD:-Qwen3.5-397B-A17B}"
@@ -53,6 +56,14 @@ fi
 
 compose() {
     docker compose -f "$COMPOSE_FILE" "$@"
+}
+
+compose_mcp() {
+    docker compose -f "$MCP_COMPOSE_FILE" "$@"
+}
+
+compose_with_mcp() {
+    docker compose -f "$COMPOSE_FILE" -f "$MCP_COMPOSE_FILE" -f "$MCP_OVERRIDE_FILE" "$@"
 }
 
 log_info()    { echo -e "${BLUE}[INFO]${NC}  $*"; }
@@ -290,6 +301,196 @@ cmd_test() {
         pnpm test:e2e:web
 }
 
+# ── MCP Server Commands ──────────────────────────────────────────────────────
+
+MCP_SERVERS="mcp-worldbank mcp-fiscaldata mcp-postgres mcp-alphavantage mcp-firecrawl mcp-git mcp-filesystem"
+
+wait_for_mcp_healthy() {
+    local service="$1"
+    local max_wait="${2:-30}"
+    local elapsed=0
+
+    while [[ $elapsed -lt $max_wait ]]; do
+        local status
+        status=$(compose_mcp ps --format json "$service" 2>/dev/null \
+            | grep -o '"Health":"[^"]*"' \
+            | head -1 \
+            | cut -d'"' -f4) || true
+
+        if [[ "$status" == "healthy" ]]; then
+            return 0
+        fi
+
+        sleep 2
+        elapsed=$((elapsed + 2))
+    done
+    return 1
+}
+
+cmd_mcp_build() {
+    log_header "Building MCP Server Images"
+
+    log_info "Building shared base image (thinktank-mcp-base)..."
+    docker build -t thinktank-mcp-base:latest \
+        -f "$DOCKER_DIR/mcp-servers/Dockerfile.base" \
+        "$PROJECT_ROOT"
+    log_ok "Base image built"
+
+    log_info "Building all MCP server images..."
+    compose_mcp build "$@"
+    log_ok "All MCP server images built"
+}
+
+cmd_mcp_start() {
+    log_header "Starting MCP Server Containers"
+
+    # Build base image if it doesn't exist
+    if ! docker image inspect thinktank-mcp-base:latest >/dev/null 2>&1; then
+        log_info "Base image not found, building first..."
+        cmd_mcp_build
+    fi
+
+    compose_mcp up --build -d
+
+    # Wait for each server to become healthy
+    for server in $MCP_SERVERS; do
+        local short_name="${server#mcp-}"
+        echo -n "  $short_name ... "
+        if wait_for_mcp_healthy "$server" 30; then
+            echo -e "${GREEN}healthy${NC}"
+        else
+            echo -e "${YELLOW}not ready${NC}"
+        fi
+    done
+
+    log_header "MCP Servers Running"
+    echo "  worldbank:     http://localhost:${MCP_WORLDBANK_PORT:-8081}/sse"
+    echo "  fiscaldata:    http://localhost:${MCP_FISCALDATA_PORT:-8082}/sse"
+    echo "  postgres:      http://localhost:${MCP_POSTGRES_PORT:-8083}/sse"
+    echo "  alphavantage:  http://localhost:${MCP_ALPHAVANTAGE_PORT:-8084}/sse"
+    echo "  firecrawl:     http://localhost:${MCP_FIRECRAWL_PORT:-8085}/sse"
+    echo "  git:           http://localhost:${MCP_GIT_PORT:-8086}/sse"
+    echo "  filesystem:    http://localhost:${MCP_FILESYSTEM_PORT:-8087}/sse"
+    echo ""
+    echo "  To use with the production stack:"
+    echo "    $0 start-with-mcp"
+    echo ""
+}
+
+cmd_mcp_stop() {
+    log_header "Stopping MCP Server Containers"
+    compose_mcp down
+    log_ok "MCP servers stopped"
+}
+
+cmd_mcp_logs() {
+    local service="${1:-}"
+    if [[ -n "$service" ]]; then
+        log_info "Following logs for: mcp-$service"
+        compose_mcp logs -f "mcp-$service"
+    else
+        log_info "Following all MCP server logs (Ctrl+C to stop)"
+        compose_mcp logs -f
+    fi
+}
+
+cmd_mcp_status() {
+    log_header "MCP Server Status"
+    compose_mcp ps
+}
+
+cmd_mcp_start_dev() {
+    log_header "Starting MCP Containers for Development (make dev)"
+
+    # Build base image if it doesn't exist
+    if ! docker image inspect thinktank-mcp-base:latest >/dev/null 2>&1; then
+        log_info "Base image not found, building first..."
+        cmd_mcp_build
+    fi
+
+    compose_mcp up --build -d
+
+    # Wait for each server to become healthy
+    for server in $MCP_SERVERS; do
+        local short_name="${server#mcp-}"
+        echo -n "  $short_name ... "
+        if wait_for_mcp_healthy "$server" 30; then
+            echo -e "${GREEN}healthy${NC}"
+        else
+            echo -e "${YELLOW}not ready${NC}"
+        fi
+    done
+
+    # Point host-side processes at the dev config
+    log_header "MCP Servers Ready for Development"
+    echo "  Containers are listening on localhost ports 8081-8087."
+    echo ""
+    echo "  To connect 'make dev' to these containers, start it with:"
+    echo ""
+    echo "    DEER_FLOW_EXTENSIONS_CONFIG_PATH=$MCP_DEV_CONFIG make dev"
+    echo ""
+    echo "  Or export it in your shell first:"
+    echo ""
+    echo "    export DEER_FLOW_EXTENSIONS_CONFIG_PATH=$MCP_DEV_CONFIG"
+    echo "    make dev"
+    echo ""
+}
+
+cmd_start_with_mcp() {
+    log_header "Starting Full Stack with MCP Containers"
+
+    # Build MCP images if needed
+    if ! docker image inspect thinktank-mcp-base:latest >/dev/null 2>&1; then
+        cmd_mcp_build
+    fi
+
+    # Start everything together (merged compose files)
+    log_info "Starting prod stack + MCP containers with SSE config..."
+    compose_with_mcp up --build -d
+
+    # Wait for infrastructure (same as cmd_start)
+    log_info "Waiting for PostgreSQL to be healthy..."
+    if wait_for_healthy postgres 30; then
+        log_ok "PostgreSQL is healthy"
+    else
+        log_error "PostgreSQL did not become healthy in 30s"
+        return 1
+    fi
+
+    log_info "Waiting for Redis to be healthy..."
+    if wait_for_healthy redis 15; then
+        log_ok "Redis is healthy"
+    else
+        log_error "Redis did not become healthy in 15s"
+        return 1
+    fi
+
+    # Wait for MCP servers
+    log_info "Waiting for MCP servers..."
+    for server in $MCP_SERVERS; do
+        local short_name="${server#mcp-}"
+        echo -n "  $short_name ... "
+        if wait_for_mcp_healthy "$server" 30; then
+            echo -e "${GREEN}healthy${NC}"
+        else
+            echo -e "${YELLOW}not ready${NC}"
+        fi
+    done
+
+    # Wait for gateway
+    log_info "Waiting for Gateway API to start..."
+    if wait_for_url "http://localhost:${NGINX_HTTP_PORT}/health" 90; then
+        log_ok "Gateway API is healthy"
+    else
+        log_warn "Gateway health check did not pass within 90s"
+    fi
+
+    log_header "Thinktank.ai is running with MCP containers!"
+    echo "  Application:  http://localhost:${NGINX_HTTP_PORT}"
+    echo "  MCP servers connected via SSE (extensions_config.mcp.json)"
+    echo ""
+}
+
 cmd_help() {
     echo ""
     echo -e "${BOLD}Thinktank.ai Production Stack${NC}"
@@ -308,6 +509,16 @@ cmd_help() {
     echo "  health             Run health checks against running stack"
     echo "  test               Run Playwright E2E tests against running stack"
     echo "  clean              Stop and delete all data (destructive!)"
+    echo ""
+    echo "MCP Server Commands:"
+    echo "  mcp-build          Build base image + all MCP server images"
+    echo "  mcp-start          Start MCP containers (standalone testing)"
+    echo "  mcp-start-dev      Start MCP containers + show 'make dev' instructions"
+    echo "  mcp-stop           Stop MCP containers"
+    echo "  mcp-status         Show MCP container status"
+    echo "  mcp-logs [name]    Follow MCP logs (all or: worldbank, postgres, git, ...)"
+    echo "  start-with-mcp     Start prod stack + MCP containers with SSE config"
+    echo ""
     echo "  help               Show this message"
     echo ""
     echo "Environment variables (set in shell or .env):"
@@ -340,6 +551,13 @@ main() {
         health)  cmd_health ;;
         test)    cmd_test ;;
         clean)   cmd_clean ;;
+        mcp-build)      shift; cmd_mcp_build "$@" ;;
+        mcp-start)      cmd_mcp_start ;;
+        mcp-start-dev)  cmd_mcp_start_dev ;;
+        mcp-stop)       cmd_mcp_stop ;;
+        mcp-status)     cmd_mcp_status ;;
+        mcp-logs)       shift; cmd_mcp_logs "$@" ;;
+        start-with-mcp) cmd_start_with_mcp ;;
         help|--help|-h) cmd_help ;;
         *)
             log_error "Unknown command: $1"
