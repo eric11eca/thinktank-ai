@@ -4,6 +4,7 @@ Exposes Treasury fiscal datasets (national debt, interest rates, exchange rates,
 """
 
 import json
+import os
 import sys
 
 from mcp.server.fastmcp import FastMCP
@@ -234,5 +235,13 @@ async def fiscaldata_query_dataset(
 
 def main():
     """Entry point for the fiscaldata-mcp CLI."""
-    print("Fiscal Data MCP server starting...", file=sys.stderr)
-    mcp.run(transport="stdio")
+    transport = os.environ.get("MCP_TRANSPORT", "stdio")
+    host = os.environ.get("MCP_HOST", "0.0.0.0")
+    port = int(os.environ.get("MCP_PORT", "8080"))
+    print(f"Fiscal Data MCP server starting (transport={transport})...", file=sys.stderr)
+    if transport == "sse":
+        mcp.settings.host = host
+        mcp.settings.port = port
+        mcp.run(transport="sse")
+    else:
+        mcp.run(transport="stdio")

@@ -4,6 +4,7 @@ Exposes World Bank API data (countries, indicators, economic data) via MCP tools
 """
 
 import json
+import os
 import sys
 
 from mcp.server.fastmcp import FastMCP
@@ -120,5 +121,13 @@ async def worldbank_get_indicator_data(
 
 def main():
     """Entry point for the worldbank-mcp CLI."""
-    print("World Bank MCP server starting...", file=sys.stderr)
-    mcp.run(transport="stdio")
+    transport = os.environ.get("MCP_TRANSPORT", "stdio")
+    host = os.environ.get("MCP_HOST", "0.0.0.0")
+    port = int(os.environ.get("MCP_PORT", "8080"))
+    print(f"World Bank MCP server starting (transport={transport})...", file=sys.stderr)
+    if transport == "sse":
+        mcp.settings.host = host
+        mcp.settings.port = port
+        mcp.run(transport="sse")
+    else:
+        mcp.run(transport="stdio")
