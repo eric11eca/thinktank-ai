@@ -1,0 +1,18 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Git MCP Server — supergateway bridges stdio → SSE
+# Workspace directory is volume-mounted at /workspace via compose.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM thinktank-mcp-base:latest
+
+# Install git (required by the MCP server)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pre-install the package so startup is fast
+RUN npm install -g @modelcontextprotocol/server-git
+
+EXPOSE 8080
+
+# Restart loop: supergateway crashes on SSE reconnection (single-session limitation).
+CMD ["sh", "-c", "while true; do supergateway --stdio 'npx -y @modelcontextprotocol/server-git --repository /workspace' --port 8080; echo '[restart] supergateway exited, restarting...' >&2; sleep 1; done"]

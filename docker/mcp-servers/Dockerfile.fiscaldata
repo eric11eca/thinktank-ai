@@ -1,0 +1,22 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Fiscal Data MCP Server — native SSE via FastMCP
+# Source code is volume-mounted at runtime for live updates.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM thinktank-mcp-base:latest
+
+# Copy only dependency manifests (source is volume-mounted at runtime)
+COPY mcp_servers/fiscaldata/pyproject.toml mcp_servers/fiscaldata/uv.lock ./
+
+# Install dependencies only (not the project itself)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --no-install-project --no-dev
+
+# Source code mounted at /app/fiscaldata_mcp via compose volume
+ENV MCP_TRANSPORT=sse \
+    MCP_HOST=0.0.0.0 \
+    MCP_PORT=8080 \
+    PYTHONPATH=/app
+
+EXPOSE 8080
+
+CMD ["uv", "run", "python", "-c", "from fiscaldata_mcp import main; main()"]

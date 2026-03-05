@@ -1,0 +1,13 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Filesystem MCP Server — supergateway bridges stdio → SSE
+# Allowed directories are volume-mounted at /data via compose.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM thinktank-mcp-base:latest
+
+# Pre-install the package so startup is fast
+RUN npm install -g @modelcontextprotocol/server-filesystem
+
+EXPOSE 8080
+
+# Restart loop: supergateway crashes on SSE reconnection (single-session limitation).
+CMD ["sh", "-c", "while true; do supergateway --stdio 'npx -y @modelcontextprotocol/server-filesystem /data' --port 8080; echo '[restart] supergateway exited, restarting...' >&2; sleep 1; done"]

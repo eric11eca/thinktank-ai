@@ -1,0 +1,15 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Alpha Vantage MCP Server — supergateway bridges stdio → SSE
+# API key is injected via ALPHA_VANTAGE_API_KEY env var at runtime.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM thinktank-mcp-base:latest
+
+# Pre-install the package so startup is fast
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv tool install av-mcp
+
+EXPOSE 8080
+
+# Shell form required so $ALPHA_VANTAGE_API_KEY is expanded at runtime.
+# Restart loop: supergateway crashes on SSE reconnection (single-session limitation).
+CMD ["sh", "-c", "while true; do supergateway --stdio \"uvx av-mcp $ALPHA_VANTAGE_API_KEY\" --port 8080; echo '[restart] supergateway exited, restarting...' >&2; sleep 1; done"]
