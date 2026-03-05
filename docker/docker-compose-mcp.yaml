@@ -1,0 +1,194 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Thinktank.ai — MCP Server Containers
+# ─────────────────────────────────────────────────────────────────────────────
+# Long-lived MCP servers exposing SSE endpoints on port 8080 (internal).
+# The LangGraph agent connects via Docker DNS: http://mcp-<name>:8080/sse
+#
+# Standalone (testing):
+#   docker compose -f docker-compose-mcp.yaml up --build
+#
+# With production stack:
+#   docker compose -f docker-compose-prod.yaml \
+#                  -f docker-compose-mcp.yaml \
+#                  -f docker-compose-mcp-override.yaml up --build
+#
+# Adding a new MCP server:
+#   1. Create docker/mcp-servers/Dockerfile.<name>
+#   2. Add a service block below
+#   3. Add the SSE URL to docker/extensions_config.mcp.json
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── World Bank MCP Server (native SSE) ─────────────────────────────
+  mcp-worldbank:
+    build:
+      context: ../
+      dockerfile: docker/mcp-servers/Dockerfile.worldbank
+    image: thinktank-mcp-worldbank:latest
+    container_name: thinktank-mcp-worldbank
+    volumes:
+      - ../mcp_servers/worldbank/worldbank_mcp:/app/worldbank_mcp:ro
+    environment:
+      MCP_TRANSPORT: sse
+      MCP_HOST: "0.0.0.0"
+      MCP_PORT: "8080"
+    ports:
+      - "${MCP_WORLDBANK_PORT:-8081}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf --max-time 3 http://localhost:8080/sse || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    restart: always
+    networks:
+      - thinktank
+
+  # ── Fiscal Data MCP Server (native SSE) ────────────────────────────
+  mcp-fiscaldata:
+    build:
+      context: ../
+      dockerfile: docker/mcp-servers/Dockerfile.fiscaldata
+    image: thinktank-mcp-fiscaldata:latest
+    container_name: thinktank-mcp-fiscaldata
+    volumes:
+      - ../mcp_servers/fiscaldata/fiscaldata_mcp:/app/fiscaldata_mcp:ro
+    environment:
+      MCP_TRANSPORT: sse
+      MCP_HOST: "0.0.0.0"
+      MCP_PORT: "8080"
+    ports:
+      - "${MCP_FISCALDATA_PORT:-8082}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf --max-time 3 http://localhost:8080/sse || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    restart: always
+    networks:
+      - thinktank
+
+  # ── PostgreSQL MCP Server (supergateway) ───────────────────────────
+  mcp-postgres:
+    build:
+      context: ../
+      dockerfile: docker/mcp-servers/Dockerfile.postgres
+    image: thinktank-mcp-postgres:latest
+    container_name: thinktank-mcp-postgres
+    environment:
+      DATABASE_URI: ${DATABASE_URI:-postgresql://thinktank:${DB_PASSWORD:-password}@postgres:5432/erp_sample}
+    env_file:
+      - ../.env
+    ports:
+      - "${MCP_POSTGRES_PORT:-8083}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf --max-time 3 http://localhost:8080/sse || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    restart: always
+    networks:
+      - thinktank
+
+  # ── Alpha Vantage MCP Server (supergateway) ────────────────────────
+  mcp-alphavantage:
+    build:
+      context: ../
+      dockerfile: docker/mcp-servers/Dockerfile.alphavantage
+    image: thinktank-mcp-alphavantage:latest
+    container_name: thinktank-mcp-alphavantage
+    environment:
+      ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY:-}
+    env_file:
+      - ../.env
+    ports:
+      - "${MCP_ALPHAVANTAGE_PORT:-8084}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf --max-time 3 http://localhost:8080/sse || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    restart: always
+    networks:
+      - thinktank
+
+  # ── Firecrawl MCP Server (supergateway) ────────────────────────────
+  mcp-firecrawl:
+    build:
+      context: ../
+      dockerfile: docker/mcp-servers/Dockerfile.firecrawl
+    image: thinktank-mcp-firecrawl:latest
+    container_name: thinktank-mcp-firecrawl
+    environment:
+      FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
+    env_file:
+      - ../.env
+    ports:
+      - "${MCP_FIRECRAWL_PORT:-8085}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf --max-time 3 http://localhost:8080/sse || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    restart: always
+    networks:
+      - thinktank
+
+  # ── Filesystem MCP Server (supergateway) ───────────────────────────
+  mcp-filesystem:
+    build:
+      context: ../
+      dockerfile: docker/mcp-servers/Dockerfile.filesystem
+    image: thinktank-mcp-filesystem:latest
+    container_name: thinktank-mcp-filesystem
+    volumes:
+      - ${MCP_FILESYSTEM_PATH:-../}:/data:ro
+    ports:
+      - "${MCP_FILESYSTEM_PORT:-8087}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf --max-time 3 http://localhost:8080/sse || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    restart: always
+    networks:
+      - thinktank
+
+networks:
+  thinktank:
+    driver: bridge

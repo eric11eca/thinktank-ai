@@ -1,0 +1,25 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# MCP Override — swaps extensions_config.json for SSE-based config
+# ─────────────────────────────────────────────────────────────────────────────
+# Use alongside the prod and MCP compose files:
+#   docker compose -f docker-compose-prod.yaml \
+#                  -f docker-compose-mcp.yaml \
+#                  -f docker-compose-mcp-override.yaml up
+#
+# This adds a second mount for /app/extensions_config.json on the backend
+# services. Docker uses the last mount for a given target, so the SSE config
+# takes precedence over the stdio config from docker-compose-prod.yaml.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  gateway:
+    volumes:
+      - ./extensions_config.mcp.json:/app/extensions_config.json:ro
+
+  langgraph:
+    volumes:
+      - ./extensions_config.mcp.json:/app/extensions_config.json:ro
+
+  worker:
+    volumes:
+      - ./extensions_config.mcp.json:/app/extensions_config.json:ro
