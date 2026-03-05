@@ -1,0 +1,96 @@
+{
+  "mcpServers": {
+    "worldbank": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://localhost:8081/sse",
+      "description": "World Bank Open Data API: countries, development indicators, economic data"
+    },
+    "fiscaldata": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://localhost:8082/sse",
+      "description": "U.S. Treasury Fiscal Data API: national debt, interest rates, exchange rates, spending"
+    },
+    "postgres": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://localhost:8083/sse",
+      "description": "PostgreSQL ERP database with schema exploration, SQL execution, query analysis, and health checks"
+    },
+    "alphavantage": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://localhost:8084/sse",
+      "description": "Alpha Vantage Financial Data API: stock prices, economic indicators, market data"
+    },
+    "firecrawl-mcp": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://localhost:8085/sse",
+      "description": "Web scraping via Firecrawl API"
+    },
+    "git": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://localhost:8086/sse",
+      "description": "Provides git operations within the workspace"
+    },
+    "filesystem": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://localhost:8087/sse",
+      "description": "Provides filesystem access within allowed directories"
+    }
+  },
+  "skills": {
+    "pdf-processing": {
+      "enabled": true
+    },
+    "frontend-design": {
+      "enabled": false
+    },
+    "web-scraping": {
+      "enabled": true
+    },
+    "deep-research": {
+      "enabled": true
+    },
+    "github-deep-research": {
+      "enabled": true
+    },
+    "data-analysis": {
+      "enabled": true
+    },
+    "chart-visualization": {
+      "enabled": true
+    },
+    "consulting-analysis": {
+      "enabled": true
+    },
+    "find-skills": {
+      "enabled": true
+    },
+    "video-generation": {
+      "enabled": false
+    },
+    "web-design-guidelines": {
+      "enabled": false
+    },
+    "surprise-me": {
+      "enabled": false
+    },
+    "vercel-deploy": {
+      "enabled": false
+    },
+    "ppt-generation": {
+      "enabled": false
+    },
+    "podcast-generation": {
+      "enabled": false
+    },
+    "image-generation": {
+      "enabled": false
+    }
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "mcpServers": {
+    "worldbank": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://mcp-worldbank:8080/sse",
+      "description": "World Bank Open Data API: countries, development indicators, economic data"
+    },
+    "fiscaldata": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://mcp-fiscaldata:8080/sse",
+      "description": "U.S. Treasury Fiscal Data API: national debt, interest rates, exchange rates, spending"
+    },
+    "postgres": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://mcp-postgres:8080/sse",
+      "description": "PostgreSQL ERP database with schema exploration, SQL execution, query analysis, and health checks"
+    },
+    "alphavantage": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://mcp-alphavantage:8080/sse",
+      "description": "Alpha Vantage Financial Data API: stock prices, economic indicators, market data"
+    },
+    "firecrawl-mcp": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://mcp-firecrawl:8080/sse",
+      "description": "Web scraping via Firecrawl API"
+    },
+    "github-copilot": {
+      "enabled": true,
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp",
+      "headers": {
+        "Authorization": "Bearer $GITHUB_PAT"
+      },
+      "description": "GitHub operations"
+    },
+    "filesystem": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://mcp-filesystem:8080/sse",
+      "description": "Provides filesystem access within allowed directories"
+    }
+  },
+  "skills": {
+    "pdf-processing": {
+      "enabled": true
+    },
+    "frontend-design": {
+      "enabled": false
+    },
+    "web-scraping": {
+      "enabled": true
+    },
+    "deep-research": {
+      "enabled": true
+    },
+    "github-deep-research": {
+      "enabled": true
+    },
+    "data-analysis": {
+      "enabled": true
+    },
+    "chart-visualization": {
+      "enabled": true
+    },
+    "consulting-analysis": {
+      "enabled": true
+    },
+    "find-skills": {
+      "enabled": true
+    },
+    "video-generation": {
+      "enabled": false
+    },
+    "web-design-guidelines": {
+      "enabled": false
+    },
+    "surprise-me": {
+      "enabled": false
+    },
+    "vercel-deploy": {
+      "enabled": false
+    },
+    "ppt-generation": {
+      "enabled": false
+    },
+    "podcast-generation": {
+      "enabled": false
+    },
+    "image-generation": {
+      "enabled": false
+    }
+  }
+}
